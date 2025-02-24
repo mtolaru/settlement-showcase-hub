@@ -1,12 +1,46 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import { CardElement } from "@stripe/react-stripe-js";
 
 const SubmitSettlement = () => {
   const [step, setStep] = useState(1);
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    amount: "",
+    caseType: "",
+    caseDetails: {
+      carAccident: {
+        vehicleType: "",
+        injuryType: "",
+        atFault: ""
+      },
+      workplaceInjury: {
+        injuryType: "",
+        workSector: "",
+        employerSize: ""
+      },
+      medicalMalpractice: {
+        procedureType: "",
+        facilityType: "",
+        injuryType: ""
+      },
+      slipAndFall: {
+        locationType: "",
+        injuryType: "",
+        propertyType: ""
+      }
+    },
+    attorneyName: "",
+    attorneyEmail: "",
+    firmName: "",
+    location: ""
+  });
 
   const settlementTypes = [
     "Car Accident",
@@ -16,6 +50,103 @@ const SubmitSettlement = () => {
     "Product Liability",
     "Other",
   ];
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      // Create payment intent first
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: 9900, // $99 in cents
+          settlementData: formData
+        }),
+      });
+
+      const { clientSecret } = await response.json();
+
+      // Handle payment with Stripe
+      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+      
+      if (!stripe) {
+        throw new Error('Stripe failed to load');
+      }
+
+      const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: {
+            email: formData.attorneyEmail,
+          },
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      // Payment successful, save settlement
+      toast({
+        title: "Success!",
+        description: "Your settlement has been submitted successfully.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Something went wrong. Please try again.",
+      });
+    }
+  };
+
+  const renderCaseSpecificFields = () => {
+    switch (formData.caseType) {
+      case "Car Accident":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="form-label">Vehicle Type</label>
+              <Input
+                type="text"
+                value={formData.caseDetails.carAccident.vehicleType}
+                onChange={(e) => handleInputChange("caseDetails.carAccident.vehicleType", e.target.value)}
+                placeholder="e.g., Sedan, SUV, Truck"
+              />
+            </div>
+            <div>
+              <label className="form-label">Injury Type</label>
+              <Input
+                type="text"
+                value={formData.caseDetails.carAccident.injuryType}
+                onChange={(e) => handleInputChange("caseDetails.carAccident.injuryType", e.target.value)}
+                placeholder="e.g., Whiplash, Broken Bones"
+              />
+            </div>
+            <div>
+              <label className="form-label">At Fault Party</label>
+              <Input
+                type="text"
+                value={formData.caseDetails.carAccident.atFault}
+                onChange={(e) => handleInputChange("caseDetails.carAccident.atFault", e.target.value)}
+                placeholder="e.g., Other Driver, Multiple Parties"
+              />
+            </div>
+          </div>
+        );
+      // ... Add similar case-specific fields for other case types
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -79,34 +210,29 @@ const SubmitSettlement = () => {
               <div className="space-y-6">
                 <div>
                   <label className="form-label">Settlement Amount</label>
-                  <input
+                  <Input
                     type="text"
-                    className="form-input"
+                    value={formData.amount}
+                    onChange={(e) => handleInputChange("amount", e.target.value)}
                     placeholder="$1,000,000"
                   />
                 </div>
                 <div>
                   <label className="form-label">Case Type</label>
-                  <select className="form-input">
+                  <select 
+                    className="form-input"
+                    value={formData.caseType}
+                    onChange={(e) => handleInputChange("caseType", e.target.value)}
+                  >
                     <option value="">Select Case Type</option>
                     {settlementTypes.map((type) => (
-                      <option key={type} value={type.toLowerCase()}>
+                      <option key={type} value={type}>
                         {type}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="form-label">Settlement Date</label>
-                  <input type="date" className="form-input" />
-                </div>
-                <div>
-                  <label className="form-label">Case Description</label>
-                  <textarea
-                    className="form-input min-h-[120px]"
-                    placeholder="Provide a brief description of the case..."
-                  />
-                </div>
+                {renderCaseSpecificFields()}
               </div>
             )}
 
@@ -114,34 +240,38 @@ const SubmitSettlement = () => {
               <div className="space-y-6">
                 <div>
                   <label className="form-label">Attorney Name</label>
-                  <input
+                  <Input
                     type="text"
-                    className="form-input"
+                    value={formData.attorneyName}
+                    onChange={(e) => handleInputChange("attorneyName", e.target.value)}
                     placeholder="John Smith"
                   />
                 </div>
                 <div>
+                  <label className="form-label">Email</label>
+                  <Input
+                    type="email"
+                    value={formData.attorneyEmail}
+                    onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div>
                   <label className="form-label">Law Firm</label>
-                  <input
+                  <Input
                     type="text"
-                    className="form-input"
+                    value={formData.firmName}
+                    onChange={(e) => handleInputChange("firmName", e.target.value)}
                     placeholder="Smith & Associates"
                   />
                 </div>
                 <div>
                   <label className="form-label">Location</label>
-                  <input
+                  <Input
                     type="text"
-                    className="form-input"
+                    value={formData.location}
+                    onChange={(e) => handleInputChange("location", e.target.value)}
                     placeholder="Los Angeles, CA"
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    placeholder="john@smithlaw.com"
                   />
                 </div>
               </div>
@@ -149,22 +279,25 @@ const SubmitSettlement = () => {
 
             {step === 3 && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold mb-4">Review Your Submission</h3>
-                <div className="space-y-4 text-sm">
-                  <div className="p-4 bg-neutral-50 rounded-md">
-                    <p className="text-neutral-500 mb-1">Settlement Amount</p>
-                    <p className="font-medium">$1,000,000</p>
-                  </div>
-                  <div className="p-4 bg-neutral-50 rounded-md">
-                    <p className="text-neutral-500 mb-1">Case Type</p>
-                    <p className="font-medium">Car Accident</p>
-                  </div>
-                  <div className="p-4 bg-neutral-50 rounded-md">
-                    <p className="text-neutral-500 mb-1">Attorney Information</p>
-                    <p className="font-medium">John Smith</p>
-                    <p className="text-neutral-600">Smith & Associates</p>
-                    <p className="text-neutral-600">Los Angeles, CA</p>
-                  </div>
+                <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
+                <div className="p-4 border rounded-md">
+                  <CardElement options={{
+                    style: {
+                      base: {
+                        fontSize: '16px',
+                        color: '#424770',
+                        '::placeholder': {
+                          color: '#aab7c4'
+                        },
+                      },
+                      invalid: {
+                        color: '#9e2146',
+                      },
+                    },
+                  }}/>
+                </div>
+                <div className="text-sm text-neutral-600">
+                  You will be charged $99 for submitting this settlement.
                 </div>
               </div>
             )}
@@ -188,11 +321,12 @@ const SubmitSettlement = () => {
                     Next Step <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Link to="/payment-plans">
-                    <Button className="bg-primary-500 hover:bg-primary-600">
-                      Proceed to Payment <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    onClick={handleSubmit}
+                    className="bg-primary-500 hover:bg-primary-600"
+                  >
+                    Submit and Pay <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 )}
               </div>
             </div>

@@ -1,11 +1,27 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Share2, ArrowRight, Building2 } from "lucide-react";
+import { Search, Filter, Share2, ArrowRight, Building2, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Index = () => {
+  const [filters, setFilters] = useState({
+    caseTypes: [],
+    minAmount: "",
+    maxAmount: "",
+    location: "",
+    date: ""
+  });
+
   const cities = [
     { name: "Los Angeles", active: true },
     { name: "New York", active: false },
@@ -95,16 +111,135 @@ const Index = () => {
     },
   ];
 
+  const filteredSettlements = settlements.filter(settlement => {
+    if (filters.caseTypes.length > 0 && !filters.caseTypes.includes(settlement.type)) {
+      return false;
+    }
+    if (filters.minAmount && parseInt(settlement.amount.replace(/\D/g, '')) < parseInt(filters.minAmount)) {
+      return false;
+    }
+    if (filters.maxAmount && parseInt(settlement.amount.replace(/\D/g, '')) > parseInt(filters.maxAmount)) {
+      return false;
+    }
+    if (filters.location && !settlement.location.toLowerCase().includes(filters.location.toLowerCase())) {
+      return false;
+    }
+    if (filters.date && settlement.date !== filters.date) {
+      return false;
+    }
+    return true;
+  });
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleCaseTypeToggle = (type: string) => {
+    setFilters(prev => ({
+      ...prev,
+      caseTypes: prev.caseTypes.includes(type)
+        ? prev.caseTypes.filter(t => t !== type)
+        : [...prev.caseTypes, type]
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      caseTypes: [],
+      minAmount: "",
+      maxAmount: "",
+      location: "",
+      date: ""
+    });
+  };
+
   return (
     <div className="min-h-screen w-full">
       {/* Header Section */}
       <section className="bg-white border-b border-neutral-200">
         <div className="container py-6">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Filter className="h-5 w-5 text-neutral-500" />
-              <span className="text-neutral-500">Filters</span>
-            </div>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-5 w-5" />
+                  <span>Filters</span>
+                  {Object.values(filters).some(v => v.length > 0) && (
+                    <span className="ml-2 h-6 w-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm">
+                      {filters.caseTypes.length + (filters.minAmount ? 1 : 0) + (filters.maxAmount ? 1 : 0) + (filters.location ? 1 : 0) + (filters.date ? 1 : 0)}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[400px]">
+                <SheetHeader>
+                  <SheetTitle className="flex justify-between items-center">
+                    Filters
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <X className="h-4 w-4 mr-2" />
+                      Clear all
+                    </Button>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="py-6 space-y-6">
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Case Type</h3>
+                    <div className="space-y-2">
+                      {["Car Accident", "Medical Malpractice", "Workplace Injury", "Slip and Fall", "Product Liability"].map((type) => (
+                        <div key={type} className="flex items-center">
+                          <Checkbox
+                            id={type}
+                            checked={filters.caseTypes.includes(type)}
+                            onCheckedChange={() => handleCaseTypeToggle(type)}
+                          />
+                          <label htmlFor={type} className="ml-2 text-sm">
+                            {type}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Amount Range</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minAmount}
+                        onChange={(e) => handleFilterChange("minAmount", e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxAmount}
+                        onChange={(e) => handleFilterChange("maxAmount", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Location</h3>
+                    <Input
+                      type="text"
+                      placeholder="Enter location"
+                      value={filters.location}
+                      onChange={(e) => handleFilterChange("location", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Settlement Date</h3>
+                    <Input
+                      type="month"
+                      value={filters.date}
+                      onChange={(e) => handleFilterChange("date", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
             <h1 className="text-3xl font-bold font-display text-primary-900">
               SettlementWins
             </h1>
@@ -115,7 +250,6 @@ const Index = () => {
             </Link>
           </div>
 
-          {/* Search Bar */}
           <div className="max-w-2xl mx-auto relative">
             <Input
               type="text"
@@ -153,7 +287,7 @@ const Index = () => {
       <section className="py-12 bg-neutral-50">
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {settlements.map((settlement) => (
+            {filteredSettlements.map((settlement) => (
               <motion.div
                 key={settlement.id}
                 initial={{ opacity: 0, y: 20 }}
