@@ -10,8 +10,6 @@ const Index = () => {
     { name: "Los Angeles", active: true },
     { name: "New York", active: false },
     { name: "Miami", active: false },
-    { name: "Boston", active: false },
-    { name: "Chicago", active: false },
   ];
 
   const settlements = [
@@ -20,6 +18,7 @@ const Index = () => {
       image: "/placeholder.svg",
       type: "Car Accident",
       amount: "$2.5M",
+      lawyer: "Sarah Johnson",
       firm: "Smith & Associates",
       location: "Los Angeles, CA",
       date: "March 2024",
@@ -29,6 +28,7 @@ const Index = () => {
       image: "/placeholder.svg",
       type: "Medical Malpractice",
       amount: "$3.1M",
+      lawyer: "Michael Chen",
       firm: "Johnson Legal Group",
       location: "Los Angeles, CA",
       date: "March 2024",
@@ -38,9 +38,60 @@ const Index = () => {
       image: "/placeholder.svg",
       type: "Workplace Injury",
       amount: "$1.8M",
+      lawyer: "David Martinez",
       firm: "Pacific Law Partners",
       location: "Los Angeles, CA",
       date: "March 2024",
+    },
+    {
+      id: 4,
+      image: "/placeholder.svg",
+      type: "Product Liability",
+      amount: "$4.2M",
+      lawyer: "Emily Rodriguez",
+      firm: "West Coast Legal",
+      location: "Los Angeles, CA",
+      date: "March 2024",
+    },
+    {
+      id: 5,
+      image: "/placeholder.svg",
+      type: "Medical Malpractice",
+      amount: "$2.9M",
+      lawyer: "James Wilson",
+      firm: "Wilson & Partners",
+      location: "Los Angeles, CA",
+      date: "February 2024",
+    },
+    {
+      id: 6,
+      image: "/placeholder.svg",
+      type: "Car Accident",
+      amount: "$1.5M",
+      lawyer: "Lisa Thompson",
+      firm: "Thompson Law Group",
+      location: "Los Angeles, CA",
+      date: "February 2024",
+    },
+    {
+      id: 7,
+      image: "/placeholder.svg",
+      type: "Workplace Injury",
+      amount: "$2.2M",
+      lawyer: "Robert Kim",
+      firm: "Kim & Associates",
+      location: "Los Angeles, CA",
+      date: "February 2024",
+    },
+    {
+      id: 8,
+      image: "/placeholder.svg",
+      type: "Slip and Fall",
+      amount: "$1.1M",
+      lawyer: "Maria Garcia",
+      firm: "Garcia Law Firm",
+      location: "Los Angeles, CA",
+      date: "February 2024",
     },
   ];
 
@@ -101,7 +152,7 @@ const Index = () => {
       {/* Settlements Grid */}
       <section className="py-12 bg-neutral-50">
         <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {settlements.map((settlement) => (
               <motion.div
                 key={settlement.id}
@@ -136,7 +187,8 @@ const Index = () => {
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    <p className="font-medium text-neutral-900">{settlement.firm}</p>
+                    <h3 className="font-bold text-lg text-neutral-900">{settlement.lawyer}</h3>
+                    <p className="text-sm text-neutral-600">{settlement.firm}</p>
                     <div className="flex items-center text-sm text-neutral-600">
                       <Building2 className="h-4 w-4 mr-1" />
                       {settlement.location}
@@ -148,6 +200,46 @@ const Index = () => {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Value Proposition */}
+      <section className="py-16 bg-white">
+        <div className="container">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl font-bold mb-6">Why Share Your Settlements?</h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Build Credibility</h3>
+                <p className="text-neutral-600">Showcase your track record of success to potential clients</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Attract Cases</h3>
+                <p className="text-neutral-600">Help clients understand the value you bring to similar cases</p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Network Growth</h3>
+                <p className="text-neutral-600">Connect with other successful attorneys in your field</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-16 bg-primary-900 text-white">
+        <div className="container">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-bold mb-6">Ready to Share Your Success?</h2>
+            <p className="text-xl text-primary-100 mb-8">
+              Join the leading platform for showcasing legal settlements
+            </p>
+            <Link to="/submit">
+              <Button size="lg" className="bg-white text-primary-900 hover:bg-primary-50">
+                Submit Your Settlement <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
