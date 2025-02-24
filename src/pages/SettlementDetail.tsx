@@ -1,8 +1,7 @@
-
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Share2, Trophy } from "lucide-react";
+import { ArrowLeft, Share2, Trophy, ArrowRight } from "lucide-react";
 
 const SettlementDetail = () => {
   const { id } = useParams();
