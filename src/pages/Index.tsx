@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Search, Filter, Share2, ArrowRight, Building2, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import {
@@ -12,8 +12,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import Navbar from "@/components/Navbar";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     caseTypes: [],
     minAmount: "",
@@ -156,9 +158,13 @@ const Index = () => {
     });
   };
 
+  const handleSettlementClick = (id: number) => {
+    navigate(`/settlements/${id}`);
+  };
+
   return (
     <div className="min-h-screen w-full">
-      {/* Header Section */}
+      <Navbar />
       <section className="bg-white border-b border-neutral-200">
         <div className="container py-6">
           <div className="flex items-center justify-between mb-6">
@@ -261,7 +267,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* City Navigation */}
       <section className="bg-neutral-50 border-b border-neutral-200">
         <div className="container py-4">
           <div className="flex justify-center gap-8">
@@ -283,7 +288,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Settlements Grid */}
       <section className="py-12 bg-neutral-50">
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -292,7 +296,8 @@ const Index = () => {
                 key={settlement.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleSettlementClick(settlement.id)}
               >
                 <div className="relative h-48 bg-neutral-100">
                   <img
@@ -316,12 +321,21 @@ const Index = () => {
                         {settlement.type}
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-neutral-500 hover:text-primary-500">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-neutral-500 hover:text-primary-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
                       <Share2 className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-bold text-lg text-neutral-900">{settlement.lawyer}</h3>
+                    <h3 className="font-bold text-lg text-neutral-900">
+                      {settlement.lawyer}
+                    </h3>
                     <p className="text-sm text-neutral-600">{settlement.firm}</p>
                     <div className="flex items-center text-sm text-neutral-600">
                       <Building2 className="h-4 w-4 mr-1" />
@@ -338,7 +352,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Value Proposition */}
       <section className="py-16 bg-white">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center">
@@ -361,7 +374,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Final CTA */}
       <section className="py-16 bg-primary-900 text-white">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
