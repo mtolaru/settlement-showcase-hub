@@ -1,7 +1,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, DollarSign, Trophy, Users } from "lucide-react";
+import { ArrowRight, DollarSign, Trophy, Users, Search, Filter, Share2 } from "lucide-react";
 
 const Index = () => {
   return (
@@ -45,8 +45,59 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 bg-white">
+      {/* Featured Settlements Section */}
+      <section className="py-16 bg-white">
+        <div className="container">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold">Featured Settlements</h2>
+            <div className="flex gap-4">
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+              <Button variant="outline" size="sm">
+                <Search className="mr-2 h-4 w-4" />
+                Search
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className="glass p-6 rounded-lg card-hover"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-3xl font-bold text-gold-600">$2.5M</span>
+                    <p className="text-sm text-gray-600">Car Accident</p>
+                  </div>
+                  <Button variant="ghost" size="icon">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-medium">Smith & Associates</p>
+                  <p className="text-sm text-gray-600">Los Angeles, CA</p>
+                  <p className="text-sm text-gray-600">Settlement Date: March 2024</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <Button variant="outline" size="lg">
+              View All Settlements
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Why SettlementWins Section */}
+      <section className="py-24 bg-gray-50">
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Why SettlementWins?</h2>
@@ -82,7 +133,7 @@ const Index = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="glass p-6 rounded-lg card-hover"
+                className="bg-white p-6 rounded-lg shadow-lg card-hover"
               >
                 <feature.icon className="h-12 w-12 text-gold-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
@@ -90,6 +141,30 @@ const Index = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 bg-gold-50">
+        <div className="container text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Ready to Showcase Your Settlements?
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Join the leading attorneys who are already leveraging their settlement wins
+              to attract high-value cases.
+            </p>
+            <Button size="lg" className="bg-gold-500 hover:bg-gold-600">
+              Get Started Today <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </motion.div>
         </div>
       </section>
     </div>
