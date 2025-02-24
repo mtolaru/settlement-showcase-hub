@@ -21,8 +21,7 @@ const PaymentForm = ({ onSubmit, formData }) => {
   const elements = useElements();
   const { toast } = useToast();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handlePaymentSubmit = async () => {
     if (!stripe || !elements) {
       return;
     }
@@ -66,37 +65,36 @@ const PaymentForm = ({ onSubmit, formData }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
-        <div className="p-4 border rounded-md">
-          <CardElement options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4'
-                },
-              },
-              invalid: {
-                color: '#9e2146',
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
+      <div className="p-4 border rounded-md">
+        <CardElement options={{
+          style: {
+            base: {
+              fontSize: '16px',
+              color: '#424770',
+              '::placeholder': {
+                color: '#aab7c4'
               },
             },
-          }}/>
-        </div>
-        <div className="text-sm text-neutral-600">
-          You will be charged $99 for submitting this settlement.
-        </div>
-        <Button 
-          type="submit"
-          disabled={!stripe}
-          className="bg-primary-500 hover:bg-primary-600 w-full"
-        >
-          Submit and Pay <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
+            invalid: {
+              color: '#9e2146',
+            },
+          },
+        }}/>
       </div>
-    </form>
+      <div className="text-sm text-neutral-600">
+        You will be charged $99 for submitting this settlement.
+      </div>
+      <Button 
+        type="button"
+        onClick={handlePaymentSubmit}
+        disabled={!stripe}
+        className="bg-primary-500 hover:bg-primary-600 w-full"
+      >
+        Submit and Pay <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
   );
 };
 
@@ -155,56 +153,6 @@ const SubmitSettlement = () => {
       ...prev,
       [field]: value
     }));
-  };
-
-  const handleSubmit = async () => {
-    try {
-      // Create payment intent first
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: 9900, // $99 in cents
-          settlementData: formData
-        }),
-      });
-
-      const { clientSecret } = await response.json();
-
-      // Handle payment with Stripe
-      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-      
-      if (!stripe) {
-        throw new Error('Stripe failed to load');
-      }
-
-      const result = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: {
-            email: formData.attorneyEmail,
-          },
-        },
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-
-      // Payment successful, save settlement
-      toast({
-        title: "Success!",
-        description: "Your settlement has been submitted successfully.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
-      });
-    }
   };
 
   const renderCaseSpecificFields = () => {
