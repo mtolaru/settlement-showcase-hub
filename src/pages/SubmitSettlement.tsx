@@ -6,7 +6,99 @@ import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { CardElement } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements
+} from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+
+const PaymentForm = ({ onSubmit, formData }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) {
+      return;
+    }
+
+    try {
+      // Create payment intent first
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: 9900, // $99 in cents
+          settlementData: formData
+        }),
+      });
+
+      const { clientSecret } = await response.json();
+
+      const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: {
+            email: formData.attorneyEmail,
+          },
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      onSubmit(result);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Something went wrong. Please try again.",
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
+        <div className="p-4 border rounded-md">
+          <CardElement options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                  color: '#aab7c4'
+                },
+              },
+              invalid: {
+                color: '#9e2146',
+              },
+            },
+          }}/>
+        </div>
+        <div className="text-sm text-neutral-600">
+          You will be charged $99 for submitting this settlement.
+        </div>
+        <Button 
+          type="submit"
+          disabled={!stripe}
+          className="bg-primary-500 hover:bg-primary-600 w-full"
+        >
+          Submit and Pay <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </form>
+  );
+};
 
 const SubmitSettlement = () => {
   const [step, setStep] = useState(1);
@@ -41,6 +133,13 @@ const SubmitSettlement = () => {
     firmName: "",
     location: ""
   });
+
+  const handlePaymentSuccess = (result) => {
+    toast({
+      title: "Success!",
+      description: "Your settlement has been submitted successfully.",
+    });
+  };
 
   const settlementTypes = [
     "Car Accident",
@@ -278,28 +377,9 @@ const SubmitSettlement = () => {
             )}
 
             {step === 3 && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
-                <div className="p-4 border rounded-md">
-                  <CardElement options={{
-                    style: {
-                      base: {
-                        fontSize: '16px',
-                        color: '#424770',
-                        '::placeholder': {
-                          color: '#aab7c4'
-                        },
-                      },
-                      invalid: {
-                        color: '#9e2146',
-                      },
-                    },
-                  }}/>
-                </div>
-                <div className="text-sm text-neutral-600">
-                  You will be charged $99 for submitting this settlement.
-                </div>
-              </div>
+              <Elements stripe={stripePromise}>
+                <PaymentForm onSubmit={handlePaymentSuccess} formData={formData} />
+              </Elements>
             )}
 
             {/* Navigation Buttons */}
@@ -312,23 +392,16 @@ const SubmitSettlement = () => {
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
               )}
-              <div className="ml-auto">
-                {step < 3 ? (
+              {step < 3 && (
+                <div className="ml-auto">
                   <Button
                     onClick={() => setStep(step + 1)}
                     className="bg-primary-500 hover:bg-primary-600"
                   >
                     Next Step <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                ) : (
-                  <Button 
-                    onClick={handleSubmit}
-                    className="bg-primary-500 hover:bg-primary-600"
-                  >
-                    Submit and Pay <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
