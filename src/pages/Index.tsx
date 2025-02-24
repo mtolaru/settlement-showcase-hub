@@ -12,7 +12,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
-import Navbar from "@/components/Navbar";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -163,95 +162,22 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen w-full">
-      <Navbar />
+    <div className="w-full">
       <section className="bg-white border-b border-neutral-200">
         <div className="container py-6">
           <div className="flex items-center justify-between mb-6">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  <span>Filters</span>
-                  {Object.values(filters).some(v => v.length > 0) && (
-                    <span className="ml-2 h-6 w-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm">
-                      {filters.caseTypes.length + (filters.minAmount ? 1 : 0) + (filters.maxAmount ? 1 : 0) + (filters.location ? 1 : 0) + (filters.date ? 1 : 0)}
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-[400px]">
-                <SheetHeader>
-                  <SheetTitle className="flex justify-between items-center">
-                    Filters
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                      <X className="h-4 w-4 mr-2" />
-                      Clear all
-                    </Button>
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="py-6 space-y-6">
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Case Type</h3>
-                    <div className="space-y-2">
-                      {["Car Accident", "Medical Malpractice", "Workplace Injury", "Slip and Fall", "Product Liability"].map((type) => (
-                        <div key={type} className="flex items-center">
-                          <Checkbox
-                            id={type}
-                            checked={filters.caseTypes.includes(type)}
-                            onCheckedChange={() => handleCaseTypeToggle(type)}
-                          />
-                          <label htmlFor={type} className="ml-2 text-sm">
-                            {type}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Amount Range</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.minAmount}
-                        onChange={(e) => handleFilterChange("minAmount", e.target.value)}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={filters.maxAmount}
-                        onChange={(e) => handleFilterChange("maxAmount", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Location</h3>
-                    <Input
-                      type="text"
-                      placeholder="Enter location"
-                      value={filters.location}
-                      onChange={(e) => handleFilterChange("location", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Settlement Date</h3>
-                    <Input
-                      type="month"
-                      value={filters.date}
-                      onChange={(e) => handleFilterChange("date", e.target.value)}
-                    />
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <h1 className="text-3xl font-bold font-display text-primary-900">
-              SettlementWins
-            </h1>
+            <div>
+              <h1 className="text-4xl font-bold font-display text-primary-900 mb-2">
+                Discover Settlements
+              </h1>
+              <p className="text-neutral-600">
+                Browse through successful settlements from top law firms
+              </p>
+            </div>
             <Link to="/submit">
-              <Button>
-                Submit a Deal <ArrowRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="bg-accent-500 hover:bg-accent-600 text-white px-8 py-6 text-lg h-auto">
+                Submit Your Settlement
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>

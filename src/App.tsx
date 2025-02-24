@@ -28,19 +28,22 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <div className="min-h-screen flex flex-col">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/settlements" element={<Gallery />} />
-            <Route path="/settlements/:id" element={<SettlementDetail />} />
-            <Route path="/submit" element={<SubmitSettlement />} />
-            <Route path="/payment-plans" element={<PaymentSelection />} />
-            <Route path="/checkout" element={<PaymentProcessing />} />
-            <Route path="/confirmation" element={<SubmissionConfirmation />} />
-            <Route path="/manage" element={<ManageSettlements />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Navbar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/settlements" element={<Gallery />} />
+              <Route path="/settlements/:id" element={<SettlementDetail />} />
+              <Route path="/submit" element={<SubmitSettlement />} />
+              <Route path="/payment-plans" element={<PaymentSelection />} />
+              <Route path="/checkout" element={<PaymentProcessing />} />
+              <Route path="/confirmation" element={<SubmissionConfirmation />} />
+              <Route path="/manage" element={<ManageSettlements />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
         </div>
       </BrowserRouter>
     </TooltipProvider>
