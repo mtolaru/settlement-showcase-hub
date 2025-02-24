@@ -1,12 +1,14 @@
-import { useState } from "react";
+
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Share2, ArrowRight } from "lucide-react";
+import { Search, Filter, Share2, ArrowRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Gallery = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("amount");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   const caseTypes = [
     "All",
@@ -14,6 +16,13 @@ const Gallery = () => {
     "Medical Malpractice",
     "Slip & Fall",
     "Workplace Injury",
+  ];
+
+  const locations = [
+    "All",
+    "Los Angeles, CA",
+    "San Francisco, CA",
+    "San Diego, CA",
   ];
 
   // Sample data - would come from API in production
@@ -24,7 +33,7 @@ const Gallery = () => {
       type: "Car Accident",
       firm: "Smith & Associates",
       location: "Los Angeles, CA",
-      date: "March 2024",
+      date: "2024-03-15",
     },
     {
       id: 2,
@@ -32,7 +41,7 @@ const Gallery = () => {
       type: "Medical Malpractice",
       firm: "Johnson Legal Group",
       location: "San Francisco, CA",
-      date: "February 2024",
+      date: "2024-02-20",
     },
     {
       id: 3,
@@ -40,9 +49,42 @@ const Gallery = () => {
       type: "Slip & Fall",
       firm: "Roberts & Partners",
       location: "San Diego, CA",
-      date: "January 2024",
+      date: "2024-01-10",
     },
   ];
+
+  // Filter and sort settlements
+  const filteredSettlements = useMemo(() => {
+    let filtered = [...settlements];
+
+    // Filter by type
+    if (selectedType.toLowerCase() !== "all") {
+      filtered = filtered.filter(
+        (settlement) => settlement.type.toLowerCase() === selectedType.toLowerCase()
+      );
+    }
+
+    // Filter by location
+    if (selectedLocation.toLowerCase() !== "all") {
+      filtered = filtered.filter(
+        (settlement) => settlement.location === selectedLocation
+      );
+    }
+
+    // Sort settlements
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "amount":
+          return b.amount - a.amount;
+        case "date":
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case "firm":
+          return a.firm.localeCompare(b.firm);
+        default:
+          return 0;
+      }
+    });
+  }, [settlements, selectedType, selectedLocation, sortBy]);
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -59,11 +101,10 @@ const Gallery = () => {
             </div>
             <Link to="/submit">
               <Button 
-                size="lg" 
-                className="bg-accent-500 hover:bg-accent-600 text-white px-8 py-6 text-lg h-auto shadow-lg hover:shadow-xl transition-all"
+                className="bg-accent-500 hover:bg-accent-600 text-white"
               >
                 Submit Your Settlement
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -86,9 +127,20 @@ const Gallery = () => {
                 </Button>
               ))}
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <select
-                className="form-input bg-white"
+                className="form-input bg-white border rounded-md px-3 py-2"
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+              >
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location === "all" ? "All Locations" : location}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="form-input bg-white border rounded-md px-3 py-2"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
@@ -96,21 +148,13 @@ const Gallery = () => {
                 <option value="date">Sort by Date</option>
                 <option value="firm">Sort by Firm</option>
               </select>
-              <Button variant="outline">
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
-              <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                More Filters
-              </Button>
             </div>
           </div>
         </div>
 
         {/* Settlement Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {settlements.map((settlement, index) => (
+          {filteredSettlements.map((settlement, index) => (
             <motion.div
               key={settlement.id}
               initial={{ opacity: 0, y: 20 }}
@@ -133,8 +177,13 @@ const Gallery = () => {
               </div>
               <div className="settlement-card-body">
                 <p className="font-medium text-neutral-900">{settlement.firm}</p>
-                <p className="text-sm text-neutral-600">{settlement.location}</p>
-                <p className="text-sm text-neutral-600">Settlement Date: {settlement.date}</p>
+                <div className="flex items-center gap-1 text-sm text-neutral-600">
+                  <MapPin className="h-4 w-4" />
+                  {settlement.location}
+                </div>
+                <p className="text-sm text-neutral-600">
+                  Settlement Date: {new Date(settlement.date).toLocaleDateString()}
+                </p>
               </div>
               <div className="settlement-card-footer">
                 <Link to={`/settlements/${settlement.id}`}>
@@ -158,7 +207,7 @@ const Gallery = () => {
               to attract high-value cases.
             </p>
             <Link to="/submit">
-              <Button size="lg" className="bg-primary-500 hover:bg-primary-600">
+              <Button className="bg-primary-500 hover:bg-primary-600">
                 Submit Your Settlement <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
