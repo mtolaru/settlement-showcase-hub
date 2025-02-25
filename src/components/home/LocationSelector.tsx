@@ -1,14 +1,20 @@
 
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 type City = {
   name: string;
   active: boolean;
+  location: string;
 };
 
 interface LocationSelectorProps {
   cities: City[];
+  onCitySelect: (location: string) => void;
+  selectedCity: string;
 }
 
-const LocationSelector = ({ cities }: LocationSelectorProps) => {
+const LocationSelector = ({ cities, onCitySelect, selectedCity }: LocationSelectorProps) => {
   return (
     <section className="bg-neutral-50 border-b border-neutral-200">
       <div className="container py-4">
@@ -16,10 +22,17 @@ const LocationSelector = ({ cities }: LocationSelectorProps) => {
           {cities.map((city) => (
             <button
               key={city.name}
+              onClick={() => {
+                if (city.active) {
+                  onCitySelect(city.location);
+                }
+              }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                city.active
+                city.active && selectedCity === city.location
                   ? "bg-primary-500 text-white"
-                  : "text-neutral-400 hover:text-neutral-500"
+                  : city.active
+                  ? "text-neutral-600 hover:text-primary-500"
+                  : "text-neutral-400 cursor-not-allowed"
               }`}
               disabled={!city.active}
             >

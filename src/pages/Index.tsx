@@ -11,21 +11,26 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const Index = () => {
+  const [selectedCity, setSelectedCity] = useState("all");
+  
   const cities = [
-    { name: "Los Angeles", active: true },
-    { name: "New York", active: false },
-    { name: "Miami", active: false },
+    { name: "All Cities", active: true, location: "all" },
+    { name: "San Francisco", active: true, location: "San Francisco, CA" },
+    { name: "San Diego", active: true, location: "San Diego, CA" },
+    { name: "Los Angeles", active: true, location: "Los Angeles, CA" },
   ];
 
   // Sort settlements by date for recent cases
-  const recentSettlements = [...settlements].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  ).slice(0, 3);
+  const recentSettlements = [...settlements]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .filter(settlement => selectedCity === "all" || settlement.location === selectedCity)
+    .slice(0, 3);
 
   // Sort settlements by amount for top settlements
-  const topSettlements = [...settlements].sort((a, b) => 
-    b.amount - a.amount
-  ).slice(0, 3);
+  const topSettlements = [...settlements]
+    .sort((a, b) => b.amount - a.amount)
+    .filter(settlement => selectedCity === "all" || settlement.location === selectedCity)
+    .slice(0, 3);
 
   // Format the settlement data to match the SettlementCard props
   const formatSettlement = (settlement: typeof settlements[0]) => ({
@@ -43,7 +48,11 @@ const Index = () => {
   return (
     <div className="w-full">
       <Hero />
-      <LocationSelector cities={cities} />
+      <LocationSelector 
+        cities={cities} 
+        onCitySelect={setSelectedCity}
+        selectedCity={selectedCity}
+      />
 
       {/* Recent Settlements Section */}
       <section className="py-12 bg-neutral-50">
