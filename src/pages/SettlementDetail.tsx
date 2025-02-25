@@ -10,6 +10,15 @@ const SettlementDetail = () => {
   
   const settlement = settlements.find(s => s.id === Number(id));
 
+  const formatAmount = (amount: number) => {
+    return amount.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  };
+
   if (!settlement) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -38,7 +47,7 @@ const SettlementDetail = () => {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-4xl font-bold font-display mb-2">
-                ${(settlement.amount / 1000000).toFixed(1)}M Settlement
+                {formatAmount(settlement.amount)} Settlement
               </h1>
               <p className="text-primary-200">{settlement.type}</p>
             </div>
@@ -71,14 +80,29 @@ const SettlementDetail = () => {
             >
               <h2 className="text-xl font-bold mb-4">Case Details</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(settlement.details).map(([key, value]) => (
-                  <div key={key} className="p-4 bg-neutral-50 rounded-md">
-                    <p className="text-sm text-neutral-500 capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </p>
-                    <p className="font-medium text-neutral-900">{value}</p>
-                  </div>
-                ))}
+                {/* Initial Settlement Offer */}
+                <div className="p-4 bg-neutral-50 rounded-md">
+                  <p className="text-sm text-neutral-500">Initial Settlement Offer</p>
+                  <p className="font-medium text-neutral-900">{formatAmount(settlement.details.initialOffer)}</p>
+                </div>
+
+                {/* Insurance Policy Limit */}
+                <div className="p-4 bg-neutral-50 rounded-md">
+                  <p className="text-sm text-neutral-500">Insurance Policy Limit</p>
+                  <p className="font-medium text-neutral-900">{formatAmount(settlement.details.policyLimit)}</p>
+                </div>
+
+                {/* Medical Expenses */}
+                <div className="p-4 bg-neutral-50 rounded-md">
+                  <p className="text-sm text-neutral-500">Medical Expenses</p>
+                  <p className="font-medium text-neutral-900">{formatAmount(settlement.details.medicalExpenses)}</p>
+                </div>
+
+                {/* Settlement Phase */}
+                <div className="p-4 bg-neutral-50 rounded-md">
+                  <p className="text-sm text-neutral-500">Settlement Phase</p>
+                  <p className="font-medium text-neutral-900">{settlement.details.settlementPhase}</p>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -105,7 +129,7 @@ const SettlementDetail = () => {
                         href={settlement.firmWebsite}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:text-primary-500 transition-colors"
+                        className="text-blue-600 hover:text-blue-800"
                       >
                         {settlement.firm}
                       </a>

@@ -18,10 +18,11 @@ export const settlements = [
     date: "2024-03-15",
     description: "Successful resolution of a complex motor vehicle accident case resulting in severe injuries to our client. Settlement achieved through strategic negotiation and comprehensive evidence presentation.",
     details: {
-      caseLength: "14 months",
-      jurisdiction: "Los Angeles County Superior Court",
-      insuranceCarrier: "Major National Insurance Co.",
-      injuries: "Multiple fractures, traumatic brain injury",
+      initialOffer: 1500000,
+      policyLimit: 3000000,
+      medicalExpenses: 750000,
+      settlementPhase: "during-litigation",
+      caseDescription: "Multi-vehicle collision resulting in severe injuries"
     }
   },
   {
@@ -35,10 +36,11 @@ export const settlements = [
     date: "2024-02-20",
     description: "Resolution of a complex medical malpractice case involving surgical complications. Settlement achieved through expert testimony and detailed documentation of care standards violations.",
     details: {
-      caseLength: "24 months",
-      jurisdiction: "San Francisco Superior Court",
-      insuranceCarrier: "Healthcare Insurance Provider",
-      injuries: "Permanent disability, ongoing care required",
+      initialOffer: 1800000,
+      policyLimit: 5000000,
+      medicalExpenses: 950000,
+      settlementPhase: "pre-litigation",
+      caseDescription: "Surgical error leading to permanent disability"
     }
   },
   {
@@ -52,10 +54,11 @@ export const settlements = [
     date: "2024-01-10",
     description: "Successfully settled premises liability case involving hazardous conditions at a commercial property. Case resolved through mediation and comprehensive documentation of safety violations.",
     details: {
-      caseLength: "10 months",
-      jurisdiction: "Los Angeles County Superior Court",
-      insuranceCarrier: "Commercial Property Insurance Co.",
-      injuries: "Spinal injury, chronic pain",
+      initialOffer: 800000,
+      policyLimit: 2000000,
+      medicalExpenses: 450000,
+      settlementPhase: "during-litigation",
+      caseDescription: "Fall incident at commercial property"
     }
   },
   {
@@ -69,10 +72,11 @@ export const settlements = [
     date: "2024-01-05",
     description: "Major product liability settlement involving defective consumer products. Case resolved through extensive expert testimony and product testing evidence.",
     details: {
-      caseLength: "18 months",
-      jurisdiction: "California State Court",
-      insuranceCarrier: "Manufacturing Insurance Group",
-      injuries: "Severe burns, permanent scarring",
+      initialOffer: 2500000,
+      policyLimit: 5000000,
+      medicalExpenses: 1200000,
+      settlementPhase: "during-litigation",
+      caseDescription: "Product malfunction causing severe burns"
     }
   }
 ];

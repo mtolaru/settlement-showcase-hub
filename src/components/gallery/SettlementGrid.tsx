@@ -9,8 +9,18 @@ interface Settlement {
   amount: number;
   type: string;
   firm: string;
+  firmWebsite?: string;
+  attorney: string;
   location: string;
   date: string;
+  description: string;
+  details: {
+    initialOffer: string;
+    policyLimit: string;
+    medicalExpenses: string;
+    settlementPhase: string;
+    caseDescription: string;
+  };
 }
 
 interface SettlementGridProps {
@@ -18,6 +28,15 @@ interface SettlementGridProps {
 }
 
 const SettlementGrid = ({ settlements }: SettlementGridProps) => {
+  const formatAmount = (amount: number) => {
+    return amount.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {settlements.map((settlement, index) => (
@@ -31,7 +50,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
           <div className="flex justify-between items-start">
             <div>
               <span className="text-3xl font-bold text-primary-500">
-                ${(settlement.amount / 1000000).toFixed(1)}M
+                {formatAmount(settlement.amount)}
               </span>
               <p className="text-sm text-neutral-600">{settlement.type}</p>
             </div>
@@ -40,7 +59,21 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
             </Button>
           </div>
           <div className="mt-4">
-            <p className="font-medium text-neutral-900">{settlement.firm}</p>
+            <p className="font-medium text-neutral-900">{settlement.attorney}</p>
+            <p className="text-neutral-600">
+              {settlement.firmWebsite ? (
+                <a
+                  href={settlement.firmWebsite}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  {settlement.firm}
+                </a>
+              ) : (
+                settlement.firm
+              )}
+            </p>
             <div className="flex items-center gap-1 text-sm text-neutral-600">
               <MapPin className="h-4 w-4" />
               {settlement.location}
