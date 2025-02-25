@@ -1,10 +1,21 @@
 
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const Hero = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/settlements?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
     <section className="bg-white pt-20 pb-24">
       <div className="container max-w-6xl mx-auto text-center">
@@ -37,14 +48,16 @@ const Hero = () => {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <div className="relative">
+          <form onSubmit={handleSearch} className="relative">
             <Input
               type="text"
               placeholder="Search settlements, firms, or case types..."
               className="w-full pl-10 pr-4 py-3 text-lg bg-white border-2 border-neutral-200 focus:border-primary-500 rounded-lg shadow-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
-          </div>
+          </form>
         </div>
       </div>
     </section>
