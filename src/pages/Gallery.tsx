@@ -12,8 +12,14 @@ const Gallery = () => {
 
   const caseTypes = [
     "All",
-    "Car Accident",
+    "Motor Vehicle Accidents",
     "Medical Malpractice",
+    "Product Liability",
+    "Premise",
+    "Animal Attack",
+    "Wrongful Death",
+    "Assault and Abuse",
+    "Boating Accidents",
     "Slip & Fall",
     "Workplace Injury",
   ];
@@ -30,7 +36,7 @@ const Gallery = () => {
     {
       id: 1,
       amount: 2500000,
-      type: "Car Accident",
+      type: "Motor Vehicle Accidents",
       firm: "Smith & Associates",
       location: "Los Angeles, CA",
       date: "2024-03-15",
@@ -46,10 +52,18 @@ const Gallery = () => {
     {
       id: 3,
       amount: 950000,
-      type: "Slip & Fall",
+      type: "Product Liability",
       firm: "Roberts & Partners",
       location: "San Diego, CA",
       date: "2024-01-10",
+    },
+    {
+      id: 4,
+      amount: 1200000,
+      type: "Wrongful Death",
+      firm: "Wilson Law Group",
+      location: "Los Angeles, CA",
+      date: "2024-01-05",
     },
   ];
 
