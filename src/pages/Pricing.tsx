@@ -5,46 +5,16 @@ import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Pricing = () => {
-  const plans = [
-    {
-      name: "Basic",
-      price: 299,
-      period: "one-time",
-      features: [
-        "Single settlement showcase",
-        "Basic analytics",
-        "30-day visibility",
-        "Standard support",
-      ],
-    },
-    {
-      name: "Professional",
-      price: 99,
-      period: "monthly",
-      popular: true,
-      features: [
-        "Multiple settlement showcases",
-        "Advanced analytics",
-        "Continuous visibility",
-        "Priority support",
-        "Featured placement",
-        "Social sharing tools",
-      ],
-    },
-    {
-      name: "Enterprise",
-      price: 999,
-      period: "yearly",
-      features: [
-        "Unlimited settlement showcases",
-        "Premium analytics",
-        "Continuous visibility",
-        "24/7 priority support",
-        "Featured placement",
-        "Custom branding",
-        "API access",
-      ],
-    },
+  const features = [
+    "Multiple settlement showcases",
+    "Continuous visibility",
+    "Priority support",
+    "Social sharing tools",
+    "Rank number one in your specialty",
+    "Show up above large firms",
+    "Turn settlements into powerful marketing",
+    "Be featured alongside top firms",
+    "Dominate your city settlement visibility"
   ];
 
   return (
@@ -53,99 +23,73 @@ const Pricing = () => {
       <div className="bg-primary-900 text-white py-16">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold font-display mb-6">Simple, Transparent Pricing</h1>
+            <h1 className="text-5xl font-bold font-display mb-6">Maximize Your Visibility</h1>
             <p className="text-primary-200 text-lg">
-              Choose the plan that best fits your needs. All plans include access to our
-              core features.
+              Turn your settlements into your most powerful marketing asset and dominate your market.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Pricing Cards */}
+      {/* Pricing Card */}
       <div className="container py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto -mt-32">
-          {plans.map((plan, index) => (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`bg-white rounded-lg shadow-lg p-8 relative ${
-                plan.popular ? "border-2 border-primary-500" : ""
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-primary-500 text-white text-sm font-medium px-3 py-1 rounded-full">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <div className="text-4xl font-bold text-primary-900">
-                  ${plan.price}
-                  <span className="text-base font-normal text-neutral-600">
-                    /{plan.period}
-                  </span>
-                </div>
+        <div className="max-w-lg mx-auto -mt-32">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-lg p-8 border-2 border-primary-500"
+          >
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold mb-2">Professional Plan</h3>
+              <div className="text-4xl font-bold text-primary-900">
+                $99
+                <span className="text-base font-normal text-neutral-600">/month</span>
               </div>
-              <ul className="space-y-4 mb-8">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center text-neutral-600">
-                    <Check className="h-5 w-5 text-primary-500 mr-2 flex-shrink-0" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link to="/submit">
-                <Button
-                  className={`w-full ${
-                    plan.popular
-                      ? "bg-primary-500 hover:bg-primary-600"
-                      : "bg-white border-2 border-primary-500 text-primary-500 hover:bg-primary-50"
-                  }`}
-                >
-                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </motion.div>
-          ))}
+            </div>
+            <ul className="space-y-4 mb-8">
+              {features.map((feature) => (
+                <li key={feature} className="flex items-center text-neutral-600">
+                  <Check className="h-5 w-5 text-primary-500 mr-2 flex-shrink-0" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+            <Link to="/submit">
+              <Button className="w-full bg-primary-500 hover:bg-primary-600">
+                Get Started <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </motion.div>
         </div>
 
-        {/* FAQ Section */}
+        {/* Value Proposition */}
         <div className="max-w-3xl mx-auto mt-24">
           <h2 className="text-3xl font-bold text-center mb-12">
-            Frequently Asked Questions
+            Why Choose Our Professional Plan?
           </h2>
           <div className="space-y-8">
             <div>
               <h3 className="text-xl font-bold mb-3">
-                Can I upgrade or downgrade my plan?
+                Maximize Your Market Presence
               </h3>
               <p className="text-neutral-600">
-                Yes, you can change your plan at any time. When upgrading, you'll have
-                immediate access to the new features. When downgrading, you'll maintain
-                access to your current features until the end of your billing period.
+                Stand out in your specialty area and ensure your success stories are seen by potential clients. Our platform helps you rise above the competition and establish your firm as a leader in your field.
               </p>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-3">
-                What payment methods do you accept?
+                Turn Settlements into Marketing Power
               </h3>
               <p className="text-neutral-600">
-                We accept all major credit cards, including Visa, Mastercard, and American
-                Express. All payments are processed securely through Stripe.
+                Every settlement is an opportunity to showcase your expertise. Our platform helps you transform your victories into compelling marketing assets that attract new clients.
               </p>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-3">
-                Is there a contract or commitment?
+                Dominate Local Search Results
               </h3>
               <p className="text-neutral-600">
-                No long-term contracts required. You can cancel your subscription at any
-                time, and you won't be charged for the next period.
+                Take control of your local market presence. Our platform ensures your settlements are prominently displayed to potential clients in your area, helping you build a stronger local presence.
               </p>
             </div>
           </div>
