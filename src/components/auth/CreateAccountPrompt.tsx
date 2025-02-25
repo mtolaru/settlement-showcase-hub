@@ -49,7 +49,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
         toast({
           title: "Account created successfully!",
-          description: "You can now login to manage your settlements.",
+          description: "You can now manage your settlements and upload more without additional payment.",
         });
 
         onClose();
@@ -73,7 +73,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     >
       <h2 className="text-2xl font-bold mb-4">Create Your Account</h2>
       <p className="text-neutral-600 mb-6">
-        Create an account to manage your settlements and unlock unlimited uploads.
+        Create an account to manage your settlements and upload more without additional payment.
       </p>
 
       <form onSubmit={handleCreateAccount} className="space-y-4">
