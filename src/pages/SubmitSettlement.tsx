@@ -274,7 +274,6 @@ const SubmitSettlement = () => {
   };
 
   const handleSubmitWithSubscription = async () => {
-    // Submit the settlement without requiring payment
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -282,15 +281,28 @@ const SubmitSettlement = () => {
         throw new Error("No authenticated user found");
       }
 
+      // Format numeric values and map fields to match database schema
+      const submissionData = {
+        amount: Number(unformatNumber(formData.amount)),
+        attorney: formData.attorneyName,
+        firm: formData.firmName,
+        firm_website: formData.firmWebsite,
+        location: formData.location,
+        type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
+        description: formData.caseDescription,
+        case_description: formData.caseDescription,
+        initial_offer: Number(unformatNumber(formData.initialOffer)),
+        policy_limit: Number(unformatNumber(formData.policyLimit)),
+        medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
+        settlement_phase: formData.settlementPhase,
+        photo_url: formData.photoUrl,
+        user_id: session.user.id,
+        payment_completed: true
+      };
+
       const { data, error } = await supabase
         .from('settlements')
-        .insert([
-          {
-            ...formData,
-            user_id: session.user.id,
-            payment_completed: true
-          }
-        ])
+        .insert(submissionData)
         .select()
         .single();
 
@@ -303,6 +315,7 @@ const SubmitSettlement = () => {
 
       navigate('/settlements');
     } catch (error) {
+      console.error('Submission error:', error);
       toast({
         variant: "destructive",
         title: "Error",
