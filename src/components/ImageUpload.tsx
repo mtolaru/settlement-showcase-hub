@@ -1,0 +1,142 @@
+
+import { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { Button } from "@/components/ui/button";
+import { Upload, Image as ImageIcon } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+
+interface ImageUploadProps {
+  onImageUpload: (url: string) => void;
+}
+
+const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload an image file (JPG, PNG, or WebP)",
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+      });
+      return;
+    }
+
+    // Create preview
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+
+    try {
+      setIsUploading(true);
+      
+      // TODO: Once Supabase is connected, implement actual upload:
+      // const { data, error } = await supabase.storage
+      //   .from('attorney-photos')
+      //   .upload(`${Date.now()}-${file.name}`, file);
+      
+      // For now, just simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Placeholder: Pass the preview URL for now
+      onImageUpload(objectUrl);
+      
+      toast({
+        title: "Success",
+        description: "Photo uploaded successfully",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "There was an error uploading your photo. Please try again.",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  }, [onImageUpload, toast]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+    },
+    maxFiles: 1
+  });
+
+  return (
+    <div className="space-y-4">
+      <div
+        {...getRootProps()}
+        className={`
+          border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+          transition-colors duration-200 ease-in-out
+          ${isDragActive ? 'border-primary bg-primary/5' : 'border-neutral-200 hover:border-primary/50'}
+        `}
+      >
+        <input {...getInputProps()} />
+        <div className="space-y-4">
+          {preview ? (
+            <div className="relative w-32 h-32 mx-auto">
+              <img
+                src={preview}
+                alt="Preview"
+                className="w-full h-full object-cover rounded-lg"
+              />
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center gap-2">
+              <div className="p-4 rounded-full bg-neutral-100">
+                {isUploading ? (
+                  <Upload className="h-8 w-8 text-neutral-400 animate-pulse" />
+                ) : (
+                  <ImageIcon className="h-8 w-8 text-neutral-400" />
+                )}
+              </div>
+              <div className="text-sm text-neutral-600">
+                <p className="font-medium">
+                  {isDragActive ? 'Drop your photo here' : 'Drag and drop your photo here'}
+                </p>
+                <p>or click to select</p>
+              </div>
+              <p className="text-xs text-neutral-500">
+                JPG, PNG or WebP (max. 5MB)
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {preview && (
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPreview(null);
+              onImageUpload('');
+            }}
+          >
+            Remove Photo
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ImageUpload;
