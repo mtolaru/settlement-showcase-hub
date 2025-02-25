@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 import FiltersPanel from "@/components/gallery/FiltersPanel";
@@ -85,7 +84,7 @@ export const settlements = [
   }
 ];
 
-const Gallery = () => {
+const Leaderboard = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("amount");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
@@ -136,8 +135,6 @@ const Gallery = () => {
           return b.amount - a.amount;
         case "date":
           return new Date(b.date).getTime() - new Date(a.date).getTime();
-        case "firm":
-          return a.firm.localeCompare(b.firm);
         default:
           return 0;
       }
@@ -165,4 +162,4 @@ const Gallery = () => {
   );
 };
 
-export default Gallery;
+export default Leaderboard;
