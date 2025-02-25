@@ -37,7 +37,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
       <div className="relative h-48 bg-neutral-100">
         <img
           src={settlement.photo_url || "/placeholder.svg"}
-          alt={settlement.lawyer}
+          alt={`${settlement.type} case`}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-4 left-4">

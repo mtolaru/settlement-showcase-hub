@@ -128,40 +128,40 @@ const SettlementDetail = () => {
               className="bg-white rounded-lg shadow-md p-6"
             >
               <h2 className="text-xl font-bold mb-4">Attorney Information</h2>
-              {settlement.photo_url && (
-                <div className="mb-4">
+              <div className="flex gap-6">
+                {settlement.photo_url && (
                   <img
                     src={settlement.photo_url}
                     alt={settlement.attorney}
-                    className="w-32 h-32 rounded-lg object-cover mx-auto"
+                    className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
                   />
-                </div>
-              )}
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-neutral-500">Attorney</p>
-                  <p className="font-medium">{settlement.attorney}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-500">Firm</p>
-                  <p className="font-medium">
-                    {settlement.firmWebsite ? (
-                      <a 
-                        href={settlement.firmWebsite}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        {settlement.firm}
-                      </a>
-                    ) : (
-                      settlement.firm
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-500">Location</p>
-                  <p className="font-medium">{settlement.location}</p>
+                )}
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-neutral-500">Attorney</p>
+                    <p className="font-medium">{settlement.attorney}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-neutral-500">Firm</p>
+                    <p className="font-medium">
+                      {settlement.firmWebsite ? (
+                        <a 
+                          href={settlement.firmWebsite}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          {settlement.firm}
+                        </a>
+                      ) : (
+                        settlement.firm
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-neutral-500">Location</p>
+                    <p className="font-medium">{settlement.location}</p>
+                  </div>
                 </div>
               </div>
             </motion.div>
