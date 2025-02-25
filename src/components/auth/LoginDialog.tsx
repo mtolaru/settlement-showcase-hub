@@ -107,11 +107,11 @@ export function LoginDialog() {
   }, []);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" className="text-sm text-neutral-600 hover:text-primary-900">
+        <span className="text-sm text-neutral-600 hover:text-primary-900 cursor-pointer">
           Login
-        </Button>
+        </span>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md bg-white border-none shadow-lg">
         <DialogHeader className="pb-4 border-b">
@@ -184,4 +184,4 @@ export function LoginDialog() {
       </DialogContent>
     </Dialog>
   );
-}
+};
