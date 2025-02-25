@@ -80,7 +80,6 @@ export type Database = {
           payment_id: string | null
           starts_at: string
           temporary_id: string | null
-          tier: Database["public"]["Enums"]["subscription_tier"]
           user_id: string | null
         }
         Insert: {
@@ -90,7 +89,6 @@ export type Database = {
           payment_id?: string | null
           starts_at?: string
           temporary_id?: string | null
-          tier?: Database["public"]["Enums"]["subscription_tier"]
           user_id?: string | null
         }
         Update: {
@@ -100,7 +98,6 @@ export type Database = {
           payment_id?: string | null
           starts_at?: string
           temporary_id?: string | null
-          tier?: Database["public"]["Enums"]["subscription_tier"]
           user_id?: string | null
         }
         Relationships: []
@@ -113,7 +110,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      subscription_tier: "free" | "basic" | "professional"
+      subscription_tier: "professional"
     }
     CompositeTypes: {
       [_ in never]: never
