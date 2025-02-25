@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 export function LoginDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +15,33 @@ export function LoginDialog() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setIsLoading(false);
+  };
+
+  const handleDialogClose = () => {
+    setIsOpen(false);
+    resetForm();
+  };
+
+  const validatePassword = (password: string) => {
+    if (password.length < 8) {
+      throw new Error("Password must be at least 8 characters long");
+    }
+    if (!/[A-Z]/.test(password)) {
+      throw new Error("Password must contain at least one uppercase letter");
+    }
+    if (!/[a-z]/.test(password)) {
+      throw new Error("Password must contain at least one lowercase letter");
+    }
+    if (!/[0-9]/.test(password)) {
+      throw new Error("Password must contain at least one number");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +49,13 @@ export function LoginDialog() {
 
     try {
       if (isRegisterMode) {
+        validatePassword(password);
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
         });
         if (error) throw error;
         toast({
@@ -31,17 +63,25 @@ export function LoginDialog() {
           description: "Please check your email to verify your account.",
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        
         toast({
           title: "Success",
-          description: "You have been logged in successfully.",
+          description: "Welcome back!",
         });
+        
+        // Redirect to manage page if that's where they were
+        if (window.location.pathname === "/manage") {
+          navigate(0); // Refresh the page to update auth state
+        } else {
+          navigate("/"); // Otherwise go to home
+        }
       }
-      setIsOpen(false);
+      handleDialogClose();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -53,8 +93,21 @@ export function LoginDialog() {
     }
   };
 
+  // Listen for authentication state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        handleDialogClose();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogTrigger asChild>
         <Button variant="ghost" className="text-sm text-neutral-600 hover:text-primary-900">
           Login
@@ -88,8 +141,14 @@ export function LoginDialog() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10"
                 required
+                minLength={8}
               />
             </div>
+            {isRegisterMode && (
+              <p className="text-xs text-neutral-500 mt-2">
+                Password must be at least 8 characters long and contain uppercase, lowercase, and numbers
+              </p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
@@ -104,7 +163,10 @@ export function LoginDialog() {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => setIsRegisterMode(!isRegisterMode)}
+              onClick={() => {
+                setIsRegisterMode(!isRegisterMode);
+                resetForm();
+              }}
               className="text-sm text-neutral-600 hover:text-primary-900"
             >
               {isRegisterMode
