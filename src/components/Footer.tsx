@@ -1,5 +1,6 @@
 
 import { Link } from "react-router-dom";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 const Footer = () => {
   return (
@@ -46,6 +47,9 @@ const Footer = () => {
                 <Link to="/terms" className="text-sm text-neutral-600 hover:text-primary-900">
                   Terms of Service
                 </Link>
+              </li>
+              <li>
+                <LoginDialog />
               </li>
             </ul>
           </div>
