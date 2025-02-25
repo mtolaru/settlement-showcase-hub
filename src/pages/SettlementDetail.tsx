@@ -19,6 +19,17 @@ const SettlementDetail = () => {
     });
   };
 
+  const formatSettlementPhase = (phase: string) => {
+    switch (phase.toLowerCase()) {
+      case 'pre-litigation':
+        return 'Pre-Litigation';
+      case 'during-litigation':
+        return 'During Litigation';
+      default:
+        return phase;
+    }
+  };
+
   if (!settlement) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -101,7 +112,9 @@ const SettlementDetail = () => {
                 {/* Settlement Phase */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Settlement Phase</p>
-                  <p className="font-medium text-neutral-900">{settlement.details.settlementPhase}</p>
+                  <p className="font-medium text-neutral-900">
+                    {formatSettlementPhase(settlement.details.settlementPhase)}
+                  </p>
                 </div>
               </div>
             </motion.div>
