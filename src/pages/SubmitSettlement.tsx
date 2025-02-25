@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,52 @@ import {
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
-const PaymentForm = ({ onSubmit, formData }) => {
+interface FormData {
+  amount: string;
+  initialOffer: string;
+  policyLimit: string;
+  medicalExpenses: string;
+  settlementPhase: string;
+  caseType: string;
+  otherCaseType: string;
+  caseDetails: {
+    carAccident: {
+      vehicleType: string;
+      injuryType: string;
+      atFault: string;
+    };
+    workplaceInjury: {
+      injuryType: string;
+      workSector: string;
+      employerSize: string;
+    };
+    medicalMalpractice: {
+      procedureType: string;
+      facilityType: string;
+      injuryType: string;
+    };
+    slipAndFall: {
+      locationType: string;
+      injuryType: string;
+      propertyType: string;
+    };
+  };
+  attorneyName: string;
+  attorneyEmail: string;
+  firmName: string;
+  location: string;
+}
+
+interface FormErrors {
+  [key: string]: string | undefined;
+}
+
+interface PaymentFormProps {
+  onSubmit: (result: any) => void;
+  formData: FormData;
+}
+
+const PaymentForm = ({ onSubmit, formData }: PaymentFormProps) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -102,7 +146,7 @@ const PaymentForm = ({ onSubmit, formData }) => {
 const SubmitSettlement = () => {
   const [step, setStep] = useState(1);
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     amount: "",
     initialOffer: "",
     policyLimit: "",
@@ -138,7 +182,7 @@ const SubmitSettlement = () => {
     location: ""
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const validateNumber = (value: string) => {
     const num = Number(value);
@@ -157,6 +201,15 @@ const SubmitSettlement = () => {
     }));
   };
 
+  const handlePaymentSuccess = async (result: any) => {
+    // Handle successful payment
+    toast({
+      title: "Success",
+      description: "Your settlement has been submitted successfully.",
+    });
+    // Redirect or handle success as needed
+  };
+
   const settlementTypes = [
     "Motor Vehicle Accidents",
     "Medical Malpractice",
@@ -172,7 +225,7 @@ const SubmitSettlement = () => {
   ];
 
   const validateStep1 = () => {
-    const newErrors = {};
+    const newErrors: FormErrors = {};
 
     if (!formData.amount || !validateNumber(formData.amount)) {
       newErrors.amount = "Please enter a valid settlement amount greater than 0";
@@ -207,7 +260,7 @@ const SubmitSettlement = () => {
   };
 
   const validateStep2 = () => {
-    const newErrors = {};
+    const newErrors: FormErrors = {};
 
     if (!formData.attorneyName?.trim()) {
       newErrors.attorneyName = "Attorney name is required";
