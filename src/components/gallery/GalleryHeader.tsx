@@ -9,10 +9,10 @@ const GalleryHeader = () => {
       <div className="container">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold font-display mb-4">Settlement Gallery</h1>
+            <h1 className="text-4xl font-bold font-display mb-4">Settlement Leaderboard</h1>
             <p className="text-primary-200 max-w-2xl">
-              Browse through our collection of successful settlements. Filter by case type,
-              sort by amount, and find the information you need.
+              Browse through top-ranked settlements by case type and location. Find industry-leading
+              results and benchmark your success.
             </p>
           </div>
           <Link to="/submit">
