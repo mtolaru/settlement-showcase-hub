@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,12 @@ const SubmitSettlement = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     amount: "",
+    initialOffer: "",
+    policyLimit: "",
+    medicalExpenses: "",
+    settlementPhase: "",
     caseType: "",
+    otherCaseType: "",
     caseDetails: {
       carAccident: {
         vehicleType: "",
@@ -132,67 +138,119 @@ const SubmitSettlement = () => {
     location: ""
   });
 
-  const handlePaymentSuccess = (result) => {
-    toast({
-      title: "Success!",
-      description: "Your settlement has been submitted successfully.",
-    });
-  };
+  const [errors, setErrors] = useState({});
 
-  const settlementTypes = [
-    "Car Accident",
-    "Medical Malpractice",
-    "Slip & Fall",
-    "Workplace Injury",
-    "Product Liability",
-    "Other",
-  ];
+  const validateNumber = (value: string) => {
+    const num = Number(value);
+    return !isNaN(num) && num > 0;
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    // Clear error when user starts typing
+    setErrors(prev => ({
+      ...prev,
+      [field]: undefined
+    }));
   };
 
-  const renderCaseSpecificFields = () => {
-    switch (formData.caseType) {
-      case "Car Accident":
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="form-label">Vehicle Type</label>
-              <Input
-                type="text"
-                value={formData.caseDetails.carAccident.vehicleType}
-                onChange={(e) => handleInputChange("caseDetails.carAccident.vehicleType", e.target.value)}
-                placeholder="e.g., Sedan, SUV, Truck"
-              />
-            </div>
-            <div>
-              <label className="form-label">Injury Type</label>
-              <Input
-                type="text"
-                value={formData.caseDetails.carAccident.injuryType}
-                onChange={(e) => handleInputChange("caseDetails.carAccident.injuryType", e.target.value)}
-                placeholder="e.g., Whiplash, Broken Bones"
-              />
-            </div>
-            <div>
-              <label className="form-label">At Fault Party</label>
-              <Input
-                type="text"
-                value={formData.caseDetails.carAccident.atFault}
-                onChange={(e) => handleInputChange("caseDetails.carAccident.atFault", e.target.value)}
-                placeholder="e.g., Other Driver, Multiple Parties"
-              />
-            </div>
-          </div>
-        );
-      // ... Add similar case-specific fields for other case types
-      default:
-        return null;
+  const settlementTypes = [
+    "Motor Vehicle Accidents",
+    "Medical Malpractice",
+    "Product Liability",
+    "Premises Liability",
+    "Wrongful Death",
+    "Animal Attack",
+    "Assault and Abuse",
+    "Boating Accidents",
+    "Slip & Fall",
+    "Workplace Injury",
+    "Other"
+  ];
+
+  const validateStep1 = () => {
+    const newErrors = {};
+
+    if (!formData.amount || !validateNumber(formData.amount)) {
+      newErrors.amount = "Please enter a valid settlement amount greater than 0";
     }
+
+    if (!formData.initialOffer || !validateNumber(formData.initialOffer)) {
+      newErrors.initialOffer = "Please enter a valid amount (enter 0 if none)";
+    }
+
+    if (!formData.policyLimit || !validateNumber(formData.policyLimit)) {
+      newErrors.policyLimit = "Please enter a valid amount (enter 0 if none)";
+    }
+
+    if (!formData.medicalExpenses || !validateNumber(formData.medicalExpenses)) {
+      newErrors.medicalExpenses = "Please enter a valid amount (enter 0 if none)";
+    }
+
+    if (!formData.settlementPhase) {
+      newErrors.settlementPhase = "Please select when the settlement was made";
+    }
+
+    if (!formData.caseType) {
+      newErrors.caseType = "Please select a case type";
+    }
+
+    if (formData.caseType === "Other" && !formData.otherCaseType) {
+      newErrors.otherCaseType = "Please describe the case type";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const newErrors = {};
+
+    if (!formData.attorneyName?.trim()) {
+      newErrors.attorneyName = "Attorney name is required";
+    }
+
+    if (!formData.attorneyEmail?.trim()) {
+      newErrors.attorneyEmail = "Attorney email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.attorneyEmail)) {
+      newErrors.attorneyEmail = "Please enter a valid email address";
+    }
+
+    if (!formData.firmName?.trim()) {
+      newErrors.firmName = "Law firm name is required";
+    }
+
+    if (!formData.location?.trim()) {
+      newErrors.location = "Location is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep = () => {
+    if (step === 1 && !validateStep1()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required fields correctly.",
+      });
+      return;
+    }
+
+    if (step === 2 && !validateStep2()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required fields correctly.",
+      });
+      return;
+    }
+
+    setStep(step + 1);
   };
 
   return (
@@ -256,18 +314,82 @@ const SubmitSettlement = () => {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <label className="form-label">Settlement Amount</label>
+                  <label className="form-label">Settlement Amount*</label>
                   <Input
-                    type="text"
+                    type="number"
                     value={formData.amount}
                     onChange={(e) => handleInputChange("amount", e.target.value)}
                     placeholder="$1,000,000"
+                    min="1"
                   />
+                  {errors.amount && (
+                    <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
+                  )}
                 </div>
+
                 <div>
-                  <label className="form-label">Case Type</label>
+                  <label className="form-label">Initial Settlement Offer*</label>
+                  <Input
+                    type="number"
+                    value={formData.initialOffer}
+                    onChange={(e) => handleInputChange("initialOffer", e.target.value)}
+                    placeholder="Enter 0 if no initial offer was made"
+                    min="0"
+                  />
+                  <p className="text-sm text-neutral-500 mt-1">Enter the initial offer received, if any. Enter 0 if none.</p>
+                  {errors.initialOffer && (
+                    <p className="text-red-500 text-sm mt-1">{errors.initialOffer}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="form-label">Insurance Policy Limit*</label>
+                  <Input
+                    type="number"
+                    value={formData.policyLimit}
+                    onChange={(e) => handleInputChange("policyLimit", e.target.value)}
+                    placeholder="Enter 0 if not applicable"
+                    min="0"
+                  />
+                  {errors.policyLimit && (
+                    <p className="text-red-500 text-sm mt-1">{errors.policyLimit}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="form-label">Medical Expenses*</label>
+                  <Input
+                    type="number"
+                    value={formData.medicalExpenses}
+                    onChange={(e) => handleInputChange("medicalExpenses", e.target.value)}
+                    placeholder="Enter 0 if not applicable"
+                    min="0"
+                  />
+                  {errors.medicalExpenses && (
+                    <p className="text-red-500 text-sm mt-1">{errors.medicalExpenses}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="form-label">Settlement Made*</label>
                   <select 
-                    className="form-input"
+                    className="form-input w-full rounded-md border border-neutral-200 p-2"
+                    value={formData.settlementPhase}
+                    onChange={(e) => handleInputChange("settlementPhase", e.target.value)}
+                  >
+                    <option value="">Select when settlement was made</option>
+                    <option value="pre-litigation">Pre-litigation</option>
+                    <option value="during-litigation">During litigation</option>
+                  </select>
+                  {errors.settlementPhase && (
+                    <p className="text-red-500 text-sm mt-1">{errors.settlementPhase}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="form-label">Case Type*</label>
+                  <select 
+                    className="form-input w-full rounded-md border border-neutral-200 p-2"
                     value={formData.caseType}
                     onChange={(e) => handleInputChange("caseType", e.target.value)}
                   >
@@ -278,48 +400,76 @@ const SubmitSettlement = () => {
                       </option>
                     ))}
                   </select>
+                  {errors.caseType && (
+                    <p className="text-red-500 text-sm mt-1">{errors.caseType}</p>
+                  )}
                 </div>
-                {renderCaseSpecificFields()}
+
+                {formData.caseType === "Other" && (
+                  <div>
+                    <label className="form-label">Case Type Description*</label>
+                    <Textarea
+                      value={formData.otherCaseType}
+                      onChange={(e) => handleInputChange("otherCaseType", e.target.value)}
+                      placeholder="Please describe the type of case"
+                    />
+                    {errors.otherCaseType && (
+                      <p className="text-red-500 text-sm mt-1">{errors.otherCaseType}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <label className="form-label">Attorney Name</label>
+                  <label className="form-label">Attorney Name*</label>
                   <Input
                     type="text"
                     value={formData.attorneyName}
                     onChange={(e) => handleInputChange("attorneyName", e.target.value)}
                     placeholder="John Smith"
                   />
+                  {errors.attorneyName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="form-label">Email</label>
+                  <label className="form-label">Email*</label>
                   <Input
                     type="email"
                     value={formData.attorneyEmail}
                     onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
                     placeholder="john@example.com"
                   />
+                  {errors.attorneyEmail && (
+                    <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="form-label">Law Firm</label>
+                  <label className="form-label">Law Firm*</label>
                   <Input
                     type="text"
                     value={formData.firmName}
                     onChange={(e) => handleInputChange("firmName", e.target.value)}
                     placeholder="Smith & Associates"
                   />
+                  {errors.firmName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="form-label">Location</label>
+                  <label className="form-label">Location*</label>
                   <Input
                     type="text"
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
                     placeholder="Los Angeles, CA"
                   />
+                  {errors.location && (
+                    <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -343,7 +493,7 @@ const SubmitSettlement = () => {
               {step < 3 && (
                 <div className="ml-auto">
                   <Button
-                    onClick={() => setStep(step + 1)}
+                    onClick={handleNextStep}
                     className="bg-primary-500 hover:bg-primary-600"
                   >
                     Next Step <ArrowRight className="ml-2 h-4 w-4" />
