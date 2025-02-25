@@ -18,9 +18,9 @@ export const settlements = [
     date: "2024-03-15",
     description: "Successful resolution of a complex motor vehicle accident case resulting in severe injuries to our client. Settlement achieved through strategic negotiation and comprehensive evidence presentation.",
     details: {
-      initialOffer: 1500000,
-      policyLimit: 3000000,
-      medicalExpenses: 750000,
+      initialOffer: "$1,500,000",
+      policyLimit: "$3,000,000",
+      medicalExpenses: "$750,000",
       settlementPhase: "during-litigation",
       caseDescription: "Multi-vehicle collision resulting in severe injuries"
     }
@@ -36,9 +36,9 @@ export const settlements = [
     date: "2024-02-20",
     description: "Resolution of a complex medical malpractice case involving surgical complications. Settlement achieved through expert testimony and detailed documentation of care standards violations.",
     details: {
-      initialOffer: 1800000,
-      policyLimit: 5000000,
-      medicalExpenses: 950000,
+      initialOffer: "$1,800,000",
+      policyLimit: "$5,000,000",
+      medicalExpenses: "$950,000",
       settlementPhase: "pre-litigation",
       caseDescription: "Surgical error leading to permanent disability"
     }
@@ -54,9 +54,9 @@ export const settlements = [
     date: "2024-01-10",
     description: "Successfully settled premises liability case involving hazardous conditions at a commercial property. Case resolved through mediation and comprehensive documentation of safety violations.",
     details: {
-      initialOffer: 800000,
-      policyLimit: 2000000,
-      medicalExpenses: 450000,
+      initialOffer: "$800,000",
+      policyLimit: "$2,000,000",
+      medicalExpenses: "$450,000",
       settlementPhase: "during-litigation",
       caseDescription: "Fall incident at commercial property"
     }
@@ -72,9 +72,9 @@ export const settlements = [
     date: "2024-01-05",
     description: "Major product liability settlement involving defective consumer products. Case resolved through extensive expert testimony and product testing evidence.",
     details: {
-      initialOffer: 2500000,
-      policyLimit: 5000000,
-      medicalExpenses: 1200000,
+      initialOffer: "$2,500,000",
+      policyLimit: "$5,000,000",
+      medicalExpenses: "$1,200,000",
       settlementPhase: "during-litigation",
       caseDescription: "Product malfunction causing severe burns"
     }
