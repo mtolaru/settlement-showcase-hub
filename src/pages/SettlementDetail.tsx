@@ -1,3 +1,4 @@
+
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -7,22 +8,89 @@ const SettlementDetail = () => {
   const { id } = useParams();
 
   // Sample data - would come from API in production
-  const settlement = {
-    id: 1,
-    amount: 2500000,
-    type: "Car Accident",
-    firm: "Smith & Associates",
-    attorney: "John Smith",
-    location: "Los Angeles, CA",
-    date: "March 2024",
-    description: "Successful resolution of a complex automotive accident case resulting in severe injuries to our client. Settlement achieved through strategic negotiation and comprehensive evidence presentation.",
-    details: {
-      caseLength: "14 months",
-      jurisdiction: "Los Angeles County Superior Court",
-      insuranceCarrier: "Major National Insurance Co.",
-      injuries: "Multiple fractures, traumatic brain injury",
+  const settlements = {
+    1: {
+      id: 1,
+      amount: 2500000,
+      type: "Motor Vehicle Accidents",
+      firm: "Smith & Associates",
+      attorney: "Sarah Johnson",
+      location: "Los Angeles, CA",
+      date: "March 2024",
+      description: "Successful resolution of a complex motor vehicle accident case resulting in severe injuries to our client. Settlement achieved through strategic negotiation and comprehensive evidence presentation.",
+      details: {
+        caseLength: "14 months",
+        jurisdiction: "Los Angeles County Superior Court",
+        insuranceCarrier: "Major National Insurance Co.",
+        injuries: "Multiple fractures, traumatic brain injury",
+      },
     },
+    2: {
+      id: 2,
+      amount: 3100000,
+      type: "Medical Malpractice",
+      firm: "Johnson Legal Group",
+      attorney: "Michael Chen",
+      location: "Los Angeles, CA",
+      date: "March 2024",
+      description: "Resolution of a complex medical malpractice case involving surgical complications. Settlement achieved through expert testimony and detailed documentation of care standards violations.",
+      details: {
+        caseLength: "24 months",
+        jurisdiction: "San Francisco Superior Court",
+        insuranceCarrier: "Healthcare Insurance Provider",
+        injuries: "Permanent disability, ongoing care required",
+      },
+    },
+    3: {
+      id: 3,
+      amount: 1800000,
+      type: "Premises Liability",
+      firm: "Pacific Law Partners",
+      attorney: "David Martinez",
+      location: "Los Angeles, CA",
+      date: "March 2024",
+      description: "Successfully settled premises liability case involving hazardous conditions at a commercial property. Case resolved through mediation and comprehensive documentation of safety violations.",
+      details: {
+        caseLength: "10 months",
+        jurisdiction: "Los Angeles County Superior Court",
+        insuranceCarrier: "Commercial Property Insurance Co.",
+        injuries: "Spinal injury, chronic pain",
+      },
+    },
+    4: {
+      id: 4,
+      amount: 4200000,
+      type: "Product Liability",
+      firm: "West Coast Legal",
+      attorney: "Emily Rodriguez",
+      location: "Los Angeles, CA",
+      date: "March 2024",
+      description: "Major product liability settlement involving defective consumer products. Case resolved through extensive expert testimony and product testing evidence.",
+      details: {
+        caseLength: "18 months",
+        jurisdiction: "California State Court",
+        insuranceCarrier: "Manufacturing Insurance Group",
+        injuries: "Severe burns, permanent scarring",
+      },
+    }
   };
+
+  const settlement = settlements[Number(id)];
+
+  if (!settlement) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Settlement Not Found</h1>
+          <Link to="/settlements">
+            <Button variant="default">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Gallery
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
