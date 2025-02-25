@@ -1,12 +1,15 @@
-
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Share2, Trophy, ArrowRight } from "lucide-react";
 import { settlements } from "./Gallery";
+import CreateAccountPrompt from "@/components/auth/CreateAccountPrompt";
+import { Dialog } from "@/components/ui/dialog";
 
 const SettlementDetail = () => {
   const { id } = useParams();
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
   
   const settlement = settlements.find(s => s.id === Number(id));
 
@@ -180,6 +183,14 @@ const SettlementDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Create Account Dialog */}
+      <Dialog open={showCreateAccount} onOpenChange={setShowCreateAccount}>
+        <CreateAccountPrompt
+          temporaryId={settlement.temporary_id}
+          onClose={() => setShowCreateAccount(false)}
+        />
+      </Dialog>
     </div>
   );
 };

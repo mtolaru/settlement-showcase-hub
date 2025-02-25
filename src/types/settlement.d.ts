@@ -9,7 +9,6 @@ export interface Settlement {
   location: string;
   date: string;
   description: string;
-  photoUrl?: string;
   details: {
     initialOffer: string;
     policyLimit: string;
@@ -17,4 +16,7 @@ export interface Settlement {
     settlementPhase: string;
     caseDescription: string;
   };
+  temporary_id?: string;
+  user_id?: string;
+  payment_completed?: boolean;
 }

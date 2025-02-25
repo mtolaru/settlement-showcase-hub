@@ -9,7 +9,102 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      settlements: {
+        Row: {
+          amount: number
+          attorney: string
+          case_description: string | null
+          created_at: string
+          description: string | null
+          firm: string
+          firm_website: string | null
+          id: number
+          initial_offer: number | null
+          location: string
+          medical_expenses: number | null
+          payment_completed: boolean | null
+          photo_url: string | null
+          policy_limit: number | null
+          settlement_phase: string | null
+          temporary_id: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          attorney: string
+          case_description?: string | null
+          created_at?: string
+          description?: string | null
+          firm: string
+          firm_website?: string | null
+          id?: number
+          initial_offer?: number | null
+          location: string
+          medical_expenses?: number | null
+          payment_completed?: boolean | null
+          photo_url?: string | null
+          policy_limit?: number | null
+          settlement_phase?: string | null
+          temporary_id?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          attorney?: string
+          case_description?: string | null
+          created_at?: string
+          description?: string | null
+          firm?: string
+          firm_website?: string | null
+          id?: number
+          initial_offer?: number | null
+          location?: string
+          medical_expenses?: number | null
+          payment_completed?: boolean | null
+          photo_url?: string | null
+          policy_limit?: number | null
+          settlement_phase?: string | null
+          temporary_id?: string | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          ends_at: string | null
+          id: string
+          is_active: boolean | null
+          payment_id: string | null
+          starts_at: string
+          temporary_id: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          user_id: string | null
+        }
+        Insert: {
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          payment_id?: string | null
+          starts_at?: string
+          temporary_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          user_id?: string | null
+        }
+        Update: {
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          payment_id?: string | null
+          starts_at?: string
+          temporary_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +113,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      subscription_tier: "free" | "basic" | "professional"
     }
     CompositeTypes: {
       [_ in never]: never
