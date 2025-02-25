@@ -2,8 +2,9 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Upload, Image as ImageIcon } from "lucide-react";
+import { Upload, Image as ImageIcon, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ImageUploadProps {
   onImageUpload: (url: string) => void;
@@ -44,17 +45,26 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
 
     try {
       setIsUploading(true);
-      
-      // TODO: Once Supabase is connected, implement actual upload:
-      // const { data, error } = await supabase.storage
-      //   .from('attorney-photos')
-      //   .upload(`${Date.now()}-${file.name}`, file);
-      
-      // For now, just simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Placeholder: Pass the preview URL for now
-      onImageUpload(objectUrl);
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${crypto.randomUUID()}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('attorney-photos')
+        .upload(filePath, file, {
+          contentType: file.type,
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('attorney-photos')
+        .getPublicUrl(filePath);
+
+      onImageUpload(publicUrl);
       
       toast({
         title: "Success",
@@ -66,6 +76,7 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
         title: "Upload failed",
         description: "There was an error uploading your photo. Please try again.",
       });
+      setPreview(null);
     } finally {
       setIsUploading(false);
     }
@@ -79,6 +90,11 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
     maxFiles: 1
   });
 
+  const removeImage = () => {
+    setPreview(null);
+    onImageUpload('');
+  };
+
   return (
     <div className="space-y-4">
       <div
@@ -86,7 +102,7 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
         className={`
           border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
           transition-colors duration-200 ease-in-out
-          ${isDragActive ? 'border-primary bg-primary/5' : 'border-neutral-200 hover:border-primary/50'}
+          ${isDragActive ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 hover:border-primary-400'}
         `}
       >
         <input {...getInputProps()} />
@@ -98,6 +114,17 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
                 alt="Preview"
                 className="w-full h-full object-cover rounded-lg"
               />
+              {!isUploading && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeImage();
+                  }}
+                  className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ) : (
             <div className="w-full flex flex-col items-center gap-2">
@@ -110,7 +137,7 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
               </div>
               <div className="text-sm text-neutral-600">
                 <p className="font-medium">
-                  {isDragActive ? 'Drop your photo here' : 'Drag and drop your photo here'}
+                  {isDragActive ? 'Drop your photo here' : 'Drag and drop your professional photo here'}
                 </p>
                 <p>or click to select</p>
               </div>
@@ -121,20 +148,6 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
           )}
         </div>
       </div>
-
-      {preview && (
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setPreview(null);
-              onImageUpload('');
-            }}
-          >
-            Remove Photo
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

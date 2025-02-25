@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Share2, Building2 } from "lucide-react";
@@ -6,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 
 interface Settlement {
   id: number;
-  image: string;
   type: string;
   amount: string;
   lawyer: string;
@@ -14,6 +12,7 @@ interface Settlement {
   firmWebsite?: string;
   location: string;
   date: string;
+  photo_url?: string;
 }
 
 interface SettlementCardProps {
@@ -36,7 +35,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
     >
       <div className="relative h-48 bg-neutral-100">
         <img
-          src={settlement.image}
+          src={settlement.photo_url || "/placeholder.svg"}
           alt={settlement.type}
           className="w-full h-full object-cover"
         />

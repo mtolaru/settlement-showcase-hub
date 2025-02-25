@@ -52,6 +52,7 @@ interface FormData {
   firmName: string;
   firmWebsite: string;
   location: string;
+  photoUrl: string;
 }
 
 interface FormErrors {
@@ -191,7 +192,8 @@ const SubmitSettlement = () => {
     attorneyEmail: "",
     firmName: "",
     firmWebsite: "",
-    location: ""
+    location: "",
+    photoUrl: ""
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -220,6 +222,10 @@ const SubmitSettlement = () => {
       ...prev,
       [field]: undefined
     }));
+  };
+
+  const handleImageUpload = (url: string) => {
+    handleInputChange("photoUrl", url);
   };
 
   const handlePaymentSuccess = async (result: any) => {
@@ -514,6 +520,15 @@ const SubmitSettlement = () => {
                     <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
                   )}
                 </div>
+
+                <div>
+                  <label className="form-label">Professional Photo</label>
+                  <p className="text-sm text-neutral-600 mb-2">
+                    Upload a professional headshot to be displayed with your settlement
+                  </p>
+                  <ImageUpload onImageUpload={handleImageUpload} />
+                </div>
+
                 <div>
                   <label className="form-label">Email*</label>
                   <Input
