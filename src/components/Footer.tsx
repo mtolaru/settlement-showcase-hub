@@ -32,7 +32,7 @@ const Footer = () => {
                   FAQ
                 </Link>
               </li>
-              <li className="[&>button]:text-left [&>button]:w-full [&>button]:justify-start">
+              <li>
                 <LoginDialog />
               </li>
             </ul>
