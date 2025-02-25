@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -324,19 +325,35 @@ const SubmitSettlement = () => {
 
     const createCheckoutSession = async () => {
       try {
-        const response = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Please sign in to continue.",
+          });
+          return;
+        }
+
+        const response = await supabase.functions.invoke('create-checkout-session', {
+          body: {
             settlementData: formData,
+            userId: session.user.id,
             returnUrl: `${window.location.origin}/confirmation`,
-          }),
+          },
         });
 
-        const { url } = await response.json();
-        window.location.href = url;
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+
+        const { url } = response.data;
+        if (url) {
+          window.location.href = url;
+        } else {
+          throw new Error('No checkout URL received');
+        }
       } catch (error) {
         console.error('Error creating checkout session:', error);
         toast({
@@ -413,15 +430,15 @@ const SubmitSettlement = () => {
 
         {!hasActiveSubscription && (
           <div className="bg-primary-50 border border-primary-100 p-6 rounded-lg">
-            <h4 className="font-medium text-primary-900 mb-2">Submission Fee</h4>
+            <h4 className="font-medium text-primary-900 mb-2">Professional Plan Subscription</h4>
             <p className="text-sm text-primary-700 mb-4">
-              A one-time fee of $99 is required to submit your settlement to our leaderboard.
+              Subscribe to our Professional Plan for $199/month to submit and showcase your settlements.
             </p>
             <Button 
               onClick={createCheckoutSession}
               className="w-full bg-primary-500 hover:bg-primary-600"
             >
-              Proceed to Payment
+              Subscribe Now
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
