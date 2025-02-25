@@ -83,19 +83,19 @@ const SettlementDetail = () => {
                 {/* Initial Settlement Offer */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Initial Settlement Offer</p>
-                  <p className="font-medium text-neutral-900">{formatAmount(settlement.details.initialOffer)}</p>
+                  <p className="font-medium text-neutral-900">{settlement.details.initialOffer}</p>
                 </div>
 
                 {/* Insurance Policy Limit */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Insurance Policy Limit</p>
-                  <p className="font-medium text-neutral-900">{formatAmount(settlement.details.policyLimit)}</p>
+                  <p className="font-medium text-neutral-900">{settlement.details.policyLimit}</p>
                 </div>
 
                 {/* Medical Expenses */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Medical Expenses</p>
-                  <p className="font-medium text-neutral-900">{formatAmount(settlement.details.medicalExpenses)}</p>
+                  <p className="font-medium text-neutral-900">{settlement.details.medicalExpenses}</p>
                 </div>
 
                 {/* Settlement Phase */}
