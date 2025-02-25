@@ -11,6 +11,7 @@ interface Settlement {
   amount: string;
   lawyer: string;
   firm: string;
+  firmWebsite?: string;
   location: string;
   date: string;
 }
@@ -70,7 +71,21 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
           <h3 className="font-bold text-lg text-neutral-900">
             {settlement.lawyer}
           </h3>
-          <p className="text-sm text-neutral-600">{settlement.firm}</p>
+          <p className="text-sm text-neutral-600">
+            {settlement.firmWebsite ? (
+              <a 
+                href={settlement.firmWebsite}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="hover:text-primary-500 transition-colors"
+              >
+                {settlement.firm}
+              </a>
+            ) : (
+              settlement.firm
+            )}
+          </p>
           <div className="flex items-center text-sm text-neutral-600">
             <Building2 className="h-4 w-4 mr-1" />
             {settlement.location}

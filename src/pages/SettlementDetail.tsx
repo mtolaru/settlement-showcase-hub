@@ -99,7 +99,20 @@ const SettlementDetail = () => {
                 </div>
                 <div>
                   <p className="text-sm text-neutral-500">Firm</p>
-                  <p className="font-medium">{settlement.firm}</p>
+                  <p className="font-medium">
+                    {settlement.firmWebsite ? (
+                      <a 
+                        href={settlement.firmWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary-500 transition-colors"
+                      >
+                        {settlement.firm}
+                      </a>
+                    ) : (
+                      settlement.firm
+                    )}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-neutral-500">Location</p>
