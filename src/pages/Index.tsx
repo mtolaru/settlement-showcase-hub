@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Hero from "@/components/home/Hero";
 import LocationSelector from "@/components/home/LocationSelector";
@@ -16,7 +17,7 @@ const Index = () => {
     {
       id: 1,
       image: "/placeholder.svg",
-      type: "Car Accident",
+      type: "Motor Vehicle Accidents",
       amount: "$2.5M",
       lawyer: "Sarah Johnson",
       firm: "Smith & Associates",
@@ -36,7 +37,7 @@ const Index = () => {
     {
       id: 3,
       image: "/placeholder.svg",
-      type: "Workplace Injury",
+      type: "Premises Liability",
       amount: "$1.8M",
       lawyer: "David Martinez",
       firm: "Pacific Law Partners",
@@ -66,7 +67,7 @@ const Index = () => {
     {
       id: 6,
       image: "/placeholder.svg",
-      type: "Car Accident",
+      type: "Motor Vehicle Accidents",
       amount: "$1.5M",
       lawyer: "Lisa Thompson",
       firm: "Thompson Law Group",
@@ -86,7 +87,7 @@ const Index = () => {
     {
       id: 8,
       image: "/placeholder.svg",
-      type: "Slip and Fall",
+      type: "Premises Liability",
       amount: "$1.1M",
       lawyer: "Maria Garcia",
       firm: "Garcia Law Firm",
