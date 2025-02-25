@@ -13,14 +13,22 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  const STRIPE_KEY = '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';
+
   try {
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    const stripe = new Stripe(STRIPE_KEY, {
       apiVersion: '2023-10-16',
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    const { settlementData, userId, returnUrl } = await req.json()
+    // Test 1: Check if we can list prices
+    console.log('Testing price listing...');
+    const prices = await stripe.prices.list({
+      limit: 1,
+    });
 
+    // Test 2: Try to create a checkout session
+    console.log('Testing checkout session creation...');
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -31,43 +39,47 @@ serve(async (req) => {
             recurring: {
               interval: 'month',
             },
-            unit_amount: 19900, // $199.00
+            unit_amount: 19900,
             product_data: {
-              name: 'Professional Plan',
-              description: 'Monthly subscription for settlement submissions',
+              name: 'Test Product',
+              description: 'Test subscription',
             },
           },
           quantity: 1,
         },
       ],
-      metadata: {
-        userId,
-        settlementData: JSON.stringify(settlementData),
-      },
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${new URL(returnUrl).origin}/submit`,
-    })
+      success_url: 'https://example.com/success',
+      cancel_url: 'https://example.com/cancel',
+    });
 
     return new Response(
-      JSON.stringify({ url: session.url }),
+      JSON.stringify({ 
+        message: 'All permission tests passed successfully!',
+        pricesAccess: true,
+        checkoutAccess: true
+      }),
       {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
         },
-      },
+      }
     )
   } catch (error) {
-    console.error('Error creating checkout session:', error)
+    console.error('Permission test error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        pricesAccess: false,
+        checkoutAccess: false
+      }),
       {
         status: 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
         },
-      },
+      }
     )
   }
 })
