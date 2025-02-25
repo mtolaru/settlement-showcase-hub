@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 
 // Pages
 import Index from "./pages/Index";
-import Gallery from "./pages/Gallery";
+import Leaderboard from "./pages/Leaderboard";
 import SettlementDetail from "./pages/SettlementDetail";
 import SubmitSettlement from "./pages/SubmitSettlement";
 import PaymentSelection from "./pages/PaymentSelection";
@@ -33,7 +33,7 @@ const App = () => (
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/settlements" element={<Gallery />} />
+              <Route path="/settlements" element={<Leaderboard />} />
               <Route path="/settlements/:id" element={<SettlementDetail />} />
               <Route path="/submit" element={<SubmitSettlement />} />
               <Route path="/payment-plans" element={<PaymentSelection />} />

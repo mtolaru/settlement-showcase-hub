@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Share2, Building2 } from "lucide-react";
@@ -36,7 +37,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
       <div className="relative h-48 bg-neutral-100">
         <img
           src={settlement.photo_url || "/placeholder.svg"}
-          alt={settlement.type}
+          alt={settlement.lawyer}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-4 left-4">

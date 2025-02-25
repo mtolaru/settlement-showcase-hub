@@ -1,16 +1,12 @@
-import { useState } from "react";
+
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Share2, Trophy, ArrowRight } from "lucide-react";
-import { settlements } from "./Gallery";
-import CreateAccountPrompt from "@/components/auth/CreateAccountPrompt";
-import { Dialog } from "@/components/ui/dialog";
+import { settlements } from "@/data/settlements"; // Update this import
 
 const SettlementDetail = () => {
   const { id } = useParams();
-  const [showCreateAccount, setShowCreateAccount] = useState(false);
-  
   const settlement = settlements.find(s => s.id === Number(id));
 
   const formatAmount = (amount: number) => {
@@ -40,7 +36,7 @@ const SettlementDetail = () => {
           <h1 className="text-2xl font-bold mb-4">Settlement Not Found</h1>
           <Link to="/settlements">
             <Button variant="default">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Gallery
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Leaderboard
             </Button>
           </Link>
         </div>
@@ -55,7 +51,7 @@ const SettlementDetail = () => {
         <div className="container">
           <Link to="/settlements">
             <Button variant="ghost" className="text-white mb-6">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Gallery
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Leaderboard
             </Button>
           </Link>
           <div className="flex justify-between items-start">
@@ -132,6 +128,15 @@ const SettlementDetail = () => {
               className="bg-white rounded-lg shadow-md p-6"
             >
               <h2 className="text-xl font-bold mb-4">Attorney Information</h2>
+              {settlement.photo_url && (
+                <div className="mb-4">
+                  <img
+                    src={settlement.photo_url}
+                    alt={settlement.attorney}
+                    className="w-32 h-32 rounded-lg object-cover mx-auto"
+                  />
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-neutral-500">Attorney</p>
@@ -183,14 +188,6 @@ const SettlementDetail = () => {
           </div>
         </div>
       </div>
-
-      {/* Create Account Dialog */}
-      <Dialog open={showCreateAccount} onOpenChange={setShowCreateAccount}>
-        <CreateAccountPrompt
-          temporaryId={settlement.temporary_id}
-          onClose={() => setShowCreateAccount(false)}
-        />
-      </Dialog>
     </div>
   );
 };
