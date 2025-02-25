@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -9,8 +8,6 @@ import { SettlementDetailsForm } from "@/components/settlement/SettlementDetails
 import { AttorneyInformationForm } from "@/components/settlement/AttorneyInformationForm";
 import { SubmissionProgress } from "@/components/settlement/SubmissionProgress";
 import { supabase } from "@/integrations/supabase/client";
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 interface FormData {
   amount: string;
