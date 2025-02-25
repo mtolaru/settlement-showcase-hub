@@ -23,7 +23,8 @@ export const settlements = [
       medicalExpenses: "$750,000",
       settlementPhase: "during-litigation",
       caseDescription: "Multi-vehicle collision resulting in severe injuries"
-    }
+    },
+    temporary_id: "123e4567-e89b-12d3-a456-426614174000"
   },
   {
     id: 2,
@@ -41,7 +42,8 @@ export const settlements = [
       medicalExpenses: "$950,000",
       settlementPhase: "pre-litigation",
       caseDescription: "Surgical error leading to permanent disability"
-    }
+    },
+    temporary_id: "123e4567-e89b-12d3-a456-426614174001"
   },
   {
     id: 3,
@@ -59,7 +61,8 @@ export const settlements = [
       medicalExpenses: "$450,000",
       settlementPhase: "during-litigation",
       caseDescription: "Fall incident at commercial property"
-    }
+    },
+    temporary_id: "123e4567-e89b-12d3-a456-426614174002"
   },
   {
     id: 4,
@@ -77,7 +80,8 @@ export const settlements = [
       medicalExpenses: "$1,200,000",
       settlementPhase: "during-litigation",
       caseDescription: "Product malfunction causing severe burns"
-    }
+    },
+    temporary_id: "123e4567-e89b-12d3-a456-426614174003"
   }
 ];
 

@@ -3,25 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Share2, ArrowRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-
-interface Settlement {
-  id: number;
-  amount: number;
-  type: string;
-  firm: string;
-  firmWebsite?: string;
-  attorney: string;
-  location: string;
-  date: string;
-  description: string;
-  details: {
-    initialOffer: string;
-    policyLimit: string;
-    medicalExpenses: string;
-    settlementPhase: string;
-    caseDescription: string;
-  };
-}
+import type { Settlement } from "@/types/settlement";
 
 interface SettlementGridProps {
   settlements: Settlement[];
