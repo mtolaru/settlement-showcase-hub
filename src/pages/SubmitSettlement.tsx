@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
@@ -11,6 +11,7 @@ import { SettlementDetailsForm } from "@/components/settlement/SettlementDetails
 import { AttorneyInformationForm } from "@/components/settlement/AttorneyInformationForm";
 import { PaymentForm } from "@/components/settlement/PaymentForm";
 import { SubmissionProgress } from "@/components/settlement/SubmissionProgress";
+import { supabase } from "@/integrations/supabase/client";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -55,7 +56,44 @@ interface FormData {
 
 const SubmitSettlement = () => {
   const [step, setStep] = useState(1);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const { data: subscriptions, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .gt('ends_at', new Date().toISOString())
+          .maybeSingle();
+
+        if (error) throw error;
+        
+        setHasActiveSubscription(!!subscriptions);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to verify subscription status. Please try again.",
+      });
+    } finally {
+      setIsCheckingSubscription(false);
+    }
+  };
+
   const [formData, setFormData] = useState<FormData>({
     amount: "",
     initialOffer: "",
@@ -224,8 +262,65 @@ const SubmitSettlement = () => {
       return;
     }
 
-    setStep(step + 1);
+    if (step === 2 && !hasActiveSubscription) {
+      // If no active subscription, proceed to payment step
+      setStep(3);
+    } else if (step === 2) {
+      // If has active subscription, skip payment and submit directly
+      handleSubmitWithSubscription();
+    } else {
+      setStep(step + 1);
+    }
   };
+
+  const handleSubmitWithSubscription = async () => {
+    // Submit the settlement without requiring payment
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        throw new Error("No authenticated user found");
+      }
+
+      const { data, error } = await supabase
+        .from('settlements')
+        .insert([
+          {
+            ...formData,
+            user_id: session.user.id,
+            payment_completed: true
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Your settlement has been submitted successfully.",
+      });
+
+      navigate('/settlements');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to submit settlement. Please try again.",
+      });
+    }
+  };
+
+  if (isCheckingSubscription) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+          <p className="text-neutral-600">Checking subscription status...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -272,7 +367,7 @@ const SubmitSettlement = () => {
               />
             )}
 
-            {step === 3 && (
+            {step === 3 && !hasActiveSubscription && (
               <Elements stripe={stripePromise}>
                 <PaymentForm
                   onSubmit={handlePaymentSuccess}
@@ -287,13 +382,13 @@ const SubmitSettlement = () => {
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
               )}
-              {step < 3 && (
+              {((step < 3) || (step === 3 && !hasActiveSubscription)) && (
                 <div className="ml-auto">
                   <Button
                     onClick={handleNextStep}
                     className="bg-primary-500 hover:bg-primary-600"
                   >
-                    Next Step <ArrowRight className="ml-2 h-4 w-4" />
+                    {step === 2 && hasActiveSubscription ? "Submit Settlement" : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
               )}
