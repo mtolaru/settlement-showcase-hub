@@ -113,43 +113,48 @@ export function LoginDialog() {
           Login
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isRegisterMode ? "Create Account" : "Login"}</DialogTitle>
+      <DialogContent className="sm:max-w-md bg-white border-none shadow-lg">
+        <DialogHeader className="pb-4 border-b">
+          <DialogTitle className="text-xl font-semibold text-primary-900">
+            {isRegisterMode ? "Create Account" : "Login"}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+          <div className="space-y-4">
+            <div>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 bg-white"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 bg-white"
+                  required
+                  minLength={8}
+                />
+              </div>
+              {isRegisterMode && (
+                <p className="text-xs text-neutral-500 mt-2">
+                  Password must be at least 8 characters long and contain uppercase, lowercase, and numbers
+                </p>
+              )}
             </div>
           </div>
-          <div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-                required
-                minLength={8}
-              />
-            </div>
-            {isRegisterMode && (
-              <p className="text-xs text-neutral-500 mt-2">
-                Password must be at least 8 characters long and contain uppercase, lowercase, and numbers
-              </p>
-            )}
-          </div>
+          
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
@@ -160,7 +165,8 @@ export function LoginDialog() {
               isRegisterMode ? "Create Account" : "Login"
             )}
           </Button>
-          <div className="text-center">
+          
+          <div className="text-center pt-2">
             <button
               type="button"
               onClick={() => {

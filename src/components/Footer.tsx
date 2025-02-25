@@ -48,7 +48,7 @@ const Footer = () => {
                   Terms of Service
                 </Link>
               </li>
-              <li>
+              <li className="[&>button]:text-left [&>button]:w-full [&>button]:justify-start">
                 <LoginDialog />
               </li>
             </ul>
