@@ -19,7 +19,7 @@ export const settlements: Settlement[] = [
       settlementPhase: "pre-litigation",
       caseDescription: "Multi-vehicle collision on I-405"
     },
-    photo_url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158"
+    photo_url: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d"
   },
   {
     id: 2,
@@ -38,7 +38,7 @@ export const settlements: Settlement[] = [
       settlementPhase: "during-litigation",
       caseDescription: "Surgical error leading to complications"
     },
-    photo_url: "https://images.unsplash.com/photo-1581092795360-fd1ca04f0952"
+    photo_url: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e"
   },
   {
     id: 3,
@@ -57,6 +57,6 @@ export const settlements: Settlement[] = [
       settlementPhase: "pre-litigation",
       caseDescription: "Defective consumer device causing injury"
     },
-    photo_url: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e"
+    photo_url: "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1"
   }
 ];
