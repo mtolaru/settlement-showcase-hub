@@ -15,6 +15,30 @@ const Footer = () => {
           </div>
           
           <div>
+            <h4 className="font-semibold mb-4">Platform</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link to="/pricing" className="text-sm text-neutral-600 hover:text-primary-900">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link to="/leaderboard" className="text-sm text-neutral-600 hover:text-primary-900">
+                  Leaderboard
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="text-sm text-neutral-600 hover:text-primary-900">
+                  FAQ
+                </Link>
+              </li>
+              <li className="[&>button]:text-left [&>button]:w-full [&>button]:justify-start">
+                <LoginDialog />
+              </li>
+            </ul>
+          </div>
+          
+          <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-3">
               <li>
@@ -23,14 +47,9 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/pricing" className="text-sm text-neutral-600 hover:text-primary-900">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link to="/faq" className="text-sm text-neutral-600 hover:text-primary-900">
-                  FAQ
-                </Link>
+                <a href="mailto:support@settlementwins.com" className="text-sm text-neutral-600 hover:text-primary-900">
+                  Contact Us
+                </a>
               </li>
             </ul>
           </div>
@@ -47,20 +66,6 @@ const Footer = () => {
                 <Link to="/terms" className="text-sm text-neutral-600 hover:text-primary-900">
                   Terms of Service
                 </Link>
-              </li>
-              <li className="[&>button]:text-left [&>button]:w-full [&>button]:justify-start">
-                <LoginDialog />
-              </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold mb-4">Contact</h4>
-            <ul className="space-y-3">
-              <li>
-                <a href="mailto:support@settlementwins.com" className="text-sm text-neutral-600 hover:text-primary-900">
-                  support@settlementwins.com
-                </a>
               </li>
             </ul>
           </div>
