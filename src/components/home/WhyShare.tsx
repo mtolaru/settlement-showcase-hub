@@ -1,5 +1,5 @@
 
-import { Award, Share2, Target, LightningBolt, Smartphone } from "lucide-react";
+import { Award, Share2, Target, Zap, Smartphone } from "lucide-react";
 
 const WhyShare = () => {
   return (
@@ -34,7 +34,7 @@ const WhyShare = () => {
             
             <div className="bg-neutral-50 p-6 rounded-lg">
               <div className="mb-4">
-                <LightningBolt className="h-8 w-8 text-primary-500" />
+                <Zap className="h-8 w-8 text-primary-500" />
               </div>
               <h3 className="text-xl font-semibold mb-3">Easy Submission</h3>
               <p className="text-neutral-600">Submit your settlements in minutes with our simple, streamlined process - no complex setup required.</p>
