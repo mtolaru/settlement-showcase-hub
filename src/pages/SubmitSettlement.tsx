@@ -24,6 +24,7 @@ interface FormData {
   settlementPhase: string;
   caseType: string;
   otherCaseType: string;
+  caseDescription: string;
   caseDetails: {
     carAccident: {
       vehicleType: string;
@@ -49,6 +50,7 @@ interface FormData {
   attorneyName: string;
   attorneyEmail: string;
   firmName: string;
+  firmWebsite: string;
   location: string;
 }
 
@@ -61,6 +63,15 @@ interface PaymentFormProps {
   formData: FormData;
 }
 
+const formatNumber = (value: string): string => {
+  const number = value.replace(/\D/g, '');
+  return number.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+const unformatNumber = (value: string): string => {
+  return value.replace(/,/g, '');
+};
+
 const PaymentForm = ({ onSubmit, formData }: PaymentFormProps) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -72,7 +83,6 @@ const PaymentForm = ({ onSubmit, formData }: PaymentFormProps) => {
     }
 
     try {
-      // Create payment intent first
       const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: {
@@ -154,6 +164,7 @@ const SubmitSettlement = () => {
     settlementPhase: "",
     caseType: "",
     otherCaseType: "",
+    caseDescription: "",
     caseDetails: {
       carAccident: {
         vehicleType: "",
@@ -179,6 +190,7 @@ const SubmitSettlement = () => {
     attorneyName: "",
     attorneyEmail: "",
     firmName: "",
+    firmWebsite: "",
     location: ""
   });
 
@@ -190,11 +202,20 @@ const SubmitSettlement = () => {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    // Clear error when user starts typing
+    const numericFields = ['amount', 'initialOffer', 'policyLimit', 'medicalExpenses'];
+    if (numericFields.includes(field)) {
+      const unformattedValue = unformatNumber(value);
+      const formattedValue = formatNumber(unformattedValue);
+      setFormData(prev => ({
+        ...prev,
+        [field]: formattedValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
     setErrors(prev => ({
       ...prev,
       [field]: undefined
@@ -202,12 +223,10 @@ const SubmitSettlement = () => {
   };
 
   const handlePaymentSuccess = async (result: any) => {
-    // Handle successful payment
     toast({
       title: "Success",
       description: "Your settlement has been submitted successfully.",
     });
-    // Redirect or handle success as needed
   };
 
   const settlementTypes = [
@@ -227,21 +246,17 @@ const SubmitSettlement = () => {
   const validateStep1 = () => {
     const newErrors: FormErrors = {};
 
-    if (!formData.amount || !validateNumber(formData.amount)) {
-      newErrors.amount = "Please enter a valid settlement amount greater than 0";
-    }
+    const validateMoneyField = (field: string, label: string) => {
+      const value = unformatNumber(formData[field]);
+      if (!value || !validateNumber(value)) {
+        newErrors[field] = `Please enter a valid ${label} greater than 0`;
+      }
+    };
 
-    if (!formData.initialOffer || !validateNumber(formData.initialOffer)) {
-      newErrors.initialOffer = "Please enter a valid amount (enter 0 if none)";
-    }
-
-    if (!formData.policyLimit || !validateNumber(formData.policyLimit)) {
-      newErrors.policyLimit = "Please enter a valid amount (enter 0 if none)";
-    }
-
-    if (!formData.medicalExpenses || !validateNumber(formData.medicalExpenses)) {
-      newErrors.medicalExpenses = "Please enter a valid amount (enter 0 if none)";
-    }
+    validateMoneyField('amount', 'settlement amount');
+    validateMoneyField('initialOffer', 'amount');
+    validateMoneyField('policyLimit', 'amount');
+    validateMoneyField('medicalExpenses', 'amount');
 
     if (!formData.settlementPhase) {
       newErrors.settlementPhase = "Please select when the settlement was made";
@@ -252,7 +267,7 @@ const SubmitSettlement = () => {
     }
 
     if (formData.caseType === "Other" && !formData.otherCaseType) {
-      newErrors.otherCaseType = "Please describe the case type";
+      newErrors.otherCaseType = "Please describe what 'Other' means";
     }
 
     setErrors(newErrors);
@@ -274,6 +289,12 @@ const SubmitSettlement = () => {
 
     if (!formData.firmName?.trim()) {
       newErrors.firmName = "Law firm name is required";
+    }
+
+    if (!formData.firmWebsite?.trim()) {
+      newErrors.firmWebsite = "Law firm website is required";
+    } else if (!/^https?:\/\/.+/.test(formData.firmWebsite)) {
+      newErrors.firmWebsite = "Please enter a valid website URL (starting with http:// or https://)";
     }
 
     if (!formData.location?.trim()) {
@@ -308,7 +329,6 @@ const SubmitSettlement = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
       <div className="bg-primary-900 text-white py-12">
         <div className="container">
           <Link to="/">
@@ -323,10 +343,8 @@ const SubmitSettlement = () => {
         </div>
       </div>
 
-      {/* Form Content */}
       <div className="container py-12">
         <div className="max-w-2xl mx-auto">
-          {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               {[1, 2, 3].map((s) => (
@@ -358,7 +376,6 @@ const SubmitSettlement = () => {
             </div>
           </div>
 
-          {/* Form Steps */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -369,11 +386,11 @@ const SubmitSettlement = () => {
                 <div>
                   <label className="form-label">Settlement Amount*</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.amount}
                     onChange={(e) => handleInputChange("amount", e.target.value)}
-                    placeholder="$1,000,000"
-                    min="1"
+                    placeholder="1,000,000"
+                    className="no-spinner"
                   />
                   {errors.amount && (
                     <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
@@ -383,11 +400,11 @@ const SubmitSettlement = () => {
                 <div>
                   <label className="form-label">Initial Settlement Offer*</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.initialOffer}
                     onChange={(e) => handleInputChange("initialOffer", e.target.value)}
                     placeholder="Enter 0 if no initial offer was made"
-                    min="0"
+                    className="no-spinner"
                   />
                   <p className="text-sm text-neutral-500 mt-1">Enter the initial offer received, if any. Enter 0 if none.</p>
                   {errors.initialOffer && (
@@ -398,11 +415,11 @@ const SubmitSettlement = () => {
                 <div>
                   <label className="form-label">Insurance Policy Limit*</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.policyLimit}
                     onChange={(e) => handleInputChange("policyLimit", e.target.value)}
                     placeholder="Enter 0 if not applicable"
-                    min="0"
+                    className="no-spinner"
                   />
                   {errors.policyLimit && (
                     <p className="text-red-500 text-sm mt-1">{errors.policyLimit}</p>
@@ -412,11 +429,11 @@ const SubmitSettlement = () => {
                 <div>
                   <label className="form-label">Medical Expenses*</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.medicalExpenses}
                     onChange={(e) => handleInputChange("medicalExpenses", e.target.value)}
                     placeholder="Enter 0 if not applicable"
-                    min="0"
+                    className="no-spinner"
                   />
                   {errors.medicalExpenses && (
                     <p className="text-red-500 text-sm mt-1">{errors.medicalExpenses}</p>
@@ -460,7 +477,7 @@ const SubmitSettlement = () => {
 
                 {formData.caseType === "Other" && (
                   <div>
-                    <label className="form-label">Case Type Description*</label>
+                    <label className="form-label">Please describe what 'Other' means*</label>
                     <Textarea
                       value={formData.otherCaseType}
                       onChange={(e) => handleInputChange("otherCaseType", e.target.value)}
@@ -471,6 +488,15 @@ const SubmitSettlement = () => {
                     )}
                   </div>
                 )}
+
+                <div>
+                  <label className="form-label">Description of Case</label>
+                  <Textarea
+                    value={formData.caseDescription}
+                    onChange={(e) => handleInputChange("caseDescription", e.target.value)}
+                    placeholder="Please provide additional details about the case"
+                  />
+                </div>
               </div>
             )}
 
@@ -513,6 +539,18 @@ const SubmitSettlement = () => {
                   )}
                 </div>
                 <div>
+                  <label className="form-label">Law Firm Website*</label>
+                  <Input
+                    type="url"
+                    value={formData.firmWebsite}
+                    onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
+                    placeholder="https://www.example.com"
+                  />
+                  {errors.firmWebsite && (
+                    <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
+                  )}
+                </div>
+                <div>
                   <label className="form-label">Location*</label>
                   <Input
                     type="text"
@@ -533,7 +571,6 @@ const SubmitSettlement = () => {
               </Elements>
             )}
 
-            {/* Navigation Buttons */}
             <div className="flex justify-between mt-8 pt-6 border-t border-neutral-100">
               {step > 1 && (
                 <Button
