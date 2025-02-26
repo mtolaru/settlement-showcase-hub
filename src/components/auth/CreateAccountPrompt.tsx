@@ -74,7 +74,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-primary-900 mb-4">Create Your Account</h2>
         <p className="text-neutral-600">
-          Create an account to submit additional settlements or log in using email.
+          Please create an account to access your settlement and submit additional cases.
         </p>
       </div>
 
@@ -124,17 +124,9 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         </Button>
 
         <div className="text-center">
-          <p className="text-sm text-neutral-500 mb-4">
-            Important: Without an account, you won't be able to access your settlements later.
+          <p className="text-sm text-neutral-500">
+            Creating an account is required to access your settlements.
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full border-2"
-            onClick={onClose}
-          >
-            Maybe Later
-          </Button>
         </div>
       </form>
     </motion.div>
