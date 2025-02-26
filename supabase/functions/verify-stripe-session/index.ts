@@ -9,6 +9,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -26,34 +27,50 @@ serve(async (req) => {
       }
     )
 
-    const { sessionId } = await req.json()
+    // Parse request body
+    let { sessionId } = await req.json()
+    if (!sessionId) {
+      throw new Error('Session ID is required')
+    }
 
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
+    // Initialize Stripe
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
+    if (!stripeKey) {
+      throw new Error('Stripe secret key not configured')
+    }
+    
+    const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
       httpClient: Stripe.createFetchHttpClient()
     })
 
-    // Retrieve the session to get customer details
+    console.log('Retrieving session:', sessionId)
     const session = await stripe.checkout.sessions.retrieve(sessionId)
     const customerId = session.customer as string
+    
+    if (!customerId) {
+      throw new Error('No customer ID found in session')
+    }
 
-    // Get subscription from session
+    console.log('Retrieving subscription for customer:', customerId)
     const subscription = await stripe.subscriptions.list({
       customer: customerId,
       limit: 1
     })
 
     if (!subscription.data.length) {
-      throw new Error('No subscription found')
+      throw new Error('No subscription found for customer')
     }
 
     const sub = subscription.data[0]
-    
-    // Get user ID from metadata
     const userId = session.metadata?.userId
     const temporaryId = session.metadata?.temporaryId
 
-    // Update or create subscription in database
+    if (!userId && !temporaryId) {
+      throw new Error('No user identification found in session metadata')
+    }
+
+    console.log('Updating subscription in database for user:', userId || temporaryId)
     const { error: subscriptionError } = await supabaseClient
       .from('subscriptions')
       .upsert({
@@ -65,30 +82,51 @@ serve(async (req) => {
         is_active: true
       })
 
-    if (subscriptionError) throw subscriptionError
+    if (subscriptionError) {
+      console.error('Error updating subscription:', subscriptionError)
+      throw subscriptionError
+    }
 
-    // Update any pending settlements
+    // Update pending settlements if any
     if (userId || temporaryId) {
+      console.log('Updating pending settlements')
       const { error: settlementError } = await supabaseClient
         .from('settlements')
         .update({ payment_completed: true })
         .match(userId ? { user_id: userId } : { temporary_id: temporaryId })
         .eq('payment_completed', false)
 
-      if (settlementError) throw settlementError
+      if (settlementError) {
+        console.error('Error updating settlements:', settlementError)
+        throw settlementError
+      }
     }
 
     return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: true,
+        message: 'Subscription activated successfully'
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error in verify-stripe-session:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        details: error.toString()
+      }),
       { 
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
       }
     )
   }
