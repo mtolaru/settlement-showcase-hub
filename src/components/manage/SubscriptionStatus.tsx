@@ -32,7 +32,7 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
     );
   }
 
-  if (!subscription) {
+  if (!subscription?.is_active) {
     return (
       <div className="space-y-4">
         <p className="text-neutral-600">
@@ -54,7 +54,7 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
         <div>
           <h3 className="font-semibold text-primary-900">Active Subscription</h3>
           <p className="text-primary-700 mt-1">
-            Your subscription is active until {subscription.ends_at ? formatDate(subscription.ends_at) : 'ongoing'}
+            Your subscription is active {subscription.ends_at ? `until ${formatDate(subscription.ends_at)}` : '(ongoing)'}
           </p>
           <ul className="mt-4 space-y-2 text-primary-700">
             <li className="flex items-center gap-2">

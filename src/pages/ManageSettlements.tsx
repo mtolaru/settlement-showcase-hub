@@ -40,7 +40,7 @@ const ManageSettlements = () => {
           .select('*')
           .eq('user_id', session.user.id)
           .eq('is_active', true)
-          .gt('ends_at', new Date().toISOString())
+          .order('starts_at', { ascending: false })
           .maybeSingle();
 
         if (error) {
@@ -50,10 +50,18 @@ const ManageSettlements = () => {
 
         console.log('Found subscription:', subscriptionData);
         setSubscription(subscriptionData);
+        
+        if (!subscriptionData) {
+          console.log('No active subscription found');
+        }
       }
     } catch (error) {
-      // Silently handle the error without showing toast
       console.error('Failed to fetch subscription status:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch subscription status. Please try again.",
+      });
     }
   };
 
@@ -71,10 +79,17 @@ const ManageSettlements = () => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
+        
+        console.log('Found settlements:', data);
         setSettlements(data || []);
       }
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch settlements. Please try again.",
+      });
     } finally {
       setIsLoading(false);
     }
