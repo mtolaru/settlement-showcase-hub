@@ -21,10 +21,18 @@ export const useAuth = (): AuthReturn => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Error getting session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initSession();
 
     // Listen for auth changes
     const {
@@ -52,6 +60,7 @@ export const useAuth = (): AuthReturn => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
     navigate('/');
     toast({
       title: "Signed out successfully",

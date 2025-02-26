@@ -2,36 +2,19 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import { LogOut } from "lucide-react";
 
 const Navbar = () => {
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user, signOut, isAuthenticated } = useAuth();
 
   const navItems = [
     { label: "Home", path: "/" },
     { label: "Leaderboard", path: "/settlements" },
     { label: "Submit", path: "/submit" },
-    ...(user ? [{ label: "My Account", path: "/manage" }] : []),
+    ...(isAuthenticated ? [{ label: "My Account", path: "/manage" }] : []),
   ];
 
   return (
@@ -56,7 +39,18 @@ const Navbar = () => {
                 {item.label}
               </Link>
             ))}
-            {!user && <LoginDialog />}
+            {isAuthenticated ? (
+              <Button 
+                variant="outline" 
+                onClick={signOut}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            ) : (
+              <LoginDialog />
+            )}
           </div>
         </div>
       </div>
