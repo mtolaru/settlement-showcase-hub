@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Share2, Trophy, ArrowRight } from "lucide-react";
-import { settlements } from "@/data/settlements"; // Update this import
+import { settlements } from "@/data/settlements";
 
 const SettlementDetail = () => {
   const { id } = useParams();
@@ -18,7 +18,9 @@ const SettlementDetail = () => {
     });
   };
 
-  const formatSettlementPhase = (phase: string) => {
+  const formatSettlementPhase = (phase: string | null) => {
+    if (!phase) return '';
+    
     switch (phase.toLowerCase()) {
       case 'pre-litigation':
         return 'Pre-Litigation';
@@ -93,26 +95,32 @@ const SettlementDetail = () => {
                 {/* Initial Settlement Offer */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Initial Settlement Offer</p>
-                  <p className="font-medium text-neutral-900">{settlement.details.initialOffer}</p>
+                  <p className="font-medium text-neutral-900">
+                    {settlement.initial_offer ? formatAmount(settlement.initial_offer) : 'N/A'}
+                  </p>
                 </div>
 
                 {/* Insurance Policy Limit */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Insurance Policy Limit</p>
-                  <p className="font-medium text-neutral-900">{settlement.details.policyLimit}</p>
+                  <p className="font-medium text-neutral-900">
+                    {settlement.policy_limit ? formatAmount(settlement.policy_limit) : 'N/A'}
+                  </p>
                 </div>
 
                 {/* Medical Expenses */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Medical Expenses</p>
-                  <p className="font-medium text-neutral-900">{settlement.details.medicalExpenses}</p>
+                  <p className="font-medium text-neutral-900">
+                    {settlement.medical_expenses ? formatAmount(settlement.medical_expenses) : 'N/A'}
+                  </p>
                 </div>
 
                 {/* Settlement Phase */}
                 <div className="p-4 bg-neutral-50 rounded-md">
                   <p className="text-sm text-neutral-500">Settlement Phase</p>
                   <p className="font-medium text-neutral-900">
-                    {formatSettlementPhase(settlement.details.settlementPhase)}
+                    {formatSettlementPhase(settlement.settlement_phase)}
                   </p>
                 </div>
               </div>
