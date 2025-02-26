@@ -26,7 +26,7 @@ const SubmissionConfirmation = () => {
           </Link>
           <h1 className="text-4xl font-bold font-display mb-4">Payment Successful!</h1>
           <p className="text-primary-200 max-w-2xl">
-            Your settlement has been successfully submitted and will be reviewed shortly.
+            Your settlement has been successfully submitted and is now live.
           </p>
         </div>
       </div>
@@ -47,8 +47,7 @@ const SubmissionConfirmation = () => {
               </div>
               <h2 className="text-2xl font-bold mb-4">Thank You for Your Submission</h2>
               <p className="text-neutral-600 mb-8">
-                Your settlement details have been received. Our team will review your submission
-                and it will be published in our gallery within 24 hours.
+                Your settlement details have been received and are now live in our gallery.
               </p>
               <div className="space-y-4">
                 <Link to="/settlements">

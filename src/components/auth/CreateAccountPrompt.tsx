@@ -69,14 +69,16 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-auto"
+      className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-auto"
     >
-      <h2 className="text-2xl font-bold mb-4">Create Your Account</h2>
-      <p className="text-neutral-600 mb-6">
-        Create an account to manage your settlements and upload more without additional payment.
-      </p>
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-primary-900 mb-4">Create Your Account</h2>
+        <p className="text-neutral-600">
+          Create an account to submit additional settlements or log in using email.
+        </p>
+      </div>
 
-      <form onSubmit={handleCreateAccount} className="space-y-4">
+      <form onSubmit={handleCreateAccount} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
             Email
@@ -115,20 +117,25 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
         <Button
           type="submit"
-          className="w-full"
+          className="w-full bg-primary-600 hover:bg-primary-700 text-lg py-6"
           disabled={isLoading}
         >
-          Create Account <ArrowRight className="ml-2 h-4 w-4" />
+          Create Account <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
 
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full"
-          onClick={onClose}
-        >
-          Maybe Later
-        </Button>
+        <div className="text-center">
+          <p className="text-sm text-neutral-500 mb-4">
+            Important: Without an account, you won't be able to access your settlements later.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-2"
+            onClick={onClose}
+          >
+            Maybe Later
+          </Button>
+        </div>
       </form>
     </motion.div>
   );
