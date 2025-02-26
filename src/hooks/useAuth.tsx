@@ -1,12 +1,33 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { User } from '@supabase/supabase-js';
 
 export const useAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -21,9 +42,20 @@ export const useAuth = () => {
     return session;
   };
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+    toast({
+      title: "Signed out successfully",
+      description: "You have been logged out of your account.",
+    });
+  };
 
-  return { checkAuth };
+  return { 
+    user, 
+    isLoading, 
+    checkAuth,
+    signOut,
+    isAuthenticated: !!user 
+  };
 };

@@ -6,6 +6,8 @@ import type { Settlement } from "@/types/settlement";
 import { useAuth } from "@/hooks/useAuth";
 import SubscriptionStatus from "@/components/manage/SubscriptionStatus";
 import SettlementsList from "@/components/manage/SettlementsList";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 interface Subscription {
   id: string;
@@ -19,7 +21,7 @@ const ManageSettlements = () => {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { checkAuth } = useAuth();
+  const { checkAuth, signOut, user } = useAuth();
 
   useEffect(() => {
     fetchSubscriptionStatus();
@@ -79,9 +81,27 @@ const ManageSettlements = () => {
   return (
     <div className="min-h-screen bg-neutral-50 py-12">
       <div className="container max-w-4xl">
-        <h1 className="text-4xl font-bold font-display text-primary-900 mb-6">
-          Manage Account
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-4xl font-bold font-display text-primary-900">
+            My Account
+          </h1>
+          <Button 
+            variant="outline" 
+            onClick={signOut}
+            className="gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
+
+        {user && (
+          <div className="bg-primary-50 rounded-lg p-4 mb-8">
+            <p className="text-primary-700">
+              Signed in as <span className="font-semibold">{user.email}</span>
+            </p>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6">Subscription Status</h2>
