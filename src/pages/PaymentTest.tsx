@@ -19,7 +19,7 @@ const PaymentTest = () => {
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: 'price_1QwpUFDEE7vEKM2KYdBYUIq6', // Updated price ID
+          priceId: 'price_1QwpUFDEE7vEKM2KYdBYUIq6',
           userId: temporaryId,
           returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
         },
@@ -36,7 +36,7 @@ const PaymentTest = () => {
         throw new Error('No checkout URL received');
       }
 
-      window.location.href = url;
+      window.open(url, '_blank'); // Open in new tab
     } catch (error) {
       console.error('Error creating checkout session:', error);
       toast({
