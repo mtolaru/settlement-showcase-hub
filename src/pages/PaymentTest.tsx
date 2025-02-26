@@ -29,8 +29,7 @@ const PaymentTest = () => {
       const { url } = response.data;
       if (url) {
         console.log('Redirecting to:', url);
-        // Using window.open instead of window.location.href for testing
-        window.open(url, '_blank');
+        window.location.href = url;
       } else {
         throw new Error('No checkout URL received');
       }
