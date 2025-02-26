@@ -5,14 +5,19 @@ import { ArrowLeft, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
 import CreateAccountPrompt from "@/components/auth/CreateAccountPrompt";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const SubmissionConfirmation = () => {
   const [showCreateAccount, setShowCreateAccount] = useState(true);
+  const { isAuthenticated } = useAuth();
   const temporaryId = new URLSearchParams(window.location.search).get("temporaryId");
 
   const handleClose = () => {
     setShowCreateAccount(false);
   };
+
+  // Show create account prompt only for non-authenticated users with a temporaryId
+  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && temporaryId;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -34,7 +39,7 @@ const SubmissionConfirmation = () => {
       {/* Content */}
       <div className="container py-12">
         <div className="max-w-xl mx-auto">
-          {showCreateAccount && temporaryId ? (
+          {shouldShowCreateAccount ? (
             <CreateAccountPrompt temporaryId={temporaryId} onClose={handleClose} />
           ) : (
             <motion.div
