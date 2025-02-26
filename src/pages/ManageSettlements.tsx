@@ -33,37 +33,15 @@ const ManageSettlements = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // First try to get subscription without end date (ongoing subscription)
-        let { data: subscriptionData, error: error1 } = await supabase
+        const { data: subscriptionData, error } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
           .eq('is_active', true)
-          .is('ends_at', null)
           .maybeSingle();
 
-        // If no ongoing subscription found, look for active subscription with future end date
-        if (!subscriptionData && !error1) {
-          const { data: timedSubscription, error: error2 } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('is_active', true)
-            .gt('ends_at', new Date().toISOString())
-            .maybeSingle();
-
-          if (error2) {
-            console.error('Failed to fetch timed subscription:', error2);
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Failed to fetch subscription status.",
-            });
-            return;
-          }
-          subscriptionData = timedSubscription;
-        } else if (error1) {
-          console.error('Failed to fetch ongoing subscription:', error1);
+        if (error) {
+          console.error('Failed to fetch subscription status:', error);
           toast({
             variant: "destructive",
             title: "Error",
@@ -72,7 +50,7 @@ const ManageSettlements = () => {
           return;
         }
 
-        console.log('Subscription data:', subscriptionData); // Debug log
+        console.log('Subscription data:', subscriptionData);
         setSubscription(subscriptionData);
       }
     } catch (error) {
