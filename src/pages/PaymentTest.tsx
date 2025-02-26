@@ -15,13 +15,17 @@ const PaymentTest = () => {
     try {
       const temporaryId = crypto.randomUUID();
       
+      console.log('Creating checkout session...');
+      
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: 'prod_RqWXroyk6lFMyn',
+          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE', // Using the price ID instead of product ID
           userId: temporaryId,
           returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
         },
       });
+
+      console.log('Response:', response);
 
       if (response.error) {
         throw new Error(response.error.message);

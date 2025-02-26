@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -46,7 +47,7 @@ const Pricing = () => {
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: 'prod_RqWXroyk6lFMyn',
+          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE', // Using the price ID instead of product ID
           userId: session?.user?.id || temporaryId,
           returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
           isAnonymous: !session?.user,
@@ -77,7 +78,6 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
       <div className="bg-primary-900 text-white py-16">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
@@ -89,7 +89,6 @@ const Pricing = () => {
         </div>
       </div>
 
-      {/* Pricing Card */}
       <div className="container py-16">
         <div className="max-w-lg mx-auto -mt-32">
           <motion.div
@@ -135,7 +134,6 @@ const Pricing = () => {
           </motion.div>
         </div>
 
-        {/* Value Proposition */}
         <div className="max-w-3xl mx-auto mt-24">
           <h2 className="text-3xl font-bold text-center mb-12">
             Why Choose Our Professional Plan?
