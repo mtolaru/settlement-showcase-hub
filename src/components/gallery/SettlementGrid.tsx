@@ -91,7 +91,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                   {settlement.location}
                 </div>
                 <p className="text-sm text-neutral-600">
-                  Settlement Date: {new Date(settlement.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                  Settlement Date: {new Date(settlement.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
                 </p>
               </div>
             </div>

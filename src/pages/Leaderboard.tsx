@@ -55,7 +55,7 @@ const Leaderboard = () => {
           settlement.firm.toLowerCase(),
           settlement.location.toLowerCase(),
           settlement.description?.toLowerCase() || "",
-          settlement.details?.caseDescription?.toLowerCase() || "",
+          settlement.case_description?.toLowerCase() || "",
         ];
         return searchFields.some(field => field.includes(searchQuery));
       });
@@ -80,7 +80,7 @@ const Leaderboard = () => {
         case "amount":
           return b.amount - a.amount;
         case "date":
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         default:
           return 0;
       }

@@ -20,9 +20,9 @@ const Index = () => {
     { name: "Los Angeles", active: true, location: "Los Angeles, CA" },
   ];
 
-  // Sort settlements by date for recent cases
+  // Sort settlements by created_at for recent cases
   const recentSettlements = [...settlements]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .filter(settlement => selectedCity === "all" || settlement.location === selectedCity)
     .slice(0, 3);
 
@@ -41,7 +41,7 @@ const Index = () => {
     firm: settlement.firm,
     firmWebsite: settlement.firmWebsite,
     location: settlement.location,
-    date: new Date(settlement.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+    date: new Date(settlement.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
     photo_url: settlement.photo_url
   });
 

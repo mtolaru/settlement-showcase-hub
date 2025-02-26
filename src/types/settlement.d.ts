@@ -9,13 +9,11 @@ export interface Settlement {
   location: string;
   created_at: string;
   description: string | null;
-  details: {
-    initialOffer: string;
-    policyLimit: string;
-    medicalExpenses: string;
-    settlementPhase: string;
-    caseDescription: string;
-  };
+  case_description: string | null;
+  initial_offer: number | null;
+  policy_limit: number | null;
+  medical_expenses: number | null;
+  settlement_phase: string | null;
   temporary_id?: string;
   user_id?: string;
   payment_completed?: boolean;
