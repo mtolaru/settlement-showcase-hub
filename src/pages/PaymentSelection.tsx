@@ -45,7 +45,7 @@ const PaymentSelection = () => {
             <div className="text-center mb-6">
               <h3 className="text-xl font-bold mb-2">Professional Plan</h3>
               <div className="text-3xl font-bold text-primary-900">
-                $99
+                $199
                 <span className="text-base font-normal text-neutral-600">/month</span>
               </div>
             </div>

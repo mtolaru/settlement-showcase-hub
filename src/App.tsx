@@ -13,7 +13,6 @@ import Leaderboard from "./pages/Leaderboard";
 import SettlementDetail from "./pages/SettlementDetail";
 import SubmitSettlement from "./pages/SubmitSettlement";
 import PaymentSelection from "./pages/PaymentSelection";
-import PaymentProcessing from "./pages/PaymentProcessing";
 import PaymentTest from "./pages/PaymentTest";
 import SubmissionConfirmation from "./pages/SubmissionConfirmation";
 import ManageSettlements from "./pages/ManageSettlements";
@@ -38,7 +37,6 @@ const App = () => (
               <Route path="/settlements/:id" element={<SettlementDetail />} />
               <Route path="/submit" element={<SubmitSettlement />} />
               <Route path="/payment-plans" element={<PaymentSelection />} />
-              <Route path="/checkout" element={<PaymentProcessing />} />
               <Route path="/payment-test" element={<PaymentTest />} />
               <Route path="/confirmation" element={<SubmissionConfirmation />} />
               <Route path="/manage" element={<ManageSettlements />} />
