@@ -52,23 +52,21 @@ interface FormData {
 const SubmitSettlement = () => {
   const [step, setStep] = useState(1);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, checkAuth } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const init = async () => {
-      const session = await checkAuth();
-      if (!session) {
-        setIsCheckingSubscription(false);
+    const checkSubscription = async () => {
+      if (!user) {
+        setHasActiveSubscription(false);
         return;
       }
-      
+
       const { data: subscriptions, error } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .eq('is_active', true)
         .gt('ends_at', new Date().toISOString())
         .maybeSingle();
@@ -83,11 +81,10 @@ const SubmitSettlement = () => {
       } else {
         setHasActiveSubscription(!!subscriptions);
       }
-      setIsCheckingSubscription(false);
     };
 
-    init();
-  }, []);
+    checkSubscription();
+  }, [user]);
 
   const [formData, setFormData] = useState<FormData>({
     amount: "",
@@ -231,12 +228,8 @@ const SubmitSettlement = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmitSettlement = async (paymentCompleted: boolean = false) => {
+  const handleSubmitSettlement = async () => {
     try {
-      if (!user) {
-        throw new Error("No authenticated user found");
-      }
-
       const submissionData = {
         amount: Number(unformatNumber(formData.amount)),
         attorney: formData.attorneyName,
@@ -251,8 +244,8 @@ const SubmitSettlement = () => {
         medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
         settlement_phase: formData.settlementPhase,
         photo_url: formData.photoUrl,
-        user_id: user.id,
-        payment_completed: paymentCompleted
+        user_id: user?.id || null,
+        payment_completed: hasActiveSubscription
       };
 
       const { data, error } = await supabase
@@ -263,7 +256,7 @@ const SubmitSettlement = () => {
 
       if (error) throw error;
 
-      if (!paymentCompleted) {
+      if (!hasActiveSubscription) {
         navigate('/payment-selection', { 
           state: { 
             settlementId: data.id,
@@ -307,26 +300,11 @@ const SubmitSettlement = () => {
     }
 
     if (step === 2) {
-      if (hasActiveSubscription) {
-        await handleSubmitSettlement(true);
-      } else {
-        await handleSubmitSettlement(false);
-      }
+      await handleSubmitSettlement();
     } else {
       setStep(step + 1);
     }
   };
-
-  if (isCheckingSubscription) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary-600" />
-          <p className="text-neutral-600">Checking subscription status...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
