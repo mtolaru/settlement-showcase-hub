@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -13,6 +13,8 @@ const Pricing = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
+  const isSubmissionFlow = location.pathname === '/submit';
 
   const features = [
     "Multiple settlement showcases",
@@ -27,7 +29,8 @@ const Pricing = () => {
   ];
 
   const handleSubscribe = async () => {
-    if (!isAuthenticated) {
+    // Skip authentication check if coming from submission flow
+    if (!isAuthenticated && !isSubmissionFlow) {
       toast({
         title: "Authentication Required",
         description: "Please log in to subscribe to our Professional Plan.",
@@ -38,18 +41,16 @@ const Pricing = () => {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const temporaryId = crypto.randomUUID();
       
-      if (!session?.user) {
-        throw new Error('No authenticated user found');
-      }
-
-      console.log('Creating checkout session for user:', session.user.id);
+      console.log('Creating checkout session for user:', session?.user?.id || 'anonymous');
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
           priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE',
-          userId: session.user.id,
-          returnUrl: `${window.location.origin}/manage`,
+          userId: session?.user?.id || temporaryId,
+          returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
+          isAnonymous: !session?.user,
         },
       });
 
@@ -114,7 +115,7 @@ const Pricing = () => {
                 </li>
               ))}
             </ul>
-            {isAuthenticated ? (
+            {(isAuthenticated || isSubmissionFlow) ? (
               <Button 
                 className="w-full bg-primary-500 hover:bg-primary-600"
                 onClick={handleSubscribe}
