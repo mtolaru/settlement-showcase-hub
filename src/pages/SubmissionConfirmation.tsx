@@ -1,47 +1,14 @@
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CreditCard } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
 import CreateAccountPrompt from "@/components/auth/CreateAccountPrompt";
+import { useState } from "react";
 
 const SubmissionConfirmation = () => {
   const [showCreateAccount, setShowCreateAccount] = useState(true);
-  const { toast } = useToast();
-  const location = useLocation();
-  const temporaryId = new URLSearchParams(location.search).get("temporaryId");
-  const sessionId = new URLSearchParams(location.search).get("session_id");
-
-  useEffect(() => {
-    const updateSubscriptionStatus = async () => {
-      if (!sessionId) return;
-
-      try {
-        const { error } = await supabase.functions.invoke('verify-stripe-session', {
-          body: { sessionId }
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: "Your subscription has been activated.",
-        });
-      } catch (error) {
-        console.error('Error updating subscription:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to verify subscription. Please contact support.",
-        });
-      }
-    };
-
-    updateSubscriptionStatus();
-  }, [sessionId]);
+  const temporaryId = new URLSearchParams(window.location.search).get("temporaryId");
 
   const handleClose = () => {
     setShowCreateAccount(false);

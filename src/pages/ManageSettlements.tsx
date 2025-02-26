@@ -24,81 +24,48 @@ const ManageSettlements = () => {
   const { checkAuth, signOut, user } = useAuth();
 
   useEffect(() => {
-    const initializeData = async () => {
-      const session = await checkAuth();
-      if (session) {
-        await Promise.all([
-          fetchSubscriptionStatus(session.user.id),
-          fetchSettlements(session.user.id)
-        ]);
-      }
-    };
+    fetchSubscriptionStatus();
+    fetchSettlements();
+  }, []);
 
-    initializeData();
-  }, [checkAuth]);
-
-  const fetchSubscriptionStatus = async (userId: string) => {
+  const fetchSubscriptionStatus = async () => {
     try {
-      console.log('Fetching subscription for user:', userId);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const { data: subscriptionData, error } = await supabase
-        .from('subscriptions')
-        .select('id, starts_at, ends_at, is_active')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
+      if (session?.user) {
+        const { data: subscriptionData, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .gt('ends_at', new Date().toISOString())
+          .maybeSingle();
 
-      if (error) {
-        console.error('Subscription fetch error:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch subscription status. Please try again.",
-        });
-        return;
+        if (error) throw error;
+        setSubscription(subscriptionData);
       }
-
-      console.log('Subscription data:', subscriptionData);
-      setSubscription(subscriptionData);
     } catch (error) {
-      console.error('Subscription fetch exception:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "An unexpected error occurred while fetching subscription data.",
-      });
+      // Silently handle the error without showing toast
+      console.error('Failed to fetch subscription status:', error);
     }
   };
 
-  const fetchSettlements = async (userId: string) => {
+  const fetchSettlements = async () => {
     try {
-      console.log('Fetching settlements for user:', userId);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const { data, error } = await supabase
-        .from('settlements')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Settlements fetch error:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch settlements. Please try again.",
-        });
-        return;
+        if (error) throw error;
+        setSettlements(data || []);
       }
-
-      console.log('Settlements data:', data);
-      setSettlements(data || []);
     } catch (error) {
-      console.error('Settlements fetch exception:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "An unexpected error occurred while fetching settlements.",
-      });
+      console.error('Failed to fetch settlements:', error);
     } finally {
       setIsLoading(false);
     }
