@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface CreateAccountPromptProps {
   temporaryId: string;
@@ -17,6 +18,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,37 +26,47 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
     try {
       // Sign up the user
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (signUpError) throw signUpError;
 
-      if (authData.user) {
+      if (signUpData.user) {
         // Update the settlement and subscription with the new user_id
         const { error: updateError } = await supabase
           .from('settlements')
-          .update({ user_id: authData.user.id })
+          .update({ user_id: signUpData.user.id })
           .eq('temporary_id', temporaryId);
 
         if (updateError) throw updateError;
 
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
-          .update({ user_id: authData.user.id })
+          .update({ user_id: signUpData.user.id })
           .eq('temporary_id', temporaryId);
 
         if (subscriptionError) throw subscriptionError;
 
-        toast({
-          title: "Account created successfully!",
-          description: "You can now manage your settlements and upload more without additional payment.",
+        // Now sign in the user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
 
+        if (signInError) throw signInError;
+
+        toast({
+          title: "Account created successfully!",
+          description: "You have been automatically logged in.",
+        });
+
+        // Navigate to the manage page
+        navigate("/manage");
         onClose();
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error creating account",
