@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.17.0?target=deno";
+import Stripe from "https://esm.sh/stripe@13.3.0?target=deno";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
@@ -24,7 +24,6 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
-      httpClient: Stripe.createFetchHttpClient(),
     });
 
     const signature = req.headers.get('stripe-signature');
@@ -32,26 +31,11 @@ serve(async (req) => {
       throw new Error('No signature found in request');
     }
 
-    // Clone the request and get body as text
     const body = await req.text();
-    
-    console.log('Received webhook. Processing signature validation...');
+    // Use constructEventAsync instead of constructEvent
+    const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 
-    let event;
-    try {
-      event = await stripe.webhooks.constructEventAsync(
-        body,
-        signature,
-        webhookSecret,
-        undefined,
-        Stripe.createSubtleCryptoProvider()
-      );
-    } catch (err) {
-      console.error('Error constructing webhook event:', err);
-      throw err;
-    }
-
-    console.log('Successfully validated signature. Event type:', event.type);
+    console.log('Processing webhook event:', event.type);
 
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -82,6 +66,7 @@ serve(async (req) => {
             user_id: userId,
             temporary_id: temporaryId,
             starts_at: new Date().toISOString(),
+            stripe_subscription_id: session.subscription,
             is_active: true,
             payment_id: session.payment_intent
           });
@@ -115,7 +100,7 @@ serve(async (req) => {
             is_active: subscription.status === 'active',
             ends_at: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
           })
-          .eq('payment_id', subscription.latest_invoice);
+          .eq('stripe_subscription_id', subscription.id);
 
         if (updateError) {
           console.error('Error updating subscription:', updateError);
