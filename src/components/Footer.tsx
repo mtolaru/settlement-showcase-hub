@@ -1,8 +1,11 @@
 
 import { Link } from "react-router-dom";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 const Footer = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <footer className="bg-white border-t border-neutral-200 mt-auto">
       <div className="container py-12 md:py-16">
@@ -32,9 +35,11 @@ const Footer = () => {
                   FAQ
                 </Link>
               </li>
-              <li>
-                <LoginDialog />
-              </li>
+              {!isAuthenticated && (
+                <li>
+                  <LoginDialog />
+                </li>
+              )}
             </ul>
           </div>
           
