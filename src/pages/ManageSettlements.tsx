@@ -14,6 +14,7 @@ interface Subscription {
   starts_at: string;
   ends_at: string | null;
   is_active: boolean;
+  payment_id: string | null;
 }
 
 const ManageSettlements = () => {
@@ -24,36 +25,47 @@ const ManageSettlements = () => {
   const { checkAuth, signOut, user } = useAuth();
 
   useEffect(() => {
-    fetchSubscriptionStatus();
-    fetchSettlements();
-  }, []);
+    if (user) {
+      fetchSubscriptionStatus();
+      fetchSettlements();
+    }
+  }, [user]);
 
   const fetchSubscriptionStatus = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      if (!user) {
+        console.log('No user found, skipping subscription fetch');
+        return;
+      }
+
+      console.log('Fetching subscription for user:', user.id);
       
-      if (session?.user) {
-        console.log('Fetching subscription for user:', session.user.id);
-        
-        const { data: subscriptionData, error } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('is_active', true)
-          .order('starts_at', { ascending: false })
-          .maybeSingle();
+      const { data: subscriptionData, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('starts_at', { ascending: false })
+        .maybeSingle();
 
-        if (error) {
-          console.error('Error fetching subscription:', error);
-          throw error;
-        }
+      if (error) {
+        console.error('Error fetching subscription:', error);
+        throw error;
+      }
 
-        console.log('Found subscription:', subscriptionData);
-        setSubscription(subscriptionData);
-        
-        if (!subscriptionData) {
-          console.log('No active subscription found');
-        }
+      console.log('Found subscription:', subscriptionData);
+      setSubscription(subscriptionData);
+      
+      if (!subscriptionData) {
+        console.log('No active subscription found');
+      } else {
+        console.log('Active subscription details:', {
+          id: subscriptionData.id,
+          payment_id: subscriptionData.payment_id,
+          is_active: subscriptionData.is_active,
+          starts_at: subscriptionData.starts_at,
+          ends_at: subscriptionData.ends_at
+        });
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
@@ -67,22 +79,26 @@ const ManageSettlements = () => {
 
   const fetchSettlements = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log('Fetching settlements for user:', session.user.id);
-        
-        const { data, error } = await supabase
-          .from('settlements')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        
-        console.log('Found settlements:', data);
-        setSettlements(data || []);
+      if (!user) {
+        console.log('No user found, skipping settlements fetch');
+        return;
       }
+
+      console.log('Fetching settlements for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('settlements')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching settlements:', error);
+        throw error;
+      }
+      
+      console.log('Found settlements:', data);
+      setSettlements(data || []);
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
       toast({
