@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -47,7 +46,7 @@ const Pricing = () => {
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE', // Add price ID
+          priceId: 'price_1OyxbLJ0osWMYwPrNCNbeF9R',
           userId: session.user.id,
           returnUrl: `${window.location.origin}/manage`,
         },
