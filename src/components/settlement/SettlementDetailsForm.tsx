@@ -36,15 +36,32 @@ export const SettlementDetailsForm = ({
   errors,
   handleInputChange,
 }: SettlementDetailsFormProps) => {
+  const formatDollarInput = (value: string) => {
+    // Remove dollar sign and commas
+    let numericValue = value.replace(/[$,]/g, '');
+    
+    // If empty, return empty string
+    if (!numericValue) return '';
+    
+    // Format with dollar sign and commas
+    return `$${numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  };
+
+  const handleDollarInput = (field: string, value: string) => {
+    // Remove dollar sign for processing
+    const processedValue = value.replace(/[$,]/g, '');
+    handleInputChange(field, processedValue);
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <label className="form-label">Settlement Amount*</label>
         <Input
           type="text"
-          value={formData.amount}
-          onChange={(e) => handleInputChange("amount", e.target.value)}
-          placeholder="1,000,000"
+          value={formatDollarInput(formData.amount)}
+          onChange={(e) => handleDollarInput("amount", e.target.value)}
+          placeholder="$1,000,000"
           className="no-spinner"
         />
         {errors.amount && (
@@ -56,13 +73,13 @@ export const SettlementDetailsForm = ({
         <label className="form-label">Initial Settlement Offer*</label>
         <Input
           type="text"
-          value={formData.initialOffer}
-          onChange={(e) => handleInputChange("initialOffer", e.target.value)}
-          placeholder="Enter 0 if no initial offer was made"
+          value={formatDollarInput(formData.initialOffer)}
+          onChange={(e) => handleDollarInput("initialOffer", e.target.value)}
+          placeholder="$0"
           className="no-spinner"
         />
         <p className="text-sm text-neutral-500 mt-1">
-          Enter the initial offer received, if any. Enter 0 if none.
+          Enter the initial offer received, if any. Enter $0 if none.
         </p>
         {errors.initialOffer && (
           <p className="text-red-500 text-sm mt-1">{errors.initialOffer}</p>
@@ -73,9 +90,9 @@ export const SettlementDetailsForm = ({
         <label className="form-label">Insurance Policy Limit*</label>
         <Input
           type="text"
-          value={formData.policyLimit}
-          onChange={(e) => handleInputChange("policyLimit", e.target.value)}
-          placeholder="Enter 0 if not applicable"
+          value={formatDollarInput(formData.policyLimit)}
+          onChange={(e) => handleDollarInput("policyLimit", e.target.value)}
+          placeholder="$0"
           className="no-spinner"
         />
         {errors.policyLimit && (
@@ -87,9 +104,9 @@ export const SettlementDetailsForm = ({
         <label className="form-label">Medical Expenses*</label>
         <Input
           type="text"
-          value={formData.medicalExpenses}
-          onChange={(e) => handleInputChange("medicalExpenses", e.target.value)}
-          placeholder="Enter 0 if not applicable"
+          value={formatDollarInput(formData.medicalExpenses)}
+          onChange={(e) => handleDollarInput("medicalExpenses", e.target.value)}
+          placeholder="$0"
           className="no-spinner"
         />
         {errors.medicalExpenses && (
@@ -147,12 +164,15 @@ export const SettlementDetailsForm = ({
       )}
 
       <div>
-        <label className="form-label">Description of Case</label>
+        <label className="form-label">Description of Case*</label>
         <Textarea
           value={formData.caseDescription}
           onChange={(e) => handleInputChange("caseDescription", e.target.value)}
-          placeholder="Please provide additional details about the case"
+          placeholder="Please provide details about the case. This description will be publicly displayed on the settlement page."
         />
+        {errors.caseDescription && (
+          <p className="text-red-500 text-sm mt-1">{errors.caseDescription}</p>
+        )}
       </div>
     </div>
   );
