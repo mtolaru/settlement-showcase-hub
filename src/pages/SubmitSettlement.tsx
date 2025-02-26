@@ -186,9 +186,9 @@ const SubmitSettlement = () => {
     };
 
     validateMoneyField('amount', 'settlement amount');
-    validateMoneyField('initialOffer', 'amount');
-    validateMoneyField('policyLimit', 'amount');
-    validateMoneyField('medicalExpenses', 'amount');
+    validateMoneyField('initialOffer', 'initial offer');
+    validateMoneyField('policyLimit', 'policy limit');
+    validateMoneyField('medicalExpenses', 'medical expenses');
 
     if (!formData.settlementPhase) {
       newErrors.settlementPhase = "Please select when the settlement was made";
@@ -200,6 +200,10 @@ const SubmitSettlement = () => {
 
     if (formData.caseType === "Other" && !formData.otherCaseType) {
       newErrors.otherCaseType = "Please describe what 'Other' means";
+    }
+
+    if (!formData.caseDescription?.trim()) {
+      newErrors.caseDescription = "Please provide a description of the case";
     }
 
     setErrors(newErrors);
@@ -288,7 +292,8 @@ const SubmitSettlement = () => {
         settlement_phase: formData.settlementPhase,
         photo_url: formData.photoUrl,
         user_id: session.user.id,
-        payment_completed: true
+        payment_completed: true,
+        created_at: new Date().toISOString()
       };
 
       const { data, error } = await supabase
@@ -305,7 +310,7 @@ const SubmitSettlement = () => {
       });
 
       navigate('/settlements');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submission error:', error);
       toast({
         variant: "destructive",
@@ -315,50 +320,67 @@ const SubmitSettlement = () => {
     }
   };
 
+  const createCheckoutSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const temporaryId = crypto.randomUUID();
+      
+      const submissionData = {
+        amount: Number(unformatNumber(formData.amount)),
+        attorney: formData.attorneyName,
+        firm: formData.firmName,
+        firm_website: formData.firmWebsite,
+        location: formData.location,
+        type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
+        description: formData.caseDescription,
+        case_description: formData.caseDescription,
+        initial_offer: Number(unformatNumber(formData.initialOffer)),
+        policy_limit: Number(unformatNumber(formData.policyLimit)),
+        medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
+        settlement_phase: formData.settlementPhase,
+        photo_url: formData.photoUrl,
+        temporary_id: temporaryId,
+        user_id: session?.user?.id,
+        payment_completed: false,
+        created_at: new Date().toISOString()
+      };
+
+      const { error: settlementError } = await supabase
+        .from('settlements')
+        .insert(submissionData);
+
+      if (settlementError) throw settlementError;
+
+      const response = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          temporaryId,
+          userId: session?.user?.id,
+          returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      const { url } = response.data;
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to initiate checkout. Please try again.",
+      });
+    }
+  };
+
   const ReviewStep = () => {
     const formatCurrency = (value: string) => {
       return value ? `$${value}` : "N/A";
-    };
-
-    const createCheckoutSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.user) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Please sign in to continue.",
-          });
-          return;
-        }
-
-        const response = await supabase.functions.invoke('create-checkout-session', {
-          body: {
-            settlementData: formData,
-            userId: session.user.id,
-            returnUrl: `${window.location.origin}/confirmation`,
-          },
-        });
-
-        if (response.error) {
-          throw new Error(response.error.message);
-        }
-
-        const { url } = response.data;
-        if (url) {
-          window.location.href = url;
-        } else {
-          throw new Error('No checkout URL received');
-        }
-      } catch (error) {
-        console.error('Error creating checkout session:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to initiate checkout. Please try again.",
-        });
-      }
     };
 
     return (
