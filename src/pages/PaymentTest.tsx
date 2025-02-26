@@ -2,18 +2,18 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, ExternalLink } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentTest = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   const createCheckoutSession = async () => {
     setIsLoading(true);
     try {
-      // Generate a temporary ID for the settlement
       const temporaryId = crypto.randomUUID();
       
       const response = await supabase.functions.invoke('create-checkout-session', {
@@ -27,11 +27,10 @@ const PaymentTest = () => {
         throw new Error(response.error.message);
       }
 
-      console.log('Checkout session response:', response.data);
       const { url } = response.data;
       if (url) {
-        console.log('Redirecting to:', url);
-        // Force navigation using window.location.replace
+        console.log('Checkout URL received:', url);
+        setCheckoutUrl(url);
         window.location.replace(url);
       } else {
         throw new Error('No checkout URL received');
@@ -63,23 +62,38 @@ const PaymentTest = () => {
                 <p className="text-sm text-primary-700 mb-4">
                   Subscribe to our Professional Plan for $199/month to submit and showcase your settlements.
                 </p>
-                <Button 
-                  onClick={createCheckoutSession}
-                  disabled={isLoading}
-                  className="w-full bg-primary-500 hover:bg-primary-600"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      Test Subscribe Now
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
+                {checkoutUrl ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-amber-600">
+                      If the checkout page doesn't load automatically, please click below:
+                    </p>
+                    <Button 
+                      onClick={() => window.open(checkoutUrl, '_blank')}
+                      className="w-full bg-primary-500 hover:bg-primary-600"
+                    >
+                      Open Checkout
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={createCheckoutSession}
+                    disabled={isLoading}
+                    className="w-full bg-primary-500 hover:bg-primary-600"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Test Subscribe Now
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>
