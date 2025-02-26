@@ -17,7 +17,7 @@ const PaymentTest = () => {
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE',
+          priceId: 'prod_RqWXroyk6lFMyn',
           userId: temporaryId,
           returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
         },
