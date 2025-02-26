@@ -18,33 +18,55 @@ serve(async (req) => {
   }
 
   try {
-    const { temporaryId, returnUrl, userId } = await req.json();
-    console.log('Creating checkout session with:', { temporaryId, returnUrl, userId });
+    const { priceId, returnUrl, userId, temporaryId } = await req.json();
+    console.log('Creating checkout session with:', { priceId, returnUrl, userId, temporaryId });
+
+    if (!priceId) {
+      throw new Error('Price ID is required');
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1OyfEUJ0osWMYwPrgcMPlqmE', // Your Stripe price ID
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: 'subscription',
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}?canceled=true`,
-      client_reference_id: userId || temporaryId, // Use userId if available, otherwise use temporaryId
+      metadata: {
+        userId: userId || '',
+        temporaryId: temporaryId || '',
+      },
     });
 
     console.log('Created checkout session:', session.id);
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ 
+        url: session.url,
+        sessionId: session.id,
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: error.message }), 
+      { 
+        status: 400,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
   }
 });

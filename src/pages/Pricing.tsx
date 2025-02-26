@@ -43,12 +43,17 @@ const Pricing = () => {
         throw new Error('No authenticated user found');
       }
 
+      console.log('Creating checkout session for user:', session.user.id);
+      
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
+          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE', // Add price ID
           userId: session.user.id,
-          returnUrl: `${window.location.origin}/confirmation`,
+          returnUrl: `${window.location.origin}/manage`,
         },
       });
+
+      console.log('Checkout session response:', response);
 
       if (response.error) {
         throw new Error(response.error.message);
