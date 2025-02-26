@@ -35,15 +35,11 @@ const SettlementsList = ({ settlements, isLoading }: SettlementsListProps) => {
 
   if (settlements.length === 0) {
     return (
-      <div className="text-center space-y-4">
+      <div className="space-y-4">
         <p className="text-neutral-600">
           You haven't submitted any settlements yet.
         </p>
-        <Button 
-          onClick={() => navigate('/submit')}
-          size="lg"
-          className="bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800"
-        >
+        <Button onClick={() => navigate('/submit')}>
           Submit Your First Settlement
         </Button>
       </div>

@@ -45,11 +45,8 @@ const ManageSettlements = () => {
         setSubscription(subscriptionData);
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch subscription status.",
-      });
+      // Silently handle the error without showing toast
+      console.error('Failed to fetch subscription status:', error);
     }
   };
 
@@ -68,11 +65,7 @@ const ManageSettlements = () => {
         setSettlements(data || []);
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch settlements.",
-      });
+      console.error('Failed to fetch settlements:', error);
     } finally {
       setIsLoading(false);
     }
