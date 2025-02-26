@@ -15,12 +15,27 @@ serve(async (req) => {
 
   // Using Deno.env to get the secret key from environment variables
   const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
-  console.log('Checking for STRIPE_SECRET_KEY...');
+  console.log('STRIPE_KEY available:', !!STRIPE_KEY); // Log whether we have a key (without exposing it)
+  console.log('STRIPE_KEY prefix:', STRIPE_KEY?.substring(0, 7)); // Log just the prefix to verify it's an sk_test_ key
   
   if (!STRIPE_KEY) {
     console.error('Missing STRIPE_SECRET_KEY environment variable');
     return new Response(
       JSON.stringify({ error: 'Missing Stripe configuration' }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  }
+
+  if (!STRIPE_KEY.startsWith('sk_')) {
+    console.error('Invalid Stripe key format');
+    return new Response(
+      JSON.stringify({ error: 'Invalid Stripe configuration' }),
       {
         status: 500,
         headers: {
