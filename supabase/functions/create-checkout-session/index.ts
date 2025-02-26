@@ -13,7 +13,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const STRIPE_KEY = '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';
+  const STRIPE_KEY = 'rk_test_51QwW91DEE7vEKM2KKustxvknTDvr892vEWNq48xArB6n4vZ3BaMH52T5dXGrFIwNXntvsrJg2Pw6US92vEdPWziC00H5g434lp';
 
   try {
     const stripe = new Stripe(STRIPE_KEY, {
