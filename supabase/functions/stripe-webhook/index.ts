@@ -3,7 +3,17 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.3.0?target=deno";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
@@ -22,7 +32,8 @@ serve(async (req) => {
     }
 
     const body = await req.text();
-    const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    // Use constructEventAsync instead of constructEvent
+    const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 
     console.log('Processing webhook event:', event.type);
 
@@ -71,7 +82,7 @@ serve(async (req) => {
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
-        const customerId = subscription.customer;
+        console.log('Processing subscription update:', subscription.id, 'Status:', subscription.status);
         
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -96,13 +107,13 @@ serve(async (req) => {
           throw updateError;
         }
 
-        console.log('Successfully updated subscription record');
+        console.log('Successfully updated subscription record for', subscription.id);
         break;
       }
     }
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Webhook error:', error);
@@ -110,7 +121,7 @@ serve(async (req) => {
       JSON.stringify({ error: error.message }),
       { 
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
