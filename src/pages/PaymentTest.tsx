@@ -19,7 +19,7 @@ const PaymentTest = () => {
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE', // Using the price ID instead of product ID
+          priceId: 'price_1QwpUFDEE7vEKM2KYdBYUIq6', // Updated price ID
           userId: temporaryId,
           returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
         },
