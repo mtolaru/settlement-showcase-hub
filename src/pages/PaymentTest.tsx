@@ -11,21 +11,13 @@ const PaymentTest = () => {
 
   const createCheckoutSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Generate a temporary ID for the settlement
+      const temporaryId = crypto.randomUUID();
       
-      if (!session?.user) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please sign in to continue.",
-        });
-        return;
-      }
-
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          userId: session.user.id,
-          returnUrl: `${window.location.origin}/confirmation`,
+          temporaryId,
+          returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
         },
       });
 

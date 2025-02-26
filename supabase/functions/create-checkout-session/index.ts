@@ -21,8 +21,9 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    const { userId, returnUrl } = await req.json()
+    const { temporaryId, returnUrl } = await req.json()
 
+    // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -43,9 +44,9 @@ serve(async (req) => {
         },
       ],
       metadata: {
-        userId,
+        temporaryId, // Store the temporary ID in metadata
       },
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${new URL(returnUrl).origin}/submit`,
     })
 
