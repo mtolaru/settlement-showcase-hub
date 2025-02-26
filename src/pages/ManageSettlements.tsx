@@ -41,11 +41,19 @@ const ManageSettlements = () => {
           .gt('ends_at', new Date().toISOString())
           .maybeSingle();
 
-        if (error) throw error;
-        setSubscription(subscriptionData);
+        if (error) {
+          console.error('Failed to fetch subscription status:', error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to fetch subscription status.",
+          });
+        } else {
+          console.log('Subscription data:', subscriptionData); // Debug log
+          setSubscription(subscriptionData);
+        }
       }
     } catch (error) {
-      // Silently handle the error without showing toast
       console.error('Failed to fetch subscription status:', error);
     }
   };
