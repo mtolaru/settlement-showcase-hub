@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { SettlementDetailsForm } from "@/components/settlement/SettlementDetailsForm";
 import { AttorneyInformationForm } from "@/components/settlement/AttorneyInformationForm";
 import { SubmissionProgress } from "@/components/settlement/SubmissionProgress";
+import { ReviewStep } from "@/components/settlement/ReviewStep";
+import { useSettlementForm } from "@/hooks/useSettlementForm";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FormData {
@@ -54,39 +57,7 @@ const SubmitSettlement = () => {
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    checkSubscriptionStatus();
-  }, []);
-
-  const checkSubscriptionStatus = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const { data: subscriptions, error } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('is_active', true)
-          .gt('ends_at', new Date().toISOString())
-          .maybeSingle();
-
-        if (error) throw error;
-        
-        setHasActiveSubscription(!!subscriptions);
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to verify subscription status. Please try again.",
-      });
-    } finally {
-      setIsCheckingSubscription(false);
-    }
-  };
+  const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
 
   const [formData, setFormData] = useState<FormData>({
     amount: "",
@@ -127,37 +98,44 @@ const SubmitSettlement = () => {
     photoUrl: ""
   });
 
-  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
 
-  const formatNumber = (value: string): string => {
-    const number = value.replace(/\D/g, '');
-    return number.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  };
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const { data: subscriptions, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .gt('ends_at', new Date().toISOString())
+          .maybeSingle();
 
-  const unformatNumber = (value: string): string => {
-    return value.replace(/,/g, '');
-  };
-
-  const validateNumber = (value: string) => {
-    const num = Number(value);
-    return !isNaN(num) && num > 0;
+        if (error) throw error;
+        
+        setHasActiveSubscription(!!subscriptions);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to verify subscription status. Please try again.",
+      });
+    } finally {
+      setIsCheckingSubscription(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    const numericFields = ['amount', 'initialOffer', 'policyLimit', 'medicalExpenses'];
-    if (numericFields.includes(field)) {
-      const unformattedValue = unformatNumber(value);
-      const formattedValue = formatNumber(unformattedValue);
-      setFormData(prev => ({
-        ...prev,
-        [field]: formattedValue
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
     setErrors(prev => ({
       ...prev,
       [field]: undefined
@@ -166,107 +144,6 @@ const SubmitSettlement = () => {
 
   const handleImageUpload = (url: string) => {
     handleInputChange("photoUrl", url);
-  };
-
-  const handlePaymentSuccess = async (result: any) => {
-    toast({
-      title: "Success",
-      description: "Your settlement has been submitted successfully.",
-    });
-  };
-
-  const validateStep1 = () => {
-    const newErrors: Record<string, string> = {};
-
-    const validateMoneyField = (field: string, label: string) => {
-      const value = unformatNumber(formData[field]);
-      if (!value || !validateNumber(value)) {
-        newErrors[field] = `Please enter a valid ${label} greater than 0`;
-      }
-    };
-
-    validateMoneyField('amount', 'settlement amount');
-    validateMoneyField('initialOffer', 'initial offer');
-    validateMoneyField('policyLimit', 'policy limit');
-    validateMoneyField('medicalExpenses', 'medical expenses');
-
-    if (!formData.settlementPhase) {
-      newErrors.settlementPhase = "Please select when the settlement was made";
-    }
-
-    if (!formData.caseType) {
-      newErrors.caseType = "Please select a case type";
-    }
-
-    if (formData.caseType === "Other" && !formData.otherCaseType) {
-      newErrors.otherCaseType = "Please describe what 'Other' means";
-    }
-
-    if (!formData.caseDescription?.trim()) {
-      newErrors.caseDescription = "Please provide a description of the case";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validateStep2 = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.attorneyName?.trim()) {
-      newErrors.attorneyName = "Attorney name is required";
-    }
-
-    if (!formData.attorneyEmail?.trim()) {
-      newErrors.attorneyEmail = "Attorney email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.attorneyEmail)) {
-      newErrors.attorneyEmail = "Please enter a valid email address";
-    }
-
-    if (!formData.firmName?.trim()) {
-      newErrors.firmName = "Law firm name is required";
-    }
-
-    if (!formData.firmWebsite?.trim()) {
-      newErrors.firmWebsite = "Law firm website is required";
-    } else if (!/^https?:\/\/.+/.test(formData.firmWebsite)) {
-      newErrors.firmWebsite = "Please enter a valid website URL (starting with http:// or https://)";
-    }
-
-    if (!formData.location?.trim()) {
-      newErrors.location = "Location is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleNextStep = () => {
-    if (step === 1 && !validateStep1()) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please fill in all required fields correctly.",
-      });
-      return;
-    }
-
-    if (step === 2 && !validateStep2()) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please fill in all required fields correctly.",
-      });
-      return;
-    }
-
-    if (step === 2 && !hasActiveSubscription) {
-      setStep(3);
-    } else if (step === 2) {
-      handleSubmitWithSubscription();
-    } else {
-      setStep(step + 1);
-    }
   };
 
   const handleSubmitWithSubscription = async () => {
@@ -378,102 +255,32 @@ const SubmitSettlement = () => {
     }
   };
 
-  const ReviewStep = () => {
-    const formatCurrency = (value: string) => {
-      return value ? `$${value}` : "N/A";
-    };
+  const handleNextStep = () => {
+    if (step === 1 && !validateStep1(formData)) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required fields correctly.",
+      });
+      return;
+    }
 
-    return (
-      <div className="space-y-8">
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Review Your Settlement</h3>
-          <div className="space-y-6 bg-neutral-50 p-6 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-4">Settlement Details</h4>
-                <dl className="space-y-2">
-                  <div>
-                    <dt className="text-sm text-neutral-600">Settlement Amount</dt>
-                    <dd className="font-medium">{formatCurrency(formData.amount)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Initial Offer</dt>
-                    <dd className="font-medium">{formatCurrency(formData.initialOffer)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Policy Limit</dt>
-                    <dd className="font-medium">{formatCurrency(formData.policyLimit)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Medical Expenses</dt>
-                    <dd className="font-medium">{formatCurrency(formData.medicalExpenses)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Case Type</dt>
-                    <dd className="font-medium">{formData.caseType === "Other" ? formData.otherCaseType : formData.caseType}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Settlement Phase</dt>
-                    <dd className="font-medium">{formData.settlementPhase}</dd>
-                  </div>
-                </dl>
-              </div>
-              <div>
-                <h4 className="font-medium mb-4">Attorney Information</h4>
-                <dl className="space-y-2">
-                  <div>
-                    <dt className="text-sm text-neutral-600">Attorney Name</dt>
-                    <dd className="font-medium">{formData.attorneyName}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Law Firm</dt>
-                    <dd className="font-medium">{formData.firmName}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Location</dt>
-                    <dd className="font-medium">{formData.location}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Email</dt>
-                    <dd className="font-medium">{formData.attorneyEmail}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-neutral-600">Website</dt>
-                    <dd className="font-medium">{formData.firmWebsite}</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+    if (step === 2 && !validateStep2(formData)) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required fields correctly.",
+      });
+      return;
+    }
 
-        {!hasActiveSubscription && (
-          <div className="bg-primary-50 border border-primary-100 p-6 rounded-lg">
-            <h4 className="font-medium text-primary-900 mb-2">Professional Plan Subscription</h4>
-            <p className="text-sm text-primary-700 mb-4">
-              Subscribe to our Professional Plan for $199/month to submit and showcase your settlements.
-            </p>
-            <Button 
-              onClick={createCheckoutSession}
-              className="w-full bg-primary-500 hover:bg-primary-600"
-            >
-              Subscribe Now
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {hasActiveSubscription && (
-          <Button 
-            onClick={handleSubmitWithSubscription}
-            className="w-full bg-primary-500 hover:bg-primary-600"
-          >
-            Submit Settlement
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        )}
-      </div>
-    );
+    if (step === 2 && !hasActiveSubscription) {
+      setStep(3);
+    } else if (step === 2) {
+      handleSubmitWithSubscription();
+    } else {
+      setStep(step + 1);
+    }
   };
 
   if (isCheckingSubscription) {
@@ -532,7 +339,14 @@ const SubmitSettlement = () => {
               />
             )}
 
-            {step === 3 && <ReviewStep />}
+            {step === 3 && (
+              <ReviewStep 
+                formData={formData}
+                hasActiveSubscription={hasActiveSubscription}
+                onCreateCheckout={createCheckoutSession}
+                onSubmitWithSubscription={handleSubmitWithSubscription}
+              />
+            )}
 
             <div className="flex justify-between mt-8 pt-6 border-t border-neutral-100">
               {step > 1 && (
