@@ -33,6 +33,8 @@ const ManageSettlements = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
+        console.log('Fetching subscription for user:', session.user.id);
+        
         const { data: subscriptionData, error } = await supabase
           .from('subscriptions')
           .select('*')
@@ -41,7 +43,12 @@ const ManageSettlements = () => {
           .gt('ends_at', new Date().toISOString())
           .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching subscription:', error);
+          throw error;
+        }
+
+        console.log('Found subscription:', subscriptionData);
         setSubscription(subscriptionData);
       }
     } catch (error) {
@@ -55,6 +62,8 @@ const ManageSettlements = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
+        console.log('Fetching settlements for user:', session.user.id);
+        
         const { data, error } = await supabase
           .from('settlements')
           .select('*')
