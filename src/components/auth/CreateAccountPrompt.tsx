@@ -25,24 +25,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     setIsLoading(true);
 
     try {
-      // Check if the email already exists
-      const { data: existingUser } = await supabase.auth.admin.listUsers({
-        filters: {
-          email: email
-        }
-      });
-
-      if (existingUser?.length > 0) {
-        toast({
-          variant: "destructive",
-          title: "Email already exists",
-          description: "This email is already registered. Please use a different email or log in to your existing account.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Sign up the user with auto confirm enabled
+      // First try to sign up - Supabase will handle duplicate email checking
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -54,7 +37,18 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         }
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        // Handle the case where email is already registered
+        if (signUpError.message?.toLowerCase().includes('email already registered')) {
+          toast({
+            variant: "destructive",
+            title: "Email already registered",
+            description: "This email is already in use. Please use a different email or log in to your existing account.",
+          });
+          return;
+        }
+        throw signUpError;
+      }
 
       if (signUpData.session) {
         // User is automatically signed in
@@ -87,20 +81,11 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         });
       }
     } catch (error: any) {
-      // Handle specific error for duplicate email
-      if (error.message?.toLowerCase().includes('email already registered')) {
-        toast({
-          variant: "destructive",
-          title: "Email already registered",
-          description: "This email is already in use. Please use a different email or log in to your existing account.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error creating account",
-          description: error.message,
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "Error creating account",
+        description: error.message,
+      });
     } finally {
       setIsLoading(false);
     }
