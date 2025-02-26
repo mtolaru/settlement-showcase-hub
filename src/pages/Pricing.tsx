@@ -1,10 +1,19 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 const Pricing = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+
   const features = [
     "Multiple settlement showcases",
     "Continuous visibility",
@@ -16,6 +25,52 @@ const Pricing = () => {
     "Be featured alongside top firms",
     "Dominate your city settlement visibility"
   ];
+
+  const handleSubscribe = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to subscribe to our Professional Plan.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        throw new Error('No authenticated user found');
+      }
+
+      const response = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          userId: session.user.id,
+          returnUrl: `${window.location.origin}/confirmation`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const { url } = response.data;
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to initiate subscription. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -54,11 +109,26 @@ const Pricing = () => {
                 </li>
               ))}
             </ul>
-            <Link to="/submit">
-              <Button className="w-full bg-primary-500 hover:bg-primary-600">
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
+            {isAuthenticated ? (
+              <Button 
+                className="w-full bg-primary-500 hover:bg-primary-600"
+                onClick={handleSubscribe}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
-            </Link>
+            ) : (
+              <LoginDialog />
+            )}
           </motion.div>
         </div>
 
