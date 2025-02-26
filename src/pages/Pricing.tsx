@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -42,7 +43,7 @@ const Pricing = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const temporaryId = crypto.randomUUID();
       
-      console.log('Creating checkout session for user:', session?.user?.id || 'anonymous');
+      console.log('Creating checkout session...');
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
@@ -53,20 +54,18 @@ const Pricing = () => {
         },
       });
 
-      console.log('Checkout session response:', response);
-
       if (response.error) {
         throw new Error(response.error.message);
       }
 
       const { url } = response.data;
-      if (url) {
-        window.location.href = url;
-      } else {
+      if (!url) {
         throw new Error('No checkout URL received');
       }
+
+      window.location.href = url;
     } catch (error) {
-      console.error('Error creating checkout session:', error);
+      console.error('Error:', error);
       toast({
         variant: "destructive",
         title: "Error",
