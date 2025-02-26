@@ -13,7 +13,22 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const STRIPE_KEY = 'rk_test_51QwW91DEE7vEKM2KKustxvknTDvr892vEWNq48xArB6n4vZ3BaMH52T5dXGrFIwNXntvsrJg2Pw6US92vEdPWziC00H5g434lp';
+  // Using Deno.env to get the secret key from environment variables
+  const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
+  
+  if (!STRIPE_KEY) {
+    console.error('Missing STRIPE_SECRET_KEY environment variable');
+    return new Response(
+      JSON.stringify({ error: 'Server configuration error' }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  }
 
   try {
     const stripe = new Stripe(STRIPE_KEY, {
