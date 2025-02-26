@@ -15,11 +15,12 @@ serve(async (req) => {
 
   // Using Deno.env to get the secret key from environment variables
   const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
+  console.log('Checking for STRIPE_SECRET_KEY...');
   
   if (!STRIPE_KEY) {
     console.error('Missing STRIPE_SECRET_KEY environment variable');
     return new Response(
-      JSON.stringify({ error: 'Server configuration error' }),
+      JSON.stringify({ error: 'Missing Stripe configuration' }),
       {
         status: 500,
         headers: {
@@ -31,14 +32,18 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Initializing Stripe...');
     const stripe = new Stripe(STRIPE_KEY, {
       apiVersion: '2023-10-16',
       httpClient: Stripe.createFetchHttpClient(),
     })
 
     const { temporaryId, returnUrl } = await req.json()
+    console.log('Received request with temporaryId:', temporaryId);
+    console.log('Return URL:', returnUrl);
 
     // Create a Stripe checkout session
+    console.log('Creating checkout session...');
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -59,12 +64,13 @@ serve(async (req) => {
         },
       ],
       metadata: {
-        temporaryId, // Store the temporary ID in metadata
+        temporaryId,
       },
       success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${new URL(returnUrl).origin}/submit`,
     })
 
+    console.log('Checkout session created successfully:', session.id);
     return new Response(
       JSON.stringify({ url: session.url }),
       {
@@ -75,9 +81,20 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('Error creating checkout session:', error)
+    console.error('Detailed error in create-checkout-session:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: {
+          name: error.name,
+          stack: error.stack
+        }
+      }),
       {
         status: 500,
         headers: {
