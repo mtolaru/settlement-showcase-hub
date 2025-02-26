@@ -25,6 +25,23 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     setIsLoading(true);
 
     try {
+      // Check if the email already exists
+      const { data: existingUser } = await supabase.auth.admin.listUsers({
+        filters: {
+          email: email
+        }
+      });
+
+      if (existingUser?.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Email already exists",
+          description: "This email is already registered. Please use a different email or log in to your existing account.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Sign up the user with auto confirm enabled
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -70,11 +87,20 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         });
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error creating account",
-        description: error.message,
-      });
+      // Handle specific error for duplicate email
+      if (error.message?.toLowerCase().includes('email already registered')) {
+        toast({
+          variant: "destructive",
+          title: "Email already registered",
+          description: "This email is already in use. Please use a different email or log in to your existing account.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error creating account",
+          description: error.message,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
