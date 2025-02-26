@@ -3,9 +3,17 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 
-export const useAuth = () => {
+interface AuthReturn {
+  user: User | null;
+  isLoading: boolean;
+  checkAuth: () => Promise<Session | null>;
+  signOut: () => Promise<void>;
+  isAuthenticated: boolean;
+}
+
+export const useAuth = (): AuthReturn => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
