@@ -6,24 +6,13 @@ import { CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import type { Settlement } from "@/types/settlement";
 
 interface Subscription {
   id: string;
   starts_at: string;
   ends_at: string | null;
   is_active: boolean;
-}
-
-interface Settlement {
-  id: number;
-  amount: number;
-  type: string;
-  firm: string;
-  attorney: string;
-  location: string;
-  date: string;
-  description: string;
-  created_at: string;
 }
 
 const ManageSettlements = () => {

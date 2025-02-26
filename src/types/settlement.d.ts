@@ -7,8 +7,8 @@ export interface Settlement {
   firmWebsite?: string;
   attorney: string;
   location: string;
-  date: string;
-  description: string;
+  created_at: string;
+  description: string | null;
   details: {
     initialOffer: string;
     policyLimit: string;
