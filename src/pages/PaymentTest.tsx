@@ -15,17 +15,13 @@ const PaymentTest = () => {
     try {
       const temporaryId = crypto.randomUUID();
       
-      // Create a test price ID in Stripe first
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          // We'll need to replace this with your actual price ID from Stripe
-          priceId: 'price_REPLACE_WITH_YOUR_ACTUAL_PRICE_ID',
+          priceId: 'price_1OyfEUJ0osWMYwPrgcMPlqmE',
           userId: temporaryId,
           returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
         },
       });
-
-      console.log('Checkout response:', response); // Add debug logging
 
       if (response.error) {
         throw new Error(response.error.message);
