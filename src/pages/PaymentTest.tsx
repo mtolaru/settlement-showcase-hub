@@ -2,14 +2,16 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentTest = () => {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const createCheckoutSession = async () => {
+    setIsLoading(true);
     try {
       // Generate a temporary ID for the settlement
       const temporaryId = crypto.randomUUID();
@@ -29,7 +31,8 @@ const PaymentTest = () => {
       const { url } = response.data;
       if (url) {
         console.log('Redirecting to:', url);
-        window.location.href = url;
+        // Force navigation using window.location.replace
+        window.location.replace(url);
       } else {
         throw new Error('No checkout URL received');
       }
@@ -40,6 +43,7 @@ const PaymentTest = () => {
         title: "Error",
         description: "Failed to initiate checkout. Please try again.",
       });
+      setIsLoading(false);
     }
   };
 
@@ -61,10 +65,20 @@ const PaymentTest = () => {
                 </p>
                 <Button 
                   onClick={createCheckoutSession}
+                  disabled={isLoading}
                   className="w-full bg-primary-500 hover:bg-primary-600"
                 >
-                  Test Subscribe Now
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Test Subscribe Now
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
