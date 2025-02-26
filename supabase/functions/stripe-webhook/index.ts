@@ -29,10 +29,13 @@ serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        const userId = session.metadata?.userId;
+        console.log('Processing completed checkout session:', session);
 
-        if (!userId) {
-          throw new Error('No user ID found in session metadata');
+        const userId = session.metadata?.userId;
+        const temporaryId = session.metadata?.temporaryId;
+
+        if (!userId && !temporaryId) {
+          throw new Error('No user ID or temporary ID found in session metadata');
         }
 
         // Connect to Supabase
@@ -50,16 +53,50 @@ serve(async (req) => {
           .from('subscriptions')
           .insert({
             user_id: userId,
+            temporary_id: temporaryId,
+            starts_at: new Date().toISOString(),
             stripe_subscription_id: session.subscription,
-            stripe_customer_id: session.customer,
-            status: 'active',
-            price_id: session.metadata?.priceId,
+            is_active: true,
+            payment_id: session.payment_intent
           });
 
         if (subscriptionError) {
+          console.error('Error creating subscription:', subscriptionError);
           throw subscriptionError;
         }
 
+        console.log('Successfully created subscription record');
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
+        
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        
+        if (!supabaseUrl || !supabaseKey) {
+          throw new Error('Missing Supabase configuration');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Update subscription status
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            is_active: subscription.status === 'active',
+            ends_at: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+          })
+          .eq('stripe_subscription_id', subscription.id);
+
+        if (updateError) {
+          console.error('Error updating subscription:', updateError);
+          throw updateError;
+        }
+
+        console.log('Successfully updated subscription record');
         break;
       }
     }
