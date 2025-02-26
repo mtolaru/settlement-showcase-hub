@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,19 +16,36 @@ serve(async (req) => {
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) {
-      throw new Error('Missing Stripe secret key');
+      console.error('Missing Stripe secret key');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }), 
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(),
     });
 
     // Get request body
     const { priceId, userId, returnUrl } = await req.json();
     
     if (!priceId || !userId || !returnUrl) {
-      throw new Error('Missing required parameters');
+      console.error('Missing required parameters:', { priceId, userId, returnUrl });
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters' }), 
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
+
+    console.log('Creating checkout session with:', { priceId, userId, returnUrl });
 
     const session = await stripe.checkout.sessions.create({
       success_url: returnUrl,
@@ -45,6 +63,8 @@ serve(async (req) => {
       },
     });
 
+    console.log('Checkout session created:', session.id);
+
     return new Response(
       JSON.stringify({ url: session.url }),
       { 
@@ -55,15 +75,14 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Checkout session error:', error);
+    console.error('Stripe error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }), 
       { 
         status: 500,
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
