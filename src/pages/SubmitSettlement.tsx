@@ -60,7 +60,10 @@ const SubmitSettlement = () => {
   useEffect(() => {
     const init = async () => {
       const session = await checkAuth();
-      if (!session) return;
+      if (!session) {
+        setIsCheckingSubscription(false);
+        return;
+      }
       
       const { data: subscriptions, error } = await supabase
         .from('subscriptions')
@@ -228,7 +231,7 @@ const SubmitSettlement = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmitWithSubscription = async () => {
+  const handleSubmitSettlement = async (paymentCompleted: boolean = false) => {
     try {
       if (!user) {
         throw new Error("No authenticated user found");
@@ -249,7 +252,7 @@ const SubmitSettlement = () => {
         settlement_phase: formData.settlementPhase,
         photo_url: formData.photoUrl,
         user_id: user.id,
-        payment_completed: true
+        payment_completed: paymentCompleted
       };
 
       const { data, error } = await supabase
@@ -260,12 +263,20 @@ const SubmitSettlement = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Your settlement has been submitted successfully.",
-      });
-
-      navigate('/settlements');
+      if (!paymentCompleted) {
+        navigate('/payment-selection', { 
+          state: { 
+            settlementId: data.id,
+            amount: formData.amount 
+          } 
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Your settlement has been submitted successfully.",
+        });
+        navigate('/settlements');
+      }
     } catch (error) {
       console.error('Submission error:', error);
       toast({
@@ -296,11 +307,11 @@ const SubmitSettlement = () => {
     }
 
     if (step === 2) {
-      if (!hasActiveSubscription) {
-        navigate('/pricing');
-        return;
+      if (hasActiveSubscription) {
+        await handleSubmitSettlement(true);
+      } else {
+        await handleSubmitSettlement(false);
       }
-      await handleSubmitWithSubscription();
     } else {
       setStep(step + 1);
     }
@@ -312,24 +323,6 @@ const SubmitSettlement = () => {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary-600" />
           <p className="text-neutral-600">Checking subscription status...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasActiveSubscription) {
-    return (
-      <div className="min-h-screen bg-neutral-50">
-        <div className="container py-16">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-4xl font-bold mb-6">Subscription Required</h1>
-            <p className="text-neutral-600 mb-8">
-              To submit settlements, you need an active subscription. Subscribe now to get started.
-            </p>
-            <Button onClick={() => navigate('/pricing')} className="bg-primary-500">
-              View Pricing Plans
-            </Button>
-          </div>
         </div>
       </div>
     );
@@ -388,7 +381,7 @@ const SubmitSettlement = () => {
               )}
               <div className="ml-auto">
                 <Button onClick={handleNextStep} className="bg-primary-500 hover:bg-primary-600">
-                  {step === 2 ? "Submit Settlement" : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
+                  {step === 2 ? "Next Step" : "Continue"} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </div>
