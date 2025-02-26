@@ -25,8 +25,8 @@ serve(async (req) => {
     });
     console.log('Stripe initialized successfully');
 
-    const { priceId, returnUrl, userId } = await req.json();
-    console.log('Request payload:', { priceId, returnUrl, userId });
+    const { priceId, userId, returnUrl, isAnonymous = false } = await req.json();
+    console.log('Request payload:', { priceId, userId, returnUrl, isAnonymous });
 
     if (!priceId) {
       throw new Error('Price ID is required');
@@ -37,7 +37,7 @@ serve(async (req) => {
     }
 
     if (!userId) {
-      throw new Error('User ID is required');
+      throw new Error('User ID or temporary ID is required');
     }
 
     console.log('Creating Stripe checkout session...');
@@ -50,12 +50,14 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${returnUrl}?canceled=true`,
+      success_url: returnUrl,
+      cancel_url: `${new URL(returnUrl).origin}/submit`,
       metadata: {
         userId: userId,
+        isAnonymous: isAnonymous.toString(),
       },
-      customer_email: userId, // This helps Stripe link the subscription to a customer
+      allow_promotion_codes: true,
+      client_reference_id: userId,
     });
 
     console.log('Checkout session created successfully:', session.id);
