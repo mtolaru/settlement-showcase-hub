@@ -21,14 +21,8 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    // Test 1: Check if we can list prices
-    console.log('Testing price listing...');
-    const prices = await stripe.prices.list({
-      limit: 1,
-    });
+    const { userId, returnUrl } = await req.json()
 
-    // Test 2: Try to create a checkout session
-    console.log('Testing checkout session creation...');
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -39,47 +33,42 @@ serve(async (req) => {
             recurring: {
               interval: 'month',
             },
-            unit_amount: 19900,
+            unit_amount: 19900, // $199.00
             product_data: {
-              name: 'Test Product',
-              description: 'Test subscription',
+              name: 'Professional Plan',
+              description: 'Monthly subscription for settlement submissions',
             },
           },
           quantity: 1,
         },
       ],
-      success_url: 'https://example.com/success',
-      cancel_url: 'https://example.com/cancel',
-    });
+      metadata: {
+        userId,
+      },
+      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${new URL(returnUrl).origin}/submit`,
+    })
 
     return new Response(
-      JSON.stringify({ 
-        message: 'All permission tests passed successfully!',
-        pricesAccess: true,
-        checkoutAccess: true
-      }),
+      JSON.stringify({ url: session.url }),
       {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
         },
-      }
+      },
     )
   } catch (error) {
-    console.error('Permission test error:', error);
+    console.error('Error creating checkout session:', error)
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        pricesAccess: false,
-        checkoutAccess: false
-      }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
         },
-      }
+      },
     )
   }
 })
