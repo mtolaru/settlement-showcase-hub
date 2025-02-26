@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 interface Subscription {
   id: string;
@@ -13,14 +14,42 @@ interface Subscription {
   is_active: boolean;
 }
 
+interface Settlement {
+  id: number;
+  amount: number;
+  type: string;
+  firm: string;
+  attorney: string;
+  location: string;
+  date: string;
+  description: string;
+  created_at: string;
+}
+
 const ManageSettlements = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    checkAuth();
     fetchSubscriptionStatus();
+    fetchSettlements();
   }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/');
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "Please log in to access this page.",
+      });
+    }
+  };
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -44,6 +73,29 @@ const ManageSettlements = () => {
         title: "Error",
         description: "Failed to fetch subscription status.",
       });
+    }
+  };
+
+  const fetchSettlements = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setSettlements(data || []);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch settlements.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +103,13 @@ const ManageSettlements = () => {
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
   };
 
   return (
@@ -114,7 +173,7 @@ const ManageSettlements = () => {
               <p className="text-neutral-600">
                 You currently don't have an active subscription. Subscribe to unlock unlimited settlement submissions and more features.
               </p>
-              <Button>
+              <Button onClick={() => navigate('/pricing')}>
                 Subscribe Now
               </Button>
             </div>
@@ -123,9 +182,44 @@ const ManageSettlements = () => {
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold mb-6">My Settlements</h2>
-          <p className="text-neutral-600">
-            Coming soon: View and manage all your submitted settlements in one place.
-          </p>
+          
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-neutral-600">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Loading settlements...</span>
+            </div>
+          ) : settlements.length > 0 ? (
+            <div className="space-y-4">
+              {settlements.map((settlement) => (
+                <div key={settlement.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold text-lg">{settlement.type}</h3>
+                      <p className="text-neutral-600">{settlement.firm}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-lg text-primary-600">
+                        {formatCurrency(settlement.amount)}
+                      </div>
+                      <div className="text-sm text-neutral-500">
+                        {formatDate(settlement.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                  {settlement.description && (
+                    <p className="mt-2 text-neutral-600">{settlement.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-neutral-600">
+              You haven't submitted any settlements yet.{' '}
+              <Button variant="link" className="p-0" onClick={() => navigate('/submit')}>
+                Submit your first settlement
+              </Button>
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -1,12 +1,18 @@
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export function LoginDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +22,20 @@ export function LoginDialog() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Prevent body scroll when dialog is open
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const resetForm = () => {
     setEmail("");
@@ -54,8 +74,8 @@ export function LoginDialog() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`
-          }
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
         if (error) throw error;
         toast({
@@ -74,15 +94,13 @@ export function LoginDialog() {
           description: "Welcome back!",
         });
         
-        // Redirect to manage page if that's where they were
-        if (window.location.pathname === "/manage") {
-          navigate(0); // Refresh the page to update auth state
-        } else {
-          navigate("/"); // Otherwise go to home
+        // Redirect to manage page if not already there
+        if (location.pathname !== "/manage") {
+          navigate("/manage");
         }
       }
       handleDialogClose();
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -92,19 +110,6 @@ export function LoginDialog() {
       setIsLoading(false);
     }
   };
-
-  // Listen for authentication state changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        handleDialogClose();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -184,4 +189,4 @@ export function LoginDialog() {
       </DialogContent>
     </Dialog>
   );
-};
+}
