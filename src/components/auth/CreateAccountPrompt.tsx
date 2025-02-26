@@ -25,16 +25,22 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     setIsLoading(true);
 
     try {
-      // Sign up the user
+      // Sign up the user with auto confirm enabled
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/manage`,
+          data: {
+            temporaryId: temporaryId
+          }
+        }
       });
 
       if (signUpError) throw signUpError;
 
-      if (signUpData.user) {
-        // Update the settlement and subscription with the new user_id
+      if (signUpData.session) {
+        // User is automatically signed in
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ user_id: signUpData.user.id })
@@ -49,22 +55,19 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
         if (subscriptionError) throw subscriptionError;
 
-        // Now sign in the user
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) throw signInError;
-
         toast({
           title: "Account created successfully!",
           description: "You have been automatically logged in.",
         });
 
-        // Navigate to the manage page
         navigate("/manage");
         onClose();
+      } else {
+        // User needs to verify email
+        toast({
+          title: "Almost there!",
+          description: "Please check your email to verify your account. Once verified, you'll be automatically logged in.",
+        });
       }
     } catch (error: any) {
       toast({
