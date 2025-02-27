@@ -1,52 +1,60 @@
 
-import { Award, Share2, Target, Zap, Smartphone } from "lucide-react";
+import { Award, Shield, Sparkles, Briefcase, Share2, LineChart } from "lucide-react";
+import { motion } from "framer-motion";
 
 const WhyShare = () => {
+  const features = [
+    {
+      title: "Showcase Your Success",
+      description: "Display your significant settlements to potential clients and peers in the legal community with prominently featured case details and amounts.",
+      icon: <Award className="h-8 w-8 text-primary-500 mb-3" />
+    },
+    {
+      title: "Build Credibility",
+      description: "Demonstrate your track record of success with verified settlement information, creating powerful third-party validation for potential clients.",
+      icon: <Shield className="h-8 w-8 text-primary-500 mb-3" />
+    },
+    {
+      title: "Create Visibility",
+      description: "Gain recognition among peers in your practice area and help potential clients understand the value you bring to their cases.",
+      icon: <Sparkles className="h-8 w-8 text-primary-500 mb-3" />
+    },
+    {
+      title: "Differentiate Your Practice",
+      description: "Stand out by highlighting your specific case experience and results in ways traditional marketing cannot achieve.",
+      icon: <Briefcase className="h-8 w-8 text-primary-500 mb-3" />
+    },
+    {
+      title: "Transform Settlements Into Content",
+      description: "Turn your victories into shareable marketing content for your website, social media, and client communications.",
+      icon: <Share2 className="h-8 w-8 text-primary-500 mb-3" />
+    },
+    {
+      title: "Enhance Marketing ROI",
+      description: "Leverage your real-world results to improve the effectiveness of your existing marketing efforts and attract more qualified leads.",
+      icon: <LineChart className="h-8 w-8 text-primary-500 mb-3" />
+    }
+  ];
+
   return (
     <section className="py-16 bg-white">
       <div className="container">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">Why Share Your Settlements?</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-neutral-50 p-6 rounded-lg">
-              <div className="mb-4">
-                <Award className="h-8 w-8 text-primary-500" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Rank Among Peers</h3>
-              <p className="text-neutral-600">Gain visibility through our ranking system that highlights top settlements by amount, case type, and location.</p>
-            </div>
-            
-            <div className="bg-neutral-50 p-6 rounded-lg">
-              <div className="mb-4">
-                <Share2 className="h-8 w-8 text-primary-500" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Showcase Your Wins</h3>
-              <p className="text-neutral-600">Prominently display your settlement amounts, case types, and results in a professional gallery that builds credibility with potential clients.</p>
-            </div>
-            
-            <div className="bg-neutral-50 p-6 rounded-lg">
-              <div className="mb-4">
-                <Target className="h-8 w-8 text-primary-500" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Get Discovered</h3>
-              <p className="text-neutral-600">Be found by potential clients searching for attorneys with proven success in specific case types or locations.</p>
-            </div>
-            
-            <div className="bg-neutral-50 p-6 rounded-lg">
-              <div className="mb-4">
-                <Zap className="h-8 w-8 text-primary-500" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Easy Submission</h3>
-              <p className="text-neutral-600">Submit your settlements in minutes with our simple, streamlined process - no complex setup required.</p>
-            </div>
-            
-            <div className="bg-neutral-50 p-6 rounded-lg">
-              <div className="mb-4">
-                <Smartphone className="h-8 w-8 text-primary-500" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Mobile Responsive</h3>
-              <p className="text-neutral-600">Looks great on all devices, so you can showcase your settlements wherever potential clients are looking.</p>
-            </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <motion.div 
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-neutral-50 p-6 rounded-lg shadow-md flex flex-col items-center text-center"
+              >
+                {feature.icon}
+                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <p className="text-neutral-600">{feature.description}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>
