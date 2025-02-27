@@ -42,11 +42,27 @@ const SettlementDetail = () => {
         }
 
         // Process to ensure all required fields exist
-        const processedData = {
-          ...data,
+        const processedData: Settlement = {
+          id: data.id,
+          amount: data.amount,
+          type: data.type,
+          firm: data.firm,
+          firmWebsite: data.firm_website,
+          attorney: data.attorney,
+          location: data.location,
+          created_at: data.created_at,
           settlement_date: data.settlement_date || data.created_at,
-          firmWebsite: data.firm_website
-        } as Settlement;
+          description: data.description,
+          case_description: data.case_description,
+          initial_offer: data.initial_offer,
+          policy_limit: data.policy_limit,
+          medical_expenses: data.medical_expenses,
+          settlement_phase: data.settlement_phase,
+          temporary_id: data.temporary_id,
+          user_id: data.user_id,
+          payment_completed: data.payment_completed,
+          photo_url: data.photo_url
+        };
 
         setSettlement(processedData);
       } catch (error) {

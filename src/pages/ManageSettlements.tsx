@@ -144,11 +144,29 @@ const ManageSettlements = () => {
             console.log('Found settlements by temporary_id:', tempData);
             
             // Process the data to ensure all required fields exist
-            const processedData = tempData.map(settlement => ({
-              ...settlement,
-              settlement_date: settlement.settlement_date || settlement.created_at,
-              firmWebsite: settlement.firm_website
-            })) as Settlement[];
+            const processedData: Settlement[] = tempData.map(settlement => {
+              return {
+                id: settlement.id,
+                amount: settlement.amount,
+                type: settlement.type,
+                firm: settlement.firm,
+                firmWebsite: settlement.firm_website,
+                attorney: settlement.attorney,
+                location: settlement.location,
+                created_at: settlement.created_at,
+                settlement_date: settlement.settlement_date || settlement.created_at,
+                description: settlement.description,
+                case_description: settlement.case_description,
+                initial_offer: settlement.initial_offer,
+                policy_limit: settlement.policy_limit,
+                medical_expenses: settlement.medical_expenses,
+                settlement_phase: settlement.settlement_phase,
+                temporary_id: settlement.temporary_id,
+                user_id: settlement.user_id,
+                payment_completed: settlement.payment_completed,
+                photo_url: settlement.photo_url
+              };
+            });
             
             setSettlements(processedData);
             
@@ -172,11 +190,29 @@ const ManageSettlements = () => {
       console.log('Found settlements:', data);
       
       // Process the data to ensure all required fields exist
-      const processedData = (data || []).map(settlement => ({
-        ...settlement,
-        settlement_date: settlement.settlement_date || settlement.created_at,
-        firmWebsite: settlement.firm_website
-      })) as Settlement[];
+      const processedData: Settlement[] = (data || []).map(settlement => {
+        return {
+          id: settlement.id,
+          amount: settlement.amount,
+          type: settlement.type,
+          firm: settlement.firm,
+          firmWebsite: settlement.firm_website,
+          attorney: settlement.attorney,
+          location: settlement.location,
+          created_at: settlement.created_at,
+          settlement_date: settlement.settlement_date || settlement.created_at,
+          description: settlement.description,
+          case_description: settlement.case_description,
+          initial_offer: settlement.initial_offer,
+          policy_limit: settlement.policy_limit,
+          medical_expenses: settlement.medical_expenses,
+          settlement_phase: settlement.settlement_phase,
+          temporary_id: settlement.temporary_id,
+          user_id: settlement.user_id,
+          payment_completed: settlement.payment_completed,
+          photo_url: settlement.photo_url
+        };
+      });
       
       setSettlements(processedData);
     } catch (error) {

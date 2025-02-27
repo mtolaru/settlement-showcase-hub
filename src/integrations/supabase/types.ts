@@ -26,6 +26,7 @@ export type Database = {
           payment_completed: boolean | null
           photo_url: string | null
           policy_limit: number | null
+          settlement_date: string | null
           settlement_phase: string | null
           temporary_id: string | null
           type: string
@@ -47,6 +48,7 @@ export type Database = {
           payment_completed?: boolean | null
           photo_url?: string | null
           policy_limit?: number | null
+          settlement_date?: string | null
           settlement_phase?: string | null
           temporary_id?: string | null
           type: string
@@ -68,6 +70,7 @@ export type Database = {
           payment_completed?: boolean | null
           photo_url?: string | null
           policy_limit?: number | null
+          settlement_date?: string | null
           settlement_phase?: string | null
           temporary_id?: string | null
           type?: string
