@@ -8,15 +8,23 @@ const About = () => {
   const features = [
     {
       title: "Showcase Your Success",
-      description: "Display your significant settlements to potential clients and peers in the legal community.",
+      description: "Display your significant settlements to potential clients and peers in the legal community with prominently featured case details and amounts.",
     },
     {
       title: "Build Credibility",
-      description: "Demonstrate your track record of success with verified settlement information.",
+      description: "Demonstrate your track record of success with verified settlement information, creating powerful third-party validation for potential clients.",
     },
     {
-      title: "Attract High-Value Cases",
-      description: "Help potential clients understand the value you can bring to their cases.",
+      title: "Create Visibility",
+      description: "Gain recognition among peers in your practice area and help potential clients understand the value you bring to their cases.",
+    },
+    {
+      title: "Differentiate Your Practice",
+      description: "Stand out by highlighting your specific case experience and results in ways traditional marketing cannot achieve.",
+    },
+    {
+      title: "Transform Settlements Into Content",
+      description: "Turn your victories into shareable marketing content for your website, social media, and client communications.",
     },
   ];
 
@@ -27,16 +35,16 @@ const About = () => {
     },
     {
       title: "Choose Your Plan",
-      description: "Select the visibility package that best suits your needs and goals.",
+      description: "Select the visibility package that best suits your needs and goals with no long-term commitments.",
     },
     {
       title: "Get Featured",
-      description: "Your settlement will be showcased in our gallery, attracting potential clients and recognition.",
+      description: "Your settlement will be showcased in our gallery, attracting potential clients and recognition immediately after submission.",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <div className="bg-primary-900 text-white py-16">
         <div className="container">
@@ -46,11 +54,10 @@ const About = () => {
             className="max-w-3xl mx-auto text-center"
           >
             <h1 className="text-5xl font-bold font-display mb-6">
-              Showcase Your Legal Success
+              Transforming Legal Success Stories Into Powerful Marketing Assets
             </h1>
             <p className="text-primary-200 text-lg mb-8">
-              Join the leading platform for personal injury attorneys to showcase their
-              settlements and attract high-value cases.
+              SettlementWins was created with a singular vision: to help attorneys showcase their successful settlements and transform their case victories into their most powerful marketing assets.
             </p>
             <Link to="/submit">
               <Button size="lg" className="bg-white text-primary-900 hover:bg-primary-50">
@@ -61,22 +68,91 @@ const About = () => {
         </div>
       </div>
 
-      {/* Features Section */}
+      {/* Our Story Section */}
       <div className="container py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">Why Choose SettlementWins?</h2>
-        <div className="grid md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white p-6 rounded-lg shadow-md"
-            >
-              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-              <p className="text-neutral-600">{feature.description}</p>
-            </motion.div>
-          ))}
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-6">Our Story</h2>
+          <p className="text-neutral-700 text-lg mb-6">
+            SettlementWins was founded by a former attorney and venture entrepreneur who recognized a critical gap in legal marketing. Our founder saw that attorneys were spending significant money on marketing without a specialized platform to highlight their most compelling asset – their actual results.
+          </p>
+          <p className="text-neutral-700 text-lg">
+            Drawing from both legal practice experience and entrepreneurial expertise, our founder built SettlementWins as the first dedicated platform where attorneys can showcase, rank, and leverage their settlement wins to attract clients and gain professional recognition.
+          </p>
+        </div>
+      </div>
+
+      {/* What We Do Section */}
+      <div className="bg-neutral-50 py-16">
+        <div className="container">
+          <h2 className="text-3xl font-bold text-center mb-12">What We Do</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white p-6 rounded-lg shadow-md"
+              >
+                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <p className="text-neutral-600">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Why Choose SettlementWins Section */}
+      <div className="container py-16">
+        <h2 className="text-3xl font-bold text-center mb-12">Why Choose SettlementWins</h2>
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <motion.div 
+            className="bg-white p-6 rounded-lg shadow-sm border border-neutral-100"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <h3 className="text-xl font-bold mb-3">First and Only Dedicated Platform</h3>
+            <p className="text-neutral-600">
+              SettlementWins is the first and only platform exclusively focused on showcasing attorney settlements.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            className="bg-white p-6 rounded-lg shadow-sm border border-neutral-100"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h3 className="text-xl font-bold mb-3">Built for Attorneys, By Legal Experts</h3>
+            <p className="text-neutral-600">
+              Our platform was designed with deep understanding of the legal profession and the unique marketing challenges faced by attorneys.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            className="bg-white p-6 rounded-lg shadow-sm border border-neutral-100"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h3 className="text-xl font-bold mb-3">Transparent Pricing, Immediate Results</h3>
+            <p className="text-neutral-600">
+              With straightforward pricing and instant publishing, your settlements can start working for your marketing immediately after submission.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            className="bg-white p-6 rounded-lg shadow-sm border border-neutral-100"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <h3 className="text-xl font-bold mb-3">Privacy By Design</h3>
+            <p className="text-neutral-600">
+              We respect client confidentiality, only displaying the information you choose to share.
+            </p>
+          </motion.div>
         </div>
       </div>
 
@@ -107,14 +183,14 @@ const About = () => {
       {/* CTA Section */}
       <div className="container py-16">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to Showcase Your Success?</h2>
+          <h2 className="text-3xl font-bold mb-6">Join the Leading Attorneys Already Building Their Brand Through Their Results</h2>
           <p className="text-neutral-600 mb-8">
-            Join the leading attorneys who are already leveraging their settlement wins
-            to attract high-value cases.
+            Every successful settlement tells a story of your expertise, dedication, and effectiveness as an attorney. 
+            Don't let these powerful stories remain hidden in your case files.
           </p>
-          <Link to="/pricing">
+          <Link to="/submit">
             <Button size="lg">
-              View Pricing Plans <ArrowRight className="ml-2 h-5 w-5" />
+              Submit Your First Settlement <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
         </div>
