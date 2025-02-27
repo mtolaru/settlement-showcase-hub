@@ -23,23 +23,17 @@ export const AttorneyInformationForm = ({
   handleInputChange,
   handleImageUpload,
 }: AttorneyInformationFormProps) => {
-  const [otherLocation, setOtherLocation] = useState("");
-  const [showOtherLocationInput, setShowOtherLocationInput] = useState(formData.location !== "" && !availableLocations.includes(formData.location));
-
   // Locations that are available for filtering
   const availableLocations = [
     "Los Angeles, CA",
     "San Francisco, CA",
-    "New York, NY",
-    "Chicago, IL",
-    "Miami, FL",
-    "Dallas, TX",
-    "Houston, TX",
-    "Seattle, WA",
-    "Boston, MA",
-    "Philadelphia, PA",
-    "Washington, DC"
+    "San Diego, CA"
   ];
+  
+  const [otherLocation, setOtherLocation] = useState("");
+  const [showOtherLocationInput, setShowOtherLocationInput] = useState(
+    formData.location !== "" && !availableLocations.includes(formData.location)
+  );
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -127,7 +121,7 @@ export const AttorneyInformationForm = ({
           value={availableLocations.includes(formData.location) ? formData.location : "other"}
           onChange={handleLocationChange}
         >
-          <option value="">Select Location</option>
+          <option value="">Select your location</option>
           {availableLocations.map((location) => (
             <option key={location} value={location}>
               {location}
