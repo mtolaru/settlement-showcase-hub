@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { useState } from "react";
 
 interface ReviewStepProps {
   formData: {
@@ -29,6 +30,8 @@ export const ReviewStep = ({
   onCreateCheckout,
   onSubmitWithSubscription 
 }: ReviewStepProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const formatCurrency = (value: string) => {
     if (!value) return "N/A";
     
@@ -43,6 +46,16 @@ export const ReviewStep = ({
     if (phase === "pre-litigation") return "Pre-Litigation";
     if (phase === "during-litigation") return "During Litigation";
     return phase;
+  };
+  
+  const handleCheckout = () => {
+    setIsSubmitting(true);
+    onCreateCheckout();
+  };
+  
+  const handleSubmit = () => {
+    setIsSubmitting(true);
+    onSubmitWithSubscription();
   };
 
   return (
@@ -123,10 +136,11 @@ export const ReviewStep = ({
             Subscribe to our Professional Plan for $199/month to submit and showcase your settlements.
           </p>
           <Button 
-            onClick={onCreateCheckout}
+            onClick={handleCheckout}
             className="w-full bg-primary-500 hover:bg-primary-600"
+            disabled={isSubmitting}
           >
-            Subscribe Now
+            {isSubmitting ? "Processing..." : "Subscribe Now"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -134,10 +148,11 @@ export const ReviewStep = ({
 
       {hasActiveSubscription && (
         <Button 
-          onClick={onSubmitWithSubscription}
+          onClick={handleSubmit}
           className="w-full bg-primary-500 hover:bg-primary-600"
+          disabled={isSubmitting}
         >
-          Submit Settlement
+          {isSubmitting ? "Processing..." : "Submit Settlement"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       )}

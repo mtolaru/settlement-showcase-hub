@@ -15,6 +15,7 @@ const SubmissionConfirmation = () => {
   const [settlementData, setSettlementData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -109,18 +110,32 @@ const SubmissionConfirmation = () => {
       console.log("Found settlement data:", data);
       setSettlementData(data);
       
-      // Check if payment has been completed
-      if (!data.payment_completed) {
+      // Check if payment has been completed - only update if not completed yet
+      if (!data.payment_completed && !isUpdating) {
+        // Set flag to prevent concurrent updates
+        setIsUpdating(true);
+        
         // Try to update payment status
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ payment_completed: true })
-          .eq('temporary_id', tempId);
+          .eq('temporary_id', tempId)
+          .eq('payment_completed', false); // Only update if not already completed
           
         if (updateError) {
           console.error("Error updating payment status:", updateError);
         } else {
           console.log("Updated payment status to completed");
+          // Refresh settlement data to get updated record
+          const { data: refreshedData } = await supabase
+            .from('settlements')
+            .select('*')
+            .eq('temporary_id', tempId)
+            .maybeSingle();
+            
+          if (refreshedData) {
+            setSettlementData(refreshedData);
+          }
         }
       }
     } catch (error: any) {
@@ -134,6 +149,7 @@ const SubmissionConfirmation = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 

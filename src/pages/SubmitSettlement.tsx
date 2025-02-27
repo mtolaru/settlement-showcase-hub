@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -56,6 +55,8 @@ const SubmitSettlement = () => {
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionLock, setSubmissionLock] = useState(false);
   const [temporaryId, setTemporaryId] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -185,11 +186,37 @@ const SubmitSettlement = () => {
   };
 
   const handleSubmitWithSubscription = async () => {
+    // Prevent duplicate submissions
+    if (submissionLock) return;
+    setSubmissionLock(true);
+    setIsSubmitting(true);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
         throw new Error("No authenticated user found");
+      }
+
+      // Check if this temporaryId already has a completed payment
+      const { data: existingSettlement, error: checkError } = await supabase
+        .from('settlements')
+        .select('id')
+        .eq('temporary_id', temporaryId)
+        .eq('payment_completed', true)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing settlement:', checkError);
+      }
+
+      if (existingSettlement?.id) {
+        toast({
+          title: "Already Submitted",
+          description: "This settlement has already been processed. Redirecting to settlements page.",
+        });
+        navigate('/settlements');
+        return;
       }
 
       const submissionData = {
@@ -234,11 +261,18 @@ const SubmitSettlement = () => {
         title: "Error",
         description: "Failed to submit settlement. Please try again.",
       });
+    } finally {
+      setIsSubmitting(false);
+      // We don't reset the submissionLock here to prevent repeated submissions
     }
   };
 
   const createCheckoutSession = async () => {
+    // Prevent duplicate submissions
+    if (submissionLock) return;
+    setSubmissionLock(true);
     setIsLoading(true);
+    
     try {
       // First check if email already exists
       if (formData.attorneyEmail) {
@@ -249,6 +283,7 @@ const SubmitSettlement = () => {
             attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
           }));
           setIsLoading(false);
+          setSubmissionLock(false); // Reset lock if we're staying on the form
           setStep(2); // Go back to step 2
           return;
         }
@@ -263,32 +298,59 @@ const SubmitSettlement = () => {
       
       console.log("Using temporaryId for submission:", temporaryId);
       
-      const submissionData = {
-        amount: Number(unformatNumber(formData.amount)),
-        attorney: formData.attorneyName,
-        firm: formData.firmName,
-        firm_website: formData.firmWebsite,
-        location: formData.location,
-        type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
-        description: formData.caseDescription,
-        case_description: formData.caseDescription,
-        initial_offer: Number(unformatNumber(formData.initialOffer)),
-        policy_limit: Number(unformatNumber(formData.policyLimit)),
-        medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
-        settlement_phase: formData.settlementPhase,
-        photo_url: formData.photoUrl,
-        temporary_id: temporaryId,
-        user_id: session?.user?.id,
-        attorney_email: formData.attorneyEmail,
-        payment_completed: false,
-        created_at: new Date().toISOString()
-      };
-
-      const { error: settlementError } = await supabase
+      // Check if this temporaryId already has a record (to prevent duplicates)
+      const { data: existingSettlement, error: checkError } = await supabase
         .from('settlements')
-        .insert(submissionData);
+        .select('id, payment_completed')
+        .eq('temporary_id', temporaryId)
+        .maybeSingle();
 
-      if (settlementError) throw settlementError;
+      if (checkError) {
+        console.error('Error checking existing settlement:', checkError);
+      }
+
+      if (existingSettlement?.id) {
+        // If we have an existing record with payment completed, just redirect
+        if (existingSettlement.payment_completed) {
+          toast({
+            title: "Already Submitted",
+            description: "This settlement has already been processed. Redirecting to settlements page.",
+          });
+          navigate('/settlements');
+          return;
+        }
+        
+        // Otherwise, continue with the existing record
+        console.log("Found existing record for this temporaryId:", existingSettlement.id);
+      } else {
+        // Create a new record with payment_completed = false
+        const submissionData = {
+          amount: Number(unformatNumber(formData.amount)),
+          attorney: formData.attorneyName,
+          firm: formData.firmName,
+          firm_website: formData.firmWebsite,
+          location: formData.location,
+          type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
+          description: formData.caseDescription,
+          case_description: formData.caseDescription,
+          initial_offer: Number(unformatNumber(formData.initialOffer)),
+          policy_limit: Number(unformatNumber(formData.policyLimit)),
+          medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
+          settlement_phase: formData.settlementPhase,
+          photo_url: formData.photoUrl,
+          temporary_id: temporaryId,
+          user_id: session?.user?.id,
+          attorney_email: formData.attorneyEmail,
+          payment_completed: false,
+          created_at: new Date().toISOString()
+        };
+
+        const { error: settlementError } = await supabase
+          .from('settlements')
+          .insert(submissionData);
+
+        if (settlementError) throw settlementError;
+      }
 
       const returnUrl = `${window.location.origin}/confirmation?temporaryId=${temporaryId}`;
       
@@ -324,8 +386,10 @@ const SubmitSettlement = () => {
         title: "Error",
         description: "Failed to initiate checkout. Please try again.",
       });
+      setSubmissionLock(false); // Reset lock on error
     } finally {
       setIsLoading(false);
+      // We don't reset submissionLock here on success to prevent repeated submissions
     }
   };
 
@@ -452,9 +516,9 @@ const SubmitSettlement = () => {
                   <Button 
                     onClick={handleNextStep} 
                     className="bg-primary-500 hover:bg-primary-600"
-                    disabled={isLoading}
+                    disabled={isLoading || isSubmitting}
                   >
-                    {isLoading ? "Checking..." : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
+                    {isLoading || isSubmitting ? "Processing..." : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
               )}
