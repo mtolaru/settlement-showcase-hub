@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -146,7 +147,7 @@ const SubmitSettlement = () => {
     return !!data;
   };
 
-  const handleInputChange = async (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -157,13 +158,17 @@ const SubmitSettlement = () => {
     }));
 
     if (field === 'attorneyEmail' && value) {
-      const emailExists = await verifyEmail(value);
-      if (emailExists) {
-        setErrors(prev => ({
-          ...prev,
-          attorneyEmail: "This email is already associated with settlements. Please log in to submit another case or use a different email."
-        }));
-      }
+      // Perform email verification as a side effect
+      verifyEmail(value).then(emailExists => {
+        if (emailExists) {
+          setErrors(prev => ({
+            ...prev,
+            attorneyEmail: "This email is already associated with settlements. Please log in to submit another case or use a different email."
+          }));
+        }
+      }).catch(error => {
+        console.error('Error verifying email:', error);
+      });
     }
   };
 
@@ -193,6 +198,7 @@ const SubmitSettlement = () => {
         medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
         settlement_phase: formData.settlementPhase,
         photo_url: formData.photoUrl,
+        attorney_email: formData.attorneyEmail,
         user_id: session.user.id,
         payment_completed: true,
         created_at: new Date().toISOString()

@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           amount: number
           attorney: string
+          attorney_email: string | null
           case_description: string | null
           created_at: string
           description: string | null
@@ -33,6 +34,7 @@ export type Database = {
         Insert: {
           amount: number
           attorney: string
+          attorney_email?: string | null
           case_description?: string | null
           created_at?: string
           description?: string | null
@@ -53,6 +55,7 @@ export type Database = {
         Update: {
           amount?: number
           attorney?: string
+          attorney_email?: string | null
           case_description?: string | null
           created_at?: string
           description?: string | null
