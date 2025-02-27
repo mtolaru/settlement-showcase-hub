@@ -105,15 +105,20 @@ const SettlementDetail = () => {
             </Button>
           </Link>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-4xl font-bold font-display">
-              {formatCurrency(settlement.amount)} Settlement
-            </h1>
+            <div>
+              <h1 className="text-4xl font-bold font-display">
+                {formatCurrency(settlement.amount)} Settlement
+              </h1>
+              <div className="mt-2 text-primary-200">
+                {settlement.type}
+              </div>
+            </div>
             <ShareButton
               url={window.location.href}
               title={`${formatCurrency(settlement.amount)} Settlement - ${settlement.type}`}
               amount={settlement.amount.toString()}
               caseType={settlement.type}
-              variant="full"
+              variant="icon"
               className="bg-white text-primary-900 hover:bg-neutral-100"
             />
           </div>
@@ -124,11 +129,11 @@ const SettlementDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="aspect-w-16 aspect-h-9 bg-neutral-100">
+              <div className="aspect-w-16 aspect-h-9 bg-neutral-100 relative" style={{ height: "400px" }}>
                 <img
                   src={settlement.photo_url || "/placeholder.svg"}
                   alt={`${settlement.type} case`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover absolute inset-0"
                 />
               </div>
               <div className="p-6">
@@ -265,15 +270,69 @@ const SettlementDetail = () => {
             </div>
 
             <div className="bg-primary-50 rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-semibold mb-4">Share This Settlement</h2>
-              <ShareButton
-                url={window.location.href}
-                title={`${formatCurrency(settlement.amount)} Settlement - ${settlement.type}`}
-                amount={settlement.amount.toString()}
-                caseType={settlement.type}
-                variant="full"
-                className="w-full"
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="w-full bg-[#0077B5] hover:bg-[#005885] flex items-center justify-center"
+                  onClick={() => {
+                    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`, '_blank');
+                  }}
+                >
+                  <span className="flex items-center">
+                    <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                    </svg>
+                    LinkedIn
+                  </span>
+                </Button>
+                <Button
+                  className="w-full bg-[#000000] hover:bg-[#333333] flex items-center justify-center"
+                  onClick={() => {
+                    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out this ${formatCurrency(settlement.amount)} settlement for a ${settlement.type} case`)}`, '_blank');
+                  }}
+                >
+                  <span className="flex items-center">
+                    <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    X
+                  </span>
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Button
+                  className="w-full bg-primary-600 hover:bg-primary-700 flex items-center justify-center"
+                  onClick={() => {
+                    window.location.href = `mailto:?subject=${encodeURIComponent(`${formatCurrency(settlement.amount)} Settlement - ${settlement.type}`)}&body=${encodeURIComponent(`Check out this ${formatCurrency(settlement.amount)} settlement for a ${settlement.type} case: ${window.location.href}`)}`;
+                  }}
+                >
+                  <span className="flex items-center">
+                    <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    Email
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast({
+                      title: "Link copied!",
+                      description: "Settlement link copied to clipboard",
+                    });
+                  }}
+                >
+                  <span className="flex items-center">
+                    <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                    Copy Link
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
