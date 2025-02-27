@@ -67,12 +67,16 @@ export const ShareButton = ({
   };
 
   const handleLinkedInShare = () => {
-    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(getShareUrl('linkedin'))}&summary=${encodeURIComponent(shareMessage)}`;
+    // First, copy the share text to clipboard for LinkedIn
+    navigator.clipboard.writeText(shareMessage);
+    
+    // Then open LinkedIn sharing dialog with just the URL
+    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(getShareUrl('linkedin'))}`;
     window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
     
     toast({
       title: "Opening LinkedIn",
-      description: "Share your success with your professional network",
+      description: "Share text copied to clipboard for LinkedIn sharing",
       variant: "info"
     });
   };
