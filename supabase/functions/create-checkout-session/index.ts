@@ -32,10 +32,11 @@ serve(async (req) => {
     });
 
     // Get request body
-    const { priceId, userId, returnUrl } = await req.json();
+    const requestData = await req.json();
+    const { temporaryId, userId, returnUrl } = requestData;
     
-    if (!priceId || !userId || !returnUrl) {
-      console.error('Missing required parameters:', { priceId, userId, returnUrl });
+    if (!returnUrl) {
+      console.error('Missing required parameters:', requestData);
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }), 
         { 
@@ -45,7 +46,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('Creating checkout session with:', { priceId, userId, returnUrl });
+    console.log('Creating checkout session with:', requestData);
+
+    // For backwards compatibility, accept either direct priceId or default to subscription price
+    const priceId = requestData.priceId || 'price_1QwpUFDEE7vEKM2KYdBYUIq6';
 
     const session = await stripe.checkout.sessions.create({
       success_url: returnUrl,
@@ -57,9 +61,10 @@ serve(async (req) => {
           quantity: 1,
         },
       ],
-      client_reference_id: userId,
+      client_reference_id: userId || temporaryId,
       metadata: {
-        userId: userId,
+        userId: userId || temporaryId,
+        temporaryId: temporaryId || '',
       },
     });
 

@@ -55,6 +55,7 @@ const SubmitSettlement = () => {
   const [step, setStep] = useState(1);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
@@ -198,6 +199,7 @@ const SubmitSettlement = () => {
   };
 
   const createCheckoutSession = async () => {
+    setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -229,15 +231,27 @@ const SubmitSettlement = () => {
 
       if (settlementError) throw settlementError;
 
+      // Open checkout in a new tab
+      const returnUrl = `${window.location.origin}/confirmation?temporaryId=${temporaryId}`;
+      
+      console.log("Creating checkout session with: ", {
+        temporaryId,
+        userId: session?.user?.id,
+        returnUrl
+      });
+      
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
           temporaryId,
           userId: session?.user?.id,
-          returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
+          returnUrl,
         },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        console.error('Error creating checkout session:', response.error);
+        throw response.error;
+      }
 
       const { url } = response.data;
       if (url) {
@@ -252,6 +266,8 @@ const SubmitSettlement = () => {
         title: "Error",
         description: "Failed to initiate checkout. Please try again.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
