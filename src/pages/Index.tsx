@@ -1,17 +1,22 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Hero from "@/components/home/Hero";
 import LocationSelector from "@/components/home/LocationSelector";
 import SettlementCard from "@/components/home/SettlementCard";
 import WhyShare from "@/components/home/WhyShare";
 import CallToAction from "@/components/home/CallToAction";
-import { settlements } from "@/data/settlements";
-import { ArrowRight, Trophy, Clock, FileQuestion } from "lucide-react";
+import { ArrowRight, Trophy, Clock, FileQuestion, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import type { Settlement } from "@/types/settlement";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const [selectedCity, setSelectedCity] = useState("all");
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
   
   const cities = [
     { name: "All Cities", active: true, location: "all" },
@@ -20,20 +25,54 @@ const Index = () => {
     { name: "Los Angeles", active: true, location: "Los Angeles, CA" },
   ];
 
+  // Fetch settlements from Supabase
+  useEffect(() => {
+    const fetchSettlements = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('payment_completed', true); // Only show paid/completed settlements
+
+        if (error) {
+          throw error;
+        }
+
+        console.log('Fetched settlements for homepage:', data);
+        setSettlements(data || []);
+      } catch (error) {
+        console.error('Error fetching settlements:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load settlements. Please try again.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettlements();
+  }, [toast]);
+
+  // Filter settlements based on selected city
+  const filteredSettlements = settlements.filter(settlement => 
+    selectedCity === "all" || settlement.location === selectedCity
+  );
+
   // Sort settlements by created_at for recent cases
-  const recentSettlements = [...settlements]
+  const recentSettlements = [...filteredSettlements]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .filter(settlement => selectedCity === "all" || settlement.location === selectedCity)
     .slice(0, 3);
 
   // Sort settlements by amount for top settlements
-  const topSettlements = [...settlements]
+  const topSettlements = [...filteredSettlements]
     .sort((a, b) => b.amount - a.amount)
-    .filter(settlement => selectedCity === "all" || settlement.location === selectedCity)
     .slice(0, 3);
 
   // Format the settlement data to match the SettlementCard props
-  const formatSettlement = (settlement: typeof settlements[0]) => ({
+  const formatSettlement = (settlement: Settlement) => ({
     id: settlement.id,
     type: settlement.type,
     amount: `$${(settlement.amount).toLocaleString()}`,
@@ -44,6 +83,18 @@ const Index = () => {
     date: new Date(settlement.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
     photo_url: settlement.photo_url
   });
+
+  const LoadingState = () => (
+    <div className="col-span-1 md:col-span-3 py-16 flex flex-col items-center justify-center">
+      <Loader2 className="h-12 w-12 text-primary-400 animate-spin mb-4" />
+      <h3 className="text-lg font-medium text-neutral-900 mb-2">
+        Loading Settlements
+      </h3>
+      <p className="text-neutral-600 text-center max-w-md">
+        Please wait while we fetch the latest settlement data...
+      </p>
+    </div>
+  );
 
   const EmptyState = ({ type }: { type: "recent" | "top" }) => (
     <div className="col-span-1 md:col-span-3 py-16 flex flex-col items-center justify-center bg-white rounded-lg border border-dashed border-neutral-300">
@@ -93,7 +144,9 @@ const Index = () => {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {recentSettlements.length > 0 ? (
+            {isLoading ? (
+              <LoadingState />
+            ) : recentSettlements.length > 0 ? (
               recentSettlements.map((settlement) => (
                 <SettlementCard 
                   key={settlement.id} 
@@ -129,7 +182,9 @@ const Index = () => {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {topSettlements.length > 0 ? (
+            {isLoading ? (
+              <LoadingState />
+            ) : topSettlements.length > 0 ? (
               topSettlements.map((settlement) => (
                 <SettlementCard 
                   key={settlement.id} 

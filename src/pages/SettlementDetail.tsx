@@ -1,169 +1,217 @@
 
-import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trophy, ArrowRight } from "lucide-react";
-import { settlements } from "@/data/settlements";
+import { ArrowLeft, Building2, Calendar, DollarSign, ClipboardCheck, PieChart, Stethoscope, Award, Loader2 } from "lucide-react";
 import { ShareButton } from "@/components/sharing/ShareButton";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { Settlement } from "@/types/settlement";
 
 const SettlementDetail = () => {
-  const { id } = useParams();
-  const settlement = settlements.find(s => s.id === Number(id));
+  const { id } = useParams<{ id: string }>();
+  const [settlement, setSettlement] = useState<Settlement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const formatAmount = (amount: number) => {
-    return amount.toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    });
-  };
+  useEffect(() => {
+    const fetchSettlement = async () => {
+      if (!id) return;
 
-  const formatSettlementPhase = (phase: string | null) => {
-    if (!phase) return '';
-    
-    switch (phase.toLowerCase()) {
-      case 'pre-litigation':
-        return 'Pre-Litigation';
-      case 'during-litigation':
-        return 'During Litigation';
-      default:
-        return phase;
-    }
-  };
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('id', id)
+          .eq('payment_completed', true)
+          .single();
+
+        if (error) {
+          console.error('Error fetching settlement:', error);
+          throw new Error("Settlement not found");
+        }
+
+        setSettlement(data);
+      } catch (error) {
+        console.error('Error:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Settlement not found or could not be loaded",
+        });
+        navigate('/settlements');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettlement();
+  }, [id, toast, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+          <p className="text-neutral-600">Fetching settlement details</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!settlement) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Settlement Not Found</h1>
+        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Settlement Not Found</h2>
+          <p className="text-neutral-600 mb-4">
+            The settlement you're looking for couldn't be found or may have been removed.
+          </p>
           <Link to="/settlements">
-            <Button variant="default">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Leaderboard
-            </Button>
+            <Button>View All Settlements</Button>
           </Link>
         </div>
       </div>
     );
   }
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
       <div className="bg-primary-900 text-white py-12">
         <div className="container">
           <Link to="/settlements">
             <Button variant="ghost" className="text-white mb-6">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Leaderboard
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Settlements
             </Button>
           </Link>
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-4xl font-bold font-display mb-2">
-                {formatAmount(settlement.amount)} Settlement
-              </h1>
-              <p className="text-primary-200">{settlement.type}</p>
-            </div>
-            <ShareButton 
-              url={`${window.location.origin}/settlements/${id}`}
-              title={`${formatAmount(settlement.amount)} Settlement - ${settlement.type}`}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h1 className="text-4xl font-bold font-display">
+              {formatCurrency(settlement.amount)} Settlement
+            </h1>
+            <ShareButton
+              url={window.location.href}
+              title={`${formatCurrency(settlement.amount)} Settlement - ${settlement.type}`}
               amount={settlement.amount.toString()}
               caseType={settlement.type}
-              variant="button"
-              className="outline-on-dark"
+              variant="full"
+              className="bg-white text-primary-900 hover:bg-neutral-100"
             />
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="container py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h2 className="text-xl font-bold mb-4">Case Overview</h2>
-              <p className="text-neutral-600">{settlement.description}</p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h2 className="text-xl font-bold mb-4">Case Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Initial Settlement Offer */}
-                <div className="p-4 bg-neutral-50 rounded-md">
-                  <p className="text-sm text-neutral-500">Initial Settlement Offer</p>
-                  <p className="font-medium text-neutral-900">
-                    {settlement.initial_offer ? formatAmount(settlement.initial_offer) : 'N/A'}
-                  </p>
+      <div className="container py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="aspect-w-16 aspect-h-9 bg-neutral-100">
+                <img
+                  src={settlement.photo_url || "/placeholder.svg"}
+                  alt={`${settlement.type} case`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {settlement.type}
+                  </span>
+                  <span className="inline-block bg-neutral-100 text-neutral-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {settlement.settlement_phase === 'pre-litigation' 
+                      ? 'Pre-Litigation'
+                      : settlement.settlement_phase === 'during-litigation'
+                      ? 'During Litigation'
+                      : settlement.settlement_phase === 'post-trial'
+                      ? 'Post-Trial'
+                      : 'Settlement'}
+                  </span>
                 </div>
+                <h2 className="text-xl font-semibold mt-2 mb-1">Case Overview</h2>
+                <p className="text-neutral-700 mb-6">
+                  {settlement.case_description || settlement.description}
+                </p>
 
-                {/* Insurance Policy Limit */}
-                <div className="p-4 bg-neutral-50 rounded-md">
-                  <p className="text-sm text-neutral-500">Insurance Policy Limit</p>
-                  <p className="font-medium text-neutral-900">
-                    {settlement.policy_limit ? formatAmount(settlement.policy_limit) : 'N/A'}
-                  </p>
-                </div>
-
-                {/* Medical Expenses */}
-                <div className="p-4 bg-neutral-50 rounded-md">
-                  <p className="text-sm text-neutral-500">Medical Expenses</p>
-                  <p className="font-medium text-neutral-900">
-                    {settlement.medical_expenses ? formatAmount(settlement.medical_expenses) : 'N/A'}
-                  </p>
-                </div>
-
-                {/* Settlement Phase */}
-                <div className="p-4 bg-neutral-50 rounded-md">
-                  <p className="text-sm text-neutral-500">Settlement Phase</p>
-                  <p className="font-medium text-neutral-900">
-                    {formatSettlementPhase(settlement.settlement_phase)}
-                  </p>
+                <div className="border-t border-neutral-200 pt-6 mt-6">
+                  <h3 className="text-lg font-semibold mb-4">Settlement Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {settlement.initial_offer && (
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-primary-100 p-2">
+                          <ClipboardCheck className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div>
+                          <dt className="text-sm text-neutral-500">Initial Offer</dt>
+                          <dd className="font-medium">{formatCurrency(settlement.initial_offer)}</dd>
+                        </div>
+                      </div>
+                    )}
+                    {settlement.policy_limit && (
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-primary-100 p-2">
+                          <Award className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div>
+                          <dt className="text-sm text-neutral-500">Policy Limit</dt>
+                          <dd className="font-medium">{formatCurrency(settlement.policy_limit)}</dd>
+                        </div>
+                      </div>
+                    )}
+                    {settlement.medical_expenses && (
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-primary-100 p-2">
+                          <Stethoscope className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div>
+                          <dt className="text-sm text-neutral-500">Medical Expenses</dt>
+                          <dd className="font-medium">{formatCurrency(settlement.medical_expenses)}</dd>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-primary-100 p-2">
+                        <PieChart className="h-5 w-5 text-primary-600" />
+                      </div>
+                      <div>
+                        <dt className="text-sm text-neutral-500">Settlement/Medical Ratio</dt>
+                        <dd className="font-medium">
+                          {settlement.medical_expenses 
+                            ? `${(settlement.amount / settlement.medical_expenses).toFixed(1)}x`
+                            : 'N/A'}
+                        </dd>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h2 className="text-xl font-bold mb-4">Attorney Information</h2>
-              <div className="flex gap-6">
-                {settlement.photo_url && (
-                  <img
-                    src={settlement.photo_url}
-                    alt={settlement.attorney}
-                    className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-neutral-500">Attorney</p>
-                    <p className="font-medium">{settlement.attorney}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-neutral-500">Firm</p>
-                    <p className="font-medium">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-6">Attorney Information</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-lg">{settlement.attorney}</h3>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-neutral-700">
                       {settlement.firmWebsite ? (
-                        <a 
-                          href={settlement.firmWebsite}
+                        <a
+                          href={settlement.firmWebsite.startsWith('http') ? settlement.firmWebsite : `https://${settlement.firmWebsite}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-primary-600 hover:underline"
                         >
                           {settlement.firm}
                         </a>
@@ -171,34 +219,54 @@ const SettlementDetail = () => {
                         settlement.firm
                       )}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-neutral-500">Location</p>
-                    <p className="font-medium">{settlement.location}</p>
+                    <div className="flex items-center text-neutral-600">
+                      <Building2 className="h-4 w-4 mr-1" />
+                      {settlement.location}
+                    </div>
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-primary-50 rounded-lg shadow-md p-6"
-            >
-              <div className="flex items-center gap-3 text-primary-900 mb-4">
-                <Trophy className="h-5 w-5" />
-                <h2 className="text-lg font-bold">Submit Your Settlement</h2>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">Settlement Summary</h2>
+              <div className="space-y-4">
+                <div className="pb-3 border-b border-neutral-100">
+                  <div className="flex items-center gap-2 text-neutral-600 mb-1">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="text-sm">Final Amount</span>
+                  </div>
+                  <div className="text-2xl font-bold text-primary-700">
+                    {formatCurrency(settlement.amount)}
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 text-neutral-600 mb-1">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">Settlement Date</span>
+                  </div>
+                  <div>
+                    {new Date(settlement.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </div>
+                </div>
               </div>
-              <p className="text-neutral-600 mb-4">
-                Join the leading attorneys showcasing their success stories.
-              </p>
-              <Link to="/submit">
-                <Button className="w-full bg-primary-500 hover:bg-primary-600">
-                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </motion.div>
+            </div>
+
+            <div className="bg-primary-50 rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">Share This Settlement</h2>
+              <ShareButton
+                url={window.location.href}
+                title={`${formatCurrency(settlement.amount)} Settlement - ${settlement.type}`}
+                amount={settlement.amount.toString()}
+                caseType={settlement.type}
+                variant="social"
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
       </div>
