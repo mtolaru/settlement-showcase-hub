@@ -19,15 +19,30 @@ const SubmissionConfirmation = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Get temporaryId from URL parameters
+  // Get temporaryId from URL parameters - handle both formats
   const params = new URLSearchParams(window.location.search);
-  const temporaryId = params.get("temporaryId");
+  let temporaryId = params.get("temporaryId");
+  
+  // Clean the temporaryId in case it contains extra parameters
+  if (temporaryId && temporaryId.includes('?')) {
+    temporaryId = temporaryId.split('?')[0];
+  }
+  
+  // Also handle session_id format from Stripe
+  const sessionId = params.get("session_id");
 
   const handleClose = () => {
     setShowCreateAccount(false);
   };
 
   useEffect(() => {
+    // If we have a sessionId but no temporaryId, try to fetch the settlement based on session data
+    if (sessionId && !temporaryId) {
+      console.log("No temporaryId but found sessionId:", sessionId);
+      fetchSettlementBySessionId(sessionId);
+      return;
+    }
+    
     if (!temporaryId) {
       setIsLoading(false);
       setError("No settlement ID found in URL");
@@ -36,19 +51,50 @@ const SubmissionConfirmation = () => {
     
     console.log("Attempting to fetch settlement with temporary ID:", temporaryId);
     fetchSettlementData();
-  }, [temporaryId]);
+  }, [temporaryId, sessionId]);
 
-  const fetchSettlementData = async () => {
-    if (!temporaryId) return;
+  const fetchSettlementBySessionId = async (sessionId: string) => {
+    try {
+      console.log("Attempting to fetch settlement by session ID:", sessionId);
+      
+      // First try to find subscription with this payment_id
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .select('temporary_id')
+        .eq('payment_id', sessionId)
+        .maybeSingle();
+      
+      if (subscriptionError) {
+        console.error("Error fetching subscription:", subscriptionError);
+      }
+      
+      if (subscriptionData?.temporary_id) {
+        console.log("Found temporary_id from subscription:", subscriptionData.temporary_id);
+        // Use this temporary_id to fetch the settlement
+        fetchSettlementData(subscriptionData.temporary_id);
+        return;
+      }
+      
+      setIsLoading(false);
+      setError("Could not find settlement data. Please try refreshing the page or contact support.");
+    } catch (error) {
+      console.error("Error in fetchSettlementBySessionId:", error);
+      setIsLoading(false);
+      setError("Could not find settlement data. Please try refreshing the page or contact support.");
+    }
+  };
+
+  const fetchSettlementData = async (tempId = temporaryId) => {
+    if (!tempId) return;
     
     try {
-      console.log("Fetching settlement data for temporaryId:", temporaryId);
+      console.log("Fetching settlement data for temporaryId:", tempId);
       
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
-        .eq('temporary_id', temporaryId)
-        .single();
+        .eq('temporary_id', tempId)
+        .maybeSingle();
       
       if (error) {
         console.error('Error fetching settlement data:', error);
@@ -56,7 +102,7 @@ const SubmissionConfirmation = () => {
       }
       
       if (!data) {
-        console.error('Settlement not found for temporaryId:', temporaryId);
+        console.error('Settlement not found for temporaryId:', tempId);
         throw new Error('Settlement not found');
       }
 
@@ -69,7 +115,7 @@ const SubmissionConfirmation = () => {
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ payment_completed: true })
-          .eq('temporary_id', temporaryId);
+          .eq('temporary_id', tempId);
           
         if (updateError) {
           console.error("Error updating payment status:", updateError);
@@ -91,8 +137,8 @@ const SubmissionConfirmation = () => {
     }
   };
 
-  // Show create account prompt only for non-authenticated users with a temporaryId
-  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && temporaryId;
+  // Show create account prompt only for non-authenticated users with a temporaryId and settlement data
+  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && (temporaryId || settlementData?.temporary_id) && settlementData;
 
   if (isLoading) {
     return (
@@ -147,7 +193,10 @@ const SubmissionConfirmation = () => {
       <div className="container py-12">
         <div className="max-w-xl mx-auto">
           {shouldShowCreateAccount ? (
-            <CreateAccountPrompt temporaryId={temporaryId} onClose={handleClose} />
+            <CreateAccountPrompt 
+              temporaryId={settlementData?.temporary_id || temporaryId} 
+              onClose={handleClose} 
+            />
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}

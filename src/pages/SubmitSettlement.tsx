@@ -56,6 +56,7 @@ const SubmitSettlement = () => {
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [temporaryId, setTemporaryId] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
   const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
@@ -101,6 +102,8 @@ const SubmitSettlement = () => {
 
   useEffect(() => {
     checkSubscriptionStatus();
+    // Generate a temporary ID when the component mounts
+    setTemporaryId(crypto.randomUUID());
   }, []);
 
   const checkSubscriptionStatus = async () => {
@@ -206,6 +209,7 @@ const SubmitSettlement = () => {
         attorney_email: formData.attorneyEmail,
         user_id: session.user.id,
         payment_completed: true,
+        temporary_id: temporaryId,
         created_at: new Date().toISOString()
       };
 
@@ -252,7 +256,12 @@ const SubmitSettlement = () => {
       
       const { data: { session } } = await supabase.auth.getSession();
       
-      const temporaryId = crypto.randomUUID();
+      // Ensure we have a temporaryId
+      if (!temporaryId) {
+        setTemporaryId(crypto.randomUUID());
+      }
+      
+      console.log("Using temporaryId for submission:", temporaryId);
       
       const submissionData = {
         amount: Number(unformatNumber(formData.amount)),
@@ -304,7 +313,7 @@ const SubmitSettlement = () => {
 
       const { url } = response.data;
       if (url) {
-        window.open(url, '_blank');
+        window.location.href = url; // Use direct navigation instead of window.open
       } else {
         throw new Error('No checkout URL received');
       }
