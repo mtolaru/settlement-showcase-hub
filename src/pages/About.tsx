@@ -1,7 +1,9 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Award, Shield, DollarSign, Users, Clock, Sparkles, Briefcase, LineChart, Share2, Lightbulb } from "lucide-react";
 import { Link } from "react-router-dom";
+
 const About = () => {
   const features = [{
     title: "Showcase Your Success",
@@ -36,7 +38,7 @@ const About = () => {
     description: "Select the visibility package that best suits your needs and goals with no long-term commitments."
   }, {
     title: "Get Featured",
-    description: "Your settlement will be showcased in our gallery, attracting potential clients and recognition immediately after submission."
+    description: "Your settlement will be showcased in our gallery, attracting potential clients and recognition."
   }];
   return <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -135,7 +137,7 @@ const About = () => {
             <div className="flex items-start">
               <Users className="h-8 w-8 text-primary-500 mr-4 mt-1" />
               <div>
-                <h3 className="text-xl font-bold mb-3">Built for Attorneys, By Attorney</h3>
+                <h3 className="text-xl font-bold mb-3">Built for Attorneys, By Legal Experts</h3>
                 <p className="text-neutral-600">
                   Our platform was designed with deep understanding of the legal profession and the unique marketing challenges faced by attorneys.
                 </p>
