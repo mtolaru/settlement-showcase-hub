@@ -41,9 +41,16 @@ const Index = () => {
 
         console.log('Fetched settlements for homepage:', data);
         
+        // Add settlement_date with fallback to created_at if it doesn't exist
+        const processedData = data?.map(settlement => ({
+          ...settlement,
+          settlement_date: settlement.settlement_date || settlement.created_at,
+          firmWebsite: settlement.firm_website
+        })) || [];
+        
         // Deduplicate settlements by ID (in case there are duplicates in the database)
-        const uniqueSettlements = data ? 
-          Array.from(new Map(data.map(item => [item.id, item])).values()) : 
+        const uniqueSettlements = processedData ? 
+          Array.from(new Map(processedData.map(item => [item.id, item])).values()) : 
           [];
           
         console.log('Unique settlements after deduplication:', uniqueSettlements.length);

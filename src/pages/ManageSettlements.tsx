@@ -142,7 +142,15 @@ const ManageSettlements = () => {
             console.error('Error fetching settlements by temporary_id:', tempError);
           } else if (tempData && tempData.length > 0) {
             console.log('Found settlements by temporary_id:', tempData);
-            setSettlements(tempData);
+            
+            // Process the data to ensure all required fields exist
+            const processedData = tempData.map(settlement => ({
+              ...settlement,
+              settlement_date: settlement.settlement_date || settlement.created_at,
+              firmWebsite: settlement.firm_website
+            }));
+            
+            setSettlements(processedData);
             
             // Update these settlements with the user_id
             const { error: updateError } = await supabase
@@ -162,7 +170,15 @@ const ManageSettlements = () => {
       }
       
       console.log('Found settlements:', data);
-      setSettlements(data || []);
+      
+      // Process the data to ensure all required fields exist
+      const processedData = (data || []).map(settlement => ({
+        ...settlement,
+        settlement_date: settlement.settlement_date || settlement.created_at,
+        firmWebsite: settlement.firm_website
+      }));
+      
+      setSettlements(processedData);
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
       toast({

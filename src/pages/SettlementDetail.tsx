@@ -41,7 +41,14 @@ const SettlementDetail = () => {
           throw new Error("Settlement not found");
         }
 
-        setSettlement(data);
+        // Process to ensure all required fields exist
+        const processedData = {
+          ...data,
+          settlement_date: data.settlement_date || data.created_at,
+          firmWebsite: data.firm_website
+        };
+
+        setSettlement(processedData);
       } catch (error) {
         console.error('Error:', error);
         toast({

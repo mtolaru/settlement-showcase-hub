@@ -56,14 +56,13 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     try {
       console.log("Creating account for temporaryId:", temporaryId);
       
-      // First try to sign up - Supabase will handle duplicate email checking
+      // Sign up with the provided email and password
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/manage`,
           data: {
-            temporaryId: temporaryId
+            temporaryId
           }
         }
       });
@@ -71,15 +70,55 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       if (signUpError) {
         // Handle the case where email is already registered
         if (signUpError.message?.toLowerCase().includes('email already registered')) {
-          toast({
-            variant: "destructive",
-            title: "Email already registered",
-            description: "This email is already in use. Please use a different email or log in to your existing account.",
+          // If the email is already registered, try to sign in instead
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password
           });
-          setIsLoading(false);
-          return;
+          
+          if (signInError) {
+            toast({
+              variant: "destructive",
+              title: "Error signing in",
+              description: "Invalid credentials. If you already have an account, please use the correct password.",
+            });
+            setIsLoading(false);
+            return;
+          }
+          
+          if (signInData.user) {
+            console.log("User signed in successfully:", signInData.user.id);
+            
+            // Update the settlement with the user ID
+            const { error: updateError } = await supabase
+              .from('settlements')
+              .update({ user_id: signInData.user.id })
+              .eq('temporary_id', temporaryId);
+
+            if (updateError) {
+              console.error("Error updating settlement:", updateError);
+            } else {
+              console.log("Settlement updated with user_id");
+            }
+            
+            toast({
+              title: "Signed in successfully!",
+              description: "You have been logged in to your existing account.",
+            });
+            
+            navigate("/manage");
+            onClose();
+            return;
+          }
         }
-        throw signUpError;
+        
+        toast({
+          variant: "destructive",
+          title: "Error creating account",
+          description: signUpError.message || "An unexpected error occurred. Please try again.",
+        });
+        setIsLoading(false);
+        return;
       }
 
       if (signUpData.user) {
@@ -94,11 +133,10 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
           if (updateError) {
             console.error("Error updating settlement:", updateError);
-            throw updateError;
+          } else {
+            console.log("Settlement updated with user_id");
           }
           
-          console.log("Settlement updated with user_id");
-
           // Also update any subscription record with the same temporary_id
           const { error: subscriptionError } = await supabase
             .from('subscriptions')
@@ -107,13 +145,11 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
           if (subscriptionError) {
             console.error("Error updating subscription:", subscriptionError);
-            // Continue anyway - this is not critical
           } else {
             console.log("Subscription updated with user_id");
           }
         } catch (error) {
           console.error("Error in database updates after signup:", error);
-          // Continue anyway - the user is still created
         }
 
         if (signUpData.session) {
