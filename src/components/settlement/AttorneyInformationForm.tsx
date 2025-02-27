@@ -52,6 +52,14 @@ export const AttorneyInformationForm = ({
     handleInputChange("location", value);
   };
 
+  // Determine the current selection value for the dropdown
+  const getSelectedValue = () => {
+    if (!formData.location) return "";
+    if (availableLocations.includes(formData.location)) return formData.location;
+    if (formData.location && !availableLocations.includes(formData.location)) return "other";
+    return "";
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -118,7 +126,7 @@ export const AttorneyInformationForm = ({
         <label className="form-label">Location*</label>
         <select
           className="form-input w-full rounded-md border border-neutral-200 p-2"
-          value={availableLocations.includes(formData.location) ? formData.location : "other"}
+          value={getSelectedValue()}
           onChange={handleLocationChange}
         >
           <option value="">Select your location</option>
