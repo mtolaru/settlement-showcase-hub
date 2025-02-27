@@ -25,6 +25,10 @@ const ManageSettlements = () => {
   const { checkAuth, signOut, user } = useAuth();
 
   useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  useEffect(() => {
     if (user) {
       fetchSubscriptionStatus();
       fetchSettlements();
@@ -58,14 +62,38 @@ const ManageSettlements = () => {
       
       if (!subscriptionData) {
         console.log('No active subscription found');
-      } else {
-        console.log('Active subscription details:', {
-          id: subscriptionData.id,
-          payment_id: subscriptionData.payment_id,
-          is_active: subscriptionData.is_active,
-          starts_at: subscriptionData.starts_at,
-          ends_at: subscriptionData.ends_at
-        });
+        
+        // Try to fetch by temporary ID if no direct user_id match
+        if (user.user_metadata?.temporaryId) {
+          const tempId = user.user_metadata.temporaryId;
+          console.log('Checking for subscription with temporary_id:', tempId);
+          
+          const { data: tempSubscription, error: tempError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('temporary_id', tempId)
+            .eq('is_active', true)
+            .maybeSingle();
+            
+          if (tempError) {
+            console.error('Error fetching subscription by temporary_id:', tempError);
+          } else if (tempSubscription) {
+            console.log('Found subscription by temporary_id:', tempSubscription);
+            setSubscription(tempSubscription);
+            
+            // Update the subscription with the user_id
+            const { error: updateError } = await supabase
+              .from('subscriptions')
+              .update({ user_id: user.id })
+              .eq('id', tempSubscription.id);
+              
+            if (updateError) {
+              console.error('Error updating subscription with user_id:', updateError);
+            } else {
+              console.log('Updated subscription with user_id');
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
@@ -95,6 +123,42 @@ const ManageSettlements = () => {
       if (error) {
         console.error('Error fetching settlements:', error);
         throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        console.log('No settlements found for user_id. Checking temporary_id...');
+        
+        // Try to find settlements by temporary ID
+        if (user.user_metadata?.temporaryId) {
+          const tempId = user.user_metadata.temporaryId;
+          
+          const { data: tempData, error: tempError } = await supabase
+            .from('settlements')
+            .select('*')
+            .eq('temporary_id', tempId)
+            .order('created_at', { ascending: false });
+            
+          if (tempError) {
+            console.error('Error fetching settlements by temporary_id:', tempError);
+          } else if (tempData && tempData.length > 0) {
+            console.log('Found settlements by temporary_id:', tempData);
+            setSettlements(tempData);
+            
+            // Update these settlements with the user_id
+            const { error: updateError } = await supabase
+              .from('settlements')
+              .update({ user_id: user.id })
+              .eq('temporary_id', tempId);
+              
+            if (updateError) {
+              console.error('Error updating settlements with user_id:', updateError);
+            } else {
+              console.log('Updated settlements with user_id');
+            }
+            
+            return;
+          }
+        }
       }
       
       console.log('Found settlements:', data);
