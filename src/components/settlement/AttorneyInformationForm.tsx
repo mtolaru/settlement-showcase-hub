@@ -1,6 +1,7 @@
 
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/components/ImageUpload";
+import { useState } from "react";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -22,6 +23,41 @@ export const AttorneyInformationForm = ({
   handleInputChange,
   handleImageUpload,
 }: AttorneyInformationFormProps) => {
+  const [otherLocation, setOtherLocation] = useState("");
+  const [showOtherLocationInput, setShowOtherLocationInput] = useState(formData.location !== "" && !availableLocations.includes(formData.location));
+
+  // Locations that are available for filtering
+  const availableLocations = [
+    "Los Angeles, CA",
+    "San Francisco, CA",
+    "New York, NY",
+    "Chicago, IL",
+    "Miami, FL",
+    "Dallas, TX",
+    "Houston, TX",
+    "Seattle, WA",
+    "Boston, MA",
+    "Philadelphia, PA",
+    "Washington, DC"
+  ];
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === "other") {
+      setShowOtherLocationInput(true);
+      // Don't update the formData location yet, wait for the user to input the custom location
+    } else {
+      setShowOtherLocationInput(false);
+      handleInputChange("location", value);
+    }
+  };
+
+  const handleOtherLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOtherLocation(value);
+    handleInputChange("location", value);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -86,12 +122,29 @@ export const AttorneyInformationForm = ({
 
       <div>
         <label className="form-label">Location*</label>
-        <Input
-          type="text"
-          value={formData.location}
-          onChange={(e) => handleInputChange("location", e.target.value)}
-          placeholder="Los Angeles, CA"
-        />
+        <select
+          className="form-input w-full rounded-md border border-neutral-200 p-2"
+          value={availableLocations.includes(formData.location) ? formData.location : "other"}
+          onChange={handleLocationChange}
+        >
+          <option value="">Select Location</option>
+          {availableLocations.map((location) => (
+            <option key={location} value={location}>
+              {location}
+            </option>
+          ))}
+          <option value="other">Other</option>
+        </select>
+        {showOtherLocationInput && (
+          <div className="mt-2">
+            <Input
+              type="text"
+              value={otherLocation || formData.location}
+              onChange={handleOtherLocationChange}
+              placeholder="Please specify your location (City, State)"
+            />
+          </div>
+        )}
         {errors.location && (
           <p className="text-red-500 text-sm mt-1">{errors.location}</p>
         )}

@@ -18,7 +18,7 @@ const LocationSelector = ({ cities, onCitySelect, selectedCity }: LocationSelect
   return (
     <section className="bg-neutral-50 border-b border-neutral-200">
       <div className="container py-4">
-        <div className="flex justify-center gap-8">
+        <div className="flex justify-center gap-8 flex-wrap">
           {cities.map((city) => (
             <button
               key={city.name}
