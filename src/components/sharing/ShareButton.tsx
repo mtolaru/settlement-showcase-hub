@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Share2, Linkedin, Twitter, Mail, Copy, CheckCircle2 } from "lucide-react";
+import { Share2, Linkedin, Mail, Copy, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ShareButtonProps {
@@ -82,7 +82,7 @@ export const ShareButton = ({
     window.open(twitterUrl, '_blank', 'noopener,noreferrer');
     
     toast({
-      title: "Opening Twitter",
+      title: "Opening X",
       description: "Share your success with your followers",
       variant: "info"
     });
@@ -124,6 +124,20 @@ export const ShareButton = ({
     }, 2000);
   };
 
+  // Custom X logo component 
+  const XLogo = () => (
+    <svg 
+      width="16" 
+      height="16" 
+      viewBox="0 0 24 24" 
+      fill="currentColor" 
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-4 w-4 mr-2"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+
   // For icon-only variant
   if (variant === "icon") {
     return (
@@ -156,8 +170,8 @@ export const ShareButton = ({
               className="justify-start"
               onClick={handleTwitterShare}
             >
-              <Twitter className="h-4 w-4 mr-2" />
-              Twitter
+              <XLogo />
+              X
             </Button>
             <Button 
               variant="outline" 
@@ -218,8 +232,8 @@ export const ShareButton = ({
               className="justify-start"
               onClick={handleTwitterShare}
             >
-              <Twitter className="h-4 w-4 mr-2" />
-              Twitter
+              <XLogo />
+              X
             </Button>
             <Button 
               variant="outline" 
@@ -274,11 +288,11 @@ export const ShareButton = ({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Button
-          className="w-full bg-[#1DA1F2] hover:bg-[#0c85d0] flex items-center justify-center"
+          className="w-full bg-[#000000] hover:bg-[#333333] flex items-center justify-center"
           onClick={handleTwitterShare}
         >
-          <Twitter className="h-4 w-4 mr-2" />
-          Twitter
+          <XLogo />
+          X
         </Button>
         <Button
           variant="outline"
