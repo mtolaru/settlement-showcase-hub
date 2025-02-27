@@ -270,6 +270,7 @@ const SettlementDetail = () => {
             </div>
 
             <div className="bg-primary-50 rounded-lg shadow-md p-6">
+              <h3 className="font-medium text-primary-900 mb-4">Share this Settlement</h3>
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   className="w-full bg-[#0077B5] hover:bg-[#005885] flex items-center justify-center"
