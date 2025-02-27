@@ -1,9 +1,9 @@
 
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Share2, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Settlement } from "@/types/settlement";
+import { ShareButton } from "@/components/sharing/ShareButton";
 
 interface SettlementGridProps {
   settlements: Settlement[];
@@ -52,17 +52,14 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                     {settlement.type}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-neutral-500 hover:text-primary-500"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
-                >
-                  <Share2 className="h-4 w-4" />
-                </Button>
+                <ShareButton
+                  url={`${window.location.origin}/settlements/${settlement.id}`}
+                  title={`${formatAmount(settlement.amount)} Settlement - ${settlement.type}`}
+                  amount={settlement.amount.toString()}
+                  caseType={settlement.type}
+                  variant="icon"
+                  className="mt-1"
+                />
               </div>
               <div className="space-y-2">
                 <h3 className="font-bold text-lg text-neutral-900">

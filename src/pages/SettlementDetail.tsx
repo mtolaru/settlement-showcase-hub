@@ -2,8 +2,9 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Share2, Trophy, ArrowRight } from "lucide-react";
+import { ArrowLeft, Trophy, ArrowRight } from "lucide-react";
 import { settlements } from "@/data/settlements";
+import { ShareButton } from "@/components/sharing/ShareButton";
 
 const SettlementDetail = () => {
   const { id } = useParams();
@@ -63,9 +64,14 @@ const SettlementDetail = () => {
               </h1>
               <p className="text-primary-200">{settlement.type}</p>
             </div>
-            <Button variant="outline" className="text-white border-white hover:bg-white/10">
-              <Share2 className="mr-2 h-4 w-4" /> Share Settlement
-            </Button>
+            <ShareButton 
+              url={`${window.location.origin}/settlements/${id}`}
+              title={`${formatAmount(settlement.amount)} Settlement - ${settlement.type}`}
+              amount={settlement.amount.toString()}
+              caseType={settlement.type}
+              variant="button"
+              className="text-white border-white hover:bg-white/10"
+            />
           </div>
         </div>
       </div>
