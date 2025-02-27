@@ -72,17 +72,6 @@ const GalleryHeader = ({
     "San Diego, CA"
   ];
 
-  // Additional filter options
-  const amountRanges = [
-    { label: "All Amounts", value: "all" },
-    { label: "$0 - $50,000", value: "0-50000" },
-    { label: "$50,000 - $100,000", value: "50000-100000" },
-    { label: "$100,000 - $250,000", value: "100000-250000" },
-    { label: "$250,000 - $500,000", value: "250000-500000" },
-    { label: "$500,000 - $1,000,000", value: "500000-1000000" },
-    { label: "$1,000,000+", value: "1000000" },
-  ];
-
   return (
     <div className="bg-primary-900 text-white py-12">
       <div className="container">
@@ -90,85 +79,92 @@ const GalleryHeader = ({
           Settlements Leaderboard
         </h1>
         
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-y-4 mb-6">
-          <div className="text-primary-200">
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading settlements...</span>
-              </div>
-            ) : (
-              <p>
-                Showing <span className="font-semibold">{settlementCount}</span>{" "}
-                {settlementCount === 1 ? "settlement" : "settlements"}
-              </p>
-            )}
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            {/* Case Type Filter */}
-            <select
-              className="bg-primary-800 text-white rounded-full px-4 py-1 text-sm border border-primary-700"
-              value={filters.caseType}
-              onChange={(e) => handleFilterChange("caseType", e.target.value)}
-            >
+        <div className="flex flex-col gap-y-6">
+          {/* Case Types Scroll */}
+          <div className="relative">
+            <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
               {allCaseTypes.map((type) => (
-                <option key={type} value={type}>
+                <button
+                  key={type}
+                  onClick={() => handleFilterChange("caseType", type)}
+                  className={`
+                    whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-colors
+                    ${type === filters.caseType
+                      ? "bg-white text-primary-900"
+                      : "text-white border border-primary-700 hover:bg-primary-800"
+                    }
+                  `}
+                >
                   {type === "all" ? "All Case Types" : type}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
+          </div>
+
+          {/* Filters Row */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="text-primary-200">
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading settlements...</span>
+                </div>
+              ) : (
+                <p>
+                  Showing <span className="font-semibold">{settlementCount}</span>{" "}
+                  {settlementCount === 1 ? "settlement" : "settlements"}
+                </p>
+              )}
+            </div>
             
-            {/* Location Filter */}
-            <select
-              className="bg-primary-800 text-white rounded-full px-4 py-1 text-sm border border-primary-700"
-              value={filters.location}
-              onChange={(e) => handleFilterChange("location", e.target.value)}
-            >
-              {allLocations.map((location) => (
-                <option key={location} value={location}>
-                  {location === "all" ? "All Locations" : location}
-                </option>
-              ))}
-            </select>
-            
-            {/* Amount Filter */}
-            <select
-              className="bg-primary-800 text-white rounded-full px-4 py-1 text-sm border border-primary-700"
-              value={filters.amount}
-              onChange={(e) => handleFilterChange("amount", e.target.value)}
-            >
-              {amountRanges.map((range) => (
-                <option key={range.value} value={range.value}>
-                  {range.label}
-                </option>
-              ))}
-            </select>
-            
-            {/* Sort Order */}
-            <select
-              className="bg-primary-800 text-white rounded-full px-4 py-1 text-sm border border-primary-700"
-              value={filters.sort}
-              onChange={(e) => handleFilterChange("sort", e.target.value)}
-            >
-              <option value="highest">Highest Amount</option>
-              <option value="lowest">Lowest Amount</option>
-              <option value="newest">Most Recent</option>
-            </select>
-            
-            {(filters.caseType !== "all" || filters.location !== "all" || filters.amount !== "all" || filters.sort !== "highest") && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleReset}
-                className="text-primary-200 hover:text-white text-sm hover:bg-primary-800 rounded-full"
+            <div className="flex flex-wrap gap-2">
+              {/* Location Filter */}
+              <select
+                className="bg-primary-800 text-white rounded-full px-4 py-1.5 text-sm border border-primary-700"
+                value={filters.location}
+                onChange={(e) => handleFilterChange("location", e.target.value)}
               >
-                Reset
-              </Button>
-            )}
+                {allLocations.map((location) => (
+                  <option key={location} value={location}>
+                    {location === "all" ? "All Locations" : location}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Sort Order */}
+              <select
+                className="bg-primary-800 text-white rounded-full px-4 py-1.5 text-sm border border-primary-700"
+                value={filters.sort}
+                onChange={(e) => handleFilterChange("sort", e.target.value)}
+              >
+                <option value="highest">Highest Amount</option>
+                <option value="newest">Most Recent</option>
+              </select>
+              
+              {(filters.caseType !== "all" || filters.location !== "all" || filters.sort !== "highest") && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleReset}
+                  className="text-primary-200 hover:text-white text-sm hover:bg-primary-800 rounded-full"
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };
