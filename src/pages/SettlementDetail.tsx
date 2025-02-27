@@ -70,7 +70,7 @@ const SettlementDetail = () => {
               amount={settlement.amount.toString()}
               caseType={settlement.type}
               variant="button"
-              className="text-white border-white hover:bg-white/10"
+              className="outline-on-dark"
             />
           </div>
         </div>

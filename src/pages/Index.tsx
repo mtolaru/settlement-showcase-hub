@@ -120,8 +120,8 @@ const Index = () => {
             </div>
             <Link to="/settlements">
               <Button 
-                variant="outline" 
-                className="group border-white text-white hover:bg-white hover:text-primary-900"
+                variant="outline-on-dark" 
+                className="group"
               >
                 View More
                 <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
