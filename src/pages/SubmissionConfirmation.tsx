@@ -2,12 +2,13 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CreditCard } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CreateAccountPrompt from "@/components/auth/CreateAccountPrompt";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ShareButton } from "@/components/sharing/ShareButton";
+import { useToast } from "@/components/ui/use-toast";
 
 const SubmissionConfirmation = () => {
   const [showCreateAccount, setShowCreateAccount] = useState(true);
@@ -15,40 +16,76 @@ const SubmissionConfirmation = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
-  const temporaryId = new URLSearchParams(window.location.search).get("temporaryId");
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  
+  // Get temporaryId from URL parameters
+  const params = new URLSearchParams(window.location.search);
+  const temporaryId = params.get("temporaryId");
 
   const handleClose = () => {
     setShowCreateAccount(false);
   };
 
   useEffect(() => {
-    if (temporaryId) {
-      fetchSettlementData();
-    } else {
+    if (!temporaryId) {
       setIsLoading(false);
       setError("No settlement ID found in URL");
+      return;
     }
+    
+    console.log("Attempting to fetch settlement with temporary ID:", temporaryId);
+    fetchSettlementData();
   }, [temporaryId]);
 
   const fetchSettlementData = async () => {
+    if (!temporaryId) return;
+    
     try {
+      console.log("Fetching settlement data for temporaryId:", temporaryId);
+      
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
         .eq('temporary_id', temporaryId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching settlement data:', error);
+        throw error;
+      }
       
       if (!data) {
+        console.error('Settlement not found for temporaryId:', temporaryId);
         throw new Error('Settlement not found');
       }
 
-      setSettlementData(data);
       console.log("Found settlement data:", data);
-    } catch (error) {
-      console.error('Error fetching settlement data:', error);
-      setError("Could not find settlement data");
+      setSettlementData(data);
+      
+      // Check if payment has been completed
+      if (!data.payment_completed) {
+        // Try to update payment status
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update({ payment_completed: true })
+          .eq('temporary_id', temporaryId);
+          
+        if (updateError) {
+          console.error("Error updating payment status:", updateError);
+        } else {
+          console.log("Updated payment status to completed");
+        }
+      }
+    } catch (error: any) {
+      console.error('Error in fetchSettlementData:', error);
+      setError("Could not find settlement data. Please try refreshing the page or contact support.");
+      
+      toast({
+        variant: "destructive",
+        title: "Error finding your settlement",
+        description: "We couldn't locate your settlement data. The payment may have been processed, but there was an issue connecting it to your submission."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -68,15 +105,24 @@ const SubmissionConfirmation = () => {
     );
   }
 
-  if (error) {
+  if (error && !settlementData) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
           <p className="text-neutral-600 mb-4">{error}</p>
-          <Link to="/submit">
-            <Button>Return to Submit Page</Button>
-          </Link>
+          <p className="text-sm text-neutral-500 mb-6">
+            If you've completed payment, your settlement has been recorded, but we're having trouble displaying it.
+            Please try refreshing this page or checking your settlements later.
+          </p>
+          <div className="space-y-3">
+            <Link to="/submit">
+              <Button className="w-full">Return to Submit Page</Button>
+            </Link>
+            <Link to="/settlements">
+              <Button variant="outline" className="w-full">View Settlement Gallery</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );

@@ -25,6 +25,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     setIsLoading(true);
 
     try {
+      console.log("Creating account for temporaryId:", temporaryId);
+      
       // First try to sign up - Supabase will handle duplicate email checking
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -45,46 +47,72 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
             title: "Email already registered",
             description: "This email is already in use. Please use a different email or log in to your existing account.",
           });
+          setIsLoading(false);
           return;
         }
         throw signUpError;
       }
 
-      if (signUpData.session) {
-        // User is automatically signed in
-        const { error: updateError } = await supabase
-          .from('settlements')
-          .update({ user_id: signUpData.user.id })
-          .eq('temporary_id', temporaryId);
+      if (signUpData.user) {
+        console.log("User created successfully:", signUpData.user.id);
+        
+        try {
+          // Update the settlement with the user ID
+          const { error: updateError } = await supabase
+            .from('settlements')
+            .update({ user_id: signUpData.user.id })
+            .eq('temporary_id', temporaryId);
 
-        if (updateError) throw updateError;
+          if (updateError) {
+            console.error("Error updating settlement:", updateError);
+            throw updateError;
+          }
+          
+          console.log("Settlement updated with user_id");
 
-        const { error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .update({ user_id: signUpData.user.id })
-          .eq('temporary_id', temporaryId);
+          // Also update any subscription record with the same temporary_id
+          const { error: subscriptionError } = await supabase
+            .from('subscriptions')
+            .update({ user_id: signUpData.user.id })
+            .eq('temporary_id', temporaryId);
 
-        if (subscriptionError) throw subscriptionError;
+          if (subscriptionError) {
+            console.error("Error updating subscription:", subscriptionError);
+            // Continue anyway - this is not critical
+          } else {
+            console.log("Subscription updated with user_id");
+          }
+        } catch (error) {
+          console.error("Error in database updates after signup:", error);
+          // Continue anyway - the user is still created
+        }
 
-        toast({
-          title: "Account created successfully!",
-          description: "You have been automatically logged in.",
-        });
+        if (signUpData.session) {
+          // User is automatically signed in
+          toast({
+            title: "Account created successfully!",
+            description: "You have been automatically logged in.",
+          });
 
-        navigate("/manage");
-        onClose();
-      } else {
-        // User needs to verify email
-        toast({
-          title: "Almost there!",
-          description: "Please check your email to verify your account. Once verified, you'll be automatically logged in.",
-        });
+          navigate("/manage");
+          onClose();
+        } else {
+          // User needs to verify email
+          toast({
+            title: "Almost there!",
+            description: "Please check your email to verify your account. Once verified, you'll be able to access your settlements.",
+          });
+          
+          // Close the account creation prompt even if email verification is pending
+          onClose();
+        }
       }
     } catch (error: any) {
+      console.error('Account creation error:', error);
       toast({
         variant: "destructive",
         title: "Error creating account",
-        description: error.message,
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -146,7 +174,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           className="w-full bg-primary-600 hover:bg-primary-700 text-lg py-6"
           disabled={isLoading}
         >
-          Create Account <ArrowRight className="ml-2 h-5 w-5" />
+          {isLoading ? "Creating Account..." : "Create Account"} {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
         </Button>
 
         <div className="text-center">
