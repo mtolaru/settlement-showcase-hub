@@ -10,6 +10,7 @@ interface ReviewStepProps {
     medicalExpenses: string;
     caseType: string;
     otherCaseType: string;
+    caseDescription: string;
     settlementPhase: string;
     attorneyName: string;
     attorneyEmail: string;
@@ -30,6 +31,12 @@ export const ReviewStep = ({
 }: ReviewStepProps) => {
   const formatCurrency = (value: string) => {
     return value ? `$${value}` : "N/A";
+  };
+
+  const formatSettlementPhase = (phase: string) => {
+    if (phase === "pre-litigation") return "Pre-Litigation";
+    if (phase === "during-litigation") return "During Litigation";
+    return phase;
   };
 
   return (
@@ -63,7 +70,7 @@ export const ReviewStep = ({
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Settlement Phase</dt>
-                  <dd className="font-medium">{formData.settlementPhase}</dd>
+                  <dd className="font-medium">{formatSettlementPhase(formData.settlementPhase)}</dd>
                 </div>
               </dl>
             </div>
@@ -93,6 +100,13 @@ export const ReviewStep = ({
               </dl>
             </div>
           </div>
+
+          {formData.caseDescription && (
+            <div className="pt-4 border-t border-neutral-200">
+              <h4 className="font-medium mb-2">Case Description</h4>
+              <p className="text-neutral-700">{formData.caseDescription}</p>
+            </div>
+          )}
         </div>
       </div>
 
