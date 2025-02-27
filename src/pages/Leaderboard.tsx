@@ -44,7 +44,14 @@ const Leaderboard = () => {
         }
 
         console.log('Fetched settlements:', data);
-        setSettlements(data || []);
+        
+        // Deduplicate settlements by ID (in case there are duplicates in the database)
+        const uniqueSettlements = data ? 
+          Array.from(new Map(data.map(item => [item.id, item])).values()) : 
+          [];
+          
+        console.log('Unique settlements after deduplication:', uniqueSettlements.length);
+        setSettlements(uniqueSettlements);
       } catch (error) {
         console.error('Error fetching settlements:', error);
         toast({
