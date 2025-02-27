@@ -35,6 +35,7 @@ function App() {
           <Route path="/settlements/:id" element={<SettlementDetail />} />
           <Route path="/manage" element={<ManageSettlements />} />
           <Route path="/payment-selection" element={<PaymentSelection />} />
+          <Route path="/confirmation" element={<SubmissionConfirmation />} />
           <Route path="/submission-confirmation" element={<SubmissionConfirmation />} />
           <Route path="/payment-test" element={<PaymentTest />} />
           <Route path="*" element={<NotFound />} />

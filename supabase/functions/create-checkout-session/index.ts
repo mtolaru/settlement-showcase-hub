@@ -1,6 +1,9 @@
 
+// Follow this setup guide to integrate the Deno runtime and your Supabase project:
+// https://supabase.com/docs/guides/functions/connect-to-supabase
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@13.3.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from 'https://esm.sh/stripe@12.1.1?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,82 +15,75 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
+  
   try {
-    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
-    if (!stripeKey) {
-      console.error('Missing Stripe secret key');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }), 
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const stripe = new Stripe(stripeKey, {
+    // Create a Supabase client with the Auth context of the function
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
       apiVersion: '2023-10-16',
-      httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // Get request body
-    const requestData = await req.json();
-    const { temporaryId, userId, returnUrl } = requestData;
+    // Parse request body
+    const { temporaryId, userId, returnUrl } = await req.json();
     
-    if (!returnUrl) {
-      console.error('Missing required parameters:', requestData);
-      return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }), 
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
+    // Make sure we have a valid return URL
+    const validatedReturnUrl = returnUrl || `${req.headers.get('origin')}/confirmation`;
 
-    console.log('Creating checkout session with:', requestData);
+    console.log("Creating checkout session with params:", { temporaryId, userId, returnUrl: validatedReturnUrl });
 
-    // For backwards compatibility, accept either direct priceId or default to subscription price
-    const priceId = requestData.priceId || 'price_1QwpUFDEE7vEKM2KYdBYUIq6';
-
+    // Create the checkout session
     const session = await stripe.checkout.sessions.create({
-      success_url: returnUrl,
-      cancel_url: `${new URL(returnUrl).origin}/pricing`,
-      mode: 'subscription',
+      payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Professional Plan Subscription',
+              description: 'Monthly subscription for publishing settlements',
+            },
+            unit_amount: 19900, // $199.00
+            recurring: {
+              interval: 'month',
+            },
+          },
           quantity: 1,
         },
       ],
-      client_reference_id: userId || temporaryId,
+      mode: 'subscription',
+      success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${temporaryId}`,
+      cancel_url: `${req.headers.get('origin')}/submit?step=3&canceled=true`,
+      client_reference_id: temporaryId,
       metadata: {
-        userId: userId || temporaryId,
-        temporaryId: temporaryId || '',
+        temporaryId: temporaryId,
+        userId: userId || '',
       },
     });
 
-    console.log('Checkout session created:', session.id);
+    console.log("Checkout session created:", session.id, "Redirection URL:", session.url);
 
     return new Response(
       JSON.stringify({ url: session.url }),
       { 
         headers: { 
           ...corsHeaders,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json' 
         },
+        status: 200 
       }
     );
   } catch (error) {
-    console.error('Stripe error:', error);
+    console.error('Error creating checkout session:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }), 
+      JSON.stringify({ error: error.message }),
       { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json' 
+        },
+        status: 500 
       }
     );
   }
