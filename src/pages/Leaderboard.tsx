@@ -142,11 +142,19 @@ const Leaderboard = () => {
   
   const { caseTypes, locations } = getFilterOptions();
 
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <GalleryHeader 
         settlementCount={filteredSettlements.length} 
         isLoading={isLoading}
+        filters={filters}
+        setFilters={handleFiltersChange}
+        caseTypes={caseTypes}
+        locations={locations}
       />
       
       <div className="container py-8">
@@ -154,7 +162,7 @@ const Leaderboard = () => {
           <div className="lg:col-span-1">
             <FiltersPanel 
               filters={filters}
-              setFilters={setFilters}
+              setFilters={handleFiltersChange}
               caseTypes={caseTypes}
               locations={locations}
             />

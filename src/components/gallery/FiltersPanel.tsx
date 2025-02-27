@@ -38,6 +38,37 @@ const FiltersPanel = ({ filters, setFilters, caseTypes, locations }: FiltersPane
     { label: "Lowest Amount", value: "lowest" },
     { label: "Most Recent", value: "newest" },
   ];
+
+  // Predefined static list of case types from the submission form
+  const allCaseTypes = [
+    "all",
+    "Motor Vehicle Accidents",
+    "Medical Malpractice",
+    "Product Liability",
+    "Premises Liability",
+    "Wrongful Death",
+    "Animal Attack",
+    "Assault and Abuse",
+    "Boating Accidents",
+    "Slip & Fall",
+    "Workplace Injury",
+    "Other"
+  ];
+
+  // Predefined static list of locations
+  const allLocations = [
+    "all",
+    "Los Angeles, CA",
+    "San Francisco, CA",
+    "San Diego, CA",
+    "New York, NY",
+    "Chicago, IL",
+    "Houston, TX",
+    "Phoenix, AZ",
+    "Philadelphia, PA",
+    "San Antonio, TX",
+    "Dallas, TX"
+  ];
   
   const handleReset = () => {
     setFilters({
@@ -58,7 +89,7 @@ const FiltersPanel = ({ filters, setFilters, caseTypes, locations }: FiltersPane
   return (
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Filters</h3>
+        <h3 className="text-lg font-semibold">Detailed Filters</h3>
         <button 
           className="text-primary-600 hover:text-primary-800 text-sm font-medium"
           onClick={handleReset}
@@ -101,7 +132,7 @@ const FiltersPanel = ({ filters, setFilters, caseTypes, locations }: FiltersPane
             value={filters.caseType}
             onChange={(e) => handleFilterChange("caseType", e.target.value)}
           >
-            {caseTypes.map((type) => (
+            {allCaseTypes.map((type) => (
               <option key={type} value={type}>
                 {type === "all" ? "All Case Types" : type}
               </option>
@@ -117,7 +148,7 @@ const FiltersPanel = ({ filters, setFilters, caseTypes, locations }: FiltersPane
             value={filters.location}
             onChange={(e) => handleFilterChange("location", e.target.value)}
           >
-            {locations.map((location) => (
+            {allLocations.map((location) => (
               <option key={location} value={location}>
                 {location === "all" ? "All Locations" : location}
               </option>
@@ -149,14 +180,6 @@ const FiltersPanel = ({ filters, setFilters, caseTypes, locations }: FiltersPane
             ))}
           </div>
         </div>
-        
-        <Button 
-          onClick={handleReset}
-          variant="outline" 
-          className="w-full mt-4"
-        >
-          Reset All Filters
-        </Button>
       </div>
     </div>
   );
