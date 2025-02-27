@@ -14,6 +14,7 @@ import PaymentSelection from "@/pages/PaymentSelection";
 import SubmissionConfirmation from "@/pages/SubmissionConfirmation";
 import PaymentTest from "@/pages/PaymentTest";
 import FAQ from "@/pages/FAQ";
+import Terms from "@/pages/Terms";
 import "./App.css";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/faq" element={<FAQ />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/submit" element={<SubmitSettlement />} />
           <Route path="/settlements" element={<Leaderboard />} />
           <Route path="/settlements/:id" element={<SettlementDetail />} />
