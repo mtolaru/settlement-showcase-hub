@@ -25,12 +25,12 @@ export const ShareButton = ({
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   
-  // Format amount for sharing
+  // Format amount for sharing - ensure it has proper commas for dollar format
   const formattedAmount = typeof amount === 'string' 
-    ? amount.replace(/[^0-9.]/g, '') 
-    : amount.toString();
+    ? parseFloat(amount.replace(/[^0-9.]/g, '')).toLocaleString('en-US')
+    : amount.toLocaleString('en-US');
     
-  // Create sharing message
+  // Create sharing message with properly formatted amount
   const shareMessage = `I secured a $${formattedAmount} settlement for my client in a ${caseType} case. View more on SettlementWins.`;
   
   // Add UTM parameters to URL
@@ -89,9 +89,16 @@ export const ShareButton = ({
   };
 
   const handleEmailShare = () => {
+    // For email, we can create a more nicely formatted message with a hyperlink
     const subject = `${title} - Settlement Success Story`;
-    const emailBody = `${shareMessage}\n\nView the full details here: ${getShareUrl('email')}`;
-    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    // Create email body with hyperlinked text instead of raw URL
+    const emailBody = `${shareMessage.replace('SettlementWins.', `<a href="${getShareUrl('email')}">SettlementWins</a>.`)}\n\n`;
+    
+    // Since mailto doesn't support HTML, we fall back to plain text with the URL
+    const plainEmailBody = `${shareMessage}\n\nView the full details here: ${getShareUrl('email')}`;
+    
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainEmailBody)}`;
     window.location.href = mailtoUrl;
     
     toast({
@@ -131,7 +138,7 @@ export const ShareButton = ({
             <Share2 className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-3" align="end" side="bottom">
+        <PopoverContent className="w-56 p-3 bg-white border border-neutral-200 shadow-lg" align="end" side="bottom">
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-medium mb-2">Share this settlement</h3>
             <Button 
@@ -193,7 +200,7 @@ export const ShareButton = ({
             <Share2 className="h-4 w-4 mr-2" /> Share Settlement
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-3" align="end">
+        <PopoverContent className="w-56 p-3 bg-white border border-neutral-200 shadow-lg" align="end">
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-medium mb-2">Share this settlement</h3>
             <Button 
