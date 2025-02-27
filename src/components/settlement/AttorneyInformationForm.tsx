@@ -1,7 +1,9 @@
 
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/components/ImageUpload";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -34,6 +36,8 @@ export const AttorneyInformationForm = ({
   const [showOtherLocationInput, setShowOtherLocationInput] = useState(
     formData.location !== "" && !availableLocations.includes(formData.location)
   );
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailCheckTimeout, setEmailCheckTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -51,6 +55,56 @@ export const AttorneyInformationForm = ({
     setOtherLocation(value);
     handleInputChange("location", value);
   };
+
+  const handleEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const email = e.target.value;
+    handleInputChange("attorneyEmail", email);
+    
+    // Clear any previous timeout
+    if (emailCheckTimeout) {
+      clearTimeout(emailCheckTimeout);
+    }
+    
+    // Skip validation for empty or clearly invalid emails
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      return;
+    }
+    
+    // Set a timeout to avoid too many API calls while typing
+    setIsCheckingEmail(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('attorney_email')
+          .eq('attorney_email', email)
+          .maybeSingle();
+        
+        if (error) throw error;
+        
+        // If we found data with this email, it already exists
+        if (data) {
+          handleInputChange("attorneyEmail", email); // Update the value
+          // The error will be set in the parent component
+        }
+      } catch (error) {
+        console.error('Error checking email:', error);
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    }, 500); // 500ms debounce
+    
+    setEmailCheckTimeout(timeout);
+  };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (emailCheckTimeout) {
+        clearTimeout(emailCheckTimeout);
+      }
+    };
+  }, [emailCheckTimeout]);
 
   // Determine the current selection value for the dropdown
   const getSelectedValue = () => {
@@ -88,9 +142,13 @@ export const AttorneyInformationForm = ({
         <Input
           type="email"
           value={formData.attorneyEmail}
-          onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
+          onChange={handleEmailChange}
           placeholder="john@example.com"
+          className={isCheckingEmail ? "bg-neutral-50" : ""}
         />
+        {isCheckingEmail && (
+          <p className="text-neutral-500 text-sm mt-1">Checking email...</p>
+        )}
         {errors.attorneyEmail && (
           <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
         )}

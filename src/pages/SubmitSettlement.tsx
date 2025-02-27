@@ -133,18 +133,23 @@ const SubmitSettlement = () => {
   };
 
   const verifyEmail = async (email: string) => {
-    const { data, error } = await supabase
-      .from('settlements')
-      .select('attorney_email')
-      .eq('attorney_email', email)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('settlements')
+        .select('attorney_email')
+        .eq('attorney_email', email)
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error checking email:', error);
+      if (error) {
+        console.error('Error checking email:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (err) {
+      console.error('Exception checking email:', err);
       return false;
     }
-
-    return !!data;
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -152,22 +157,22 @@ const SubmitSettlement = () => {
       ...prev,
       [field]: value
     }));
+    
+    // Clear error when field changes
     setErrors(prev => ({
       ...prev,
       [field]: undefined
     }));
 
+    // If changing email, check if it exists
     if (field === 'attorneyEmail' && value) {
-      // Perform email verification as a side effect
       verifyEmail(value).then(emailExists => {
         if (emailExists) {
           setErrors(prev => ({
             ...prev,
-            attorneyEmail: "This email is already associated with settlements. Please log in to submit another case or use a different email."
+            attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
           }));
         }
-      }).catch(error => {
-        console.error('Error verifying email:', error);
       });
     }
   };
@@ -231,6 +236,20 @@ const SubmitSettlement = () => {
   const createCheckoutSession = async () => {
     setIsLoading(true);
     try {
+      // First check if email already exists
+      if (formData.attorneyEmail) {
+        const emailExists = await verifyEmail(formData.attorneyEmail);
+        if (emailExists) {
+          setErrors(prev => ({
+            ...prev,
+            attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
+          }));
+          setIsLoading(false);
+          setStep(2); // Go back to step 2
+          return;
+        }
+      }
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       const temporaryId = crypto.randomUUID();
@@ -301,7 +320,7 @@ const SubmitSettlement = () => {
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === 1 && !validateStep1(formData)) {
       toast({
         variant: "destructive",
@@ -311,19 +330,38 @@ const SubmitSettlement = () => {
       return;
     }
 
-    if (step === 2 && !validateStep2(formData)) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please fill in all required fields correctly.",
-      });
-      return;
-    }
-
-    if (step === 2 && !hasActiveSubscription) {
-      setStep(3);
-    } else if (step === 2) {
-      handleSubmitWithSubscription();
+    if (step === 2) {
+      // Additional check for email existence before proceeding
+      if (formData.attorneyEmail) {
+        const emailExists = await verifyEmail(formData.attorneyEmail);
+        if (emailExists) {
+          setErrors(prev => ({
+            ...prev,
+            attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
+          }));
+          toast({
+            variant: "destructive",
+            title: "Email Already Exists",
+            description: "Please use a different email or log in to submit another case.",
+          });
+          return;
+        }
+      }
+      
+      if (!validateStep2(formData)) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please fill in all required fields correctly.",
+        });
+        return;
+      }
+      
+      if (!hasActiveSubscription) {
+        setStep(3);
+      } else {
+        handleSubmitWithSubscription();
+      }
     } else {
       setStep(step + 1);
     }
@@ -402,8 +440,12 @@ const SubmitSettlement = () => {
               )}
               {step < 3 && (
                 <div className="ml-auto">
-                  <Button onClick={handleNextStep} className="bg-primary-500 hover:bg-primary-600">
-                    Next Step <ArrowRight className="ml-2 h-4 w-4" />
+                  <Button 
+                    onClick={handleNextStep} 
+                    className="bg-primary-500 hover:bg-primary-600"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Checking..." : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
               )}
