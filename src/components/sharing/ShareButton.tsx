@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 interface ShareButtonProps {
   url: string;
   title: string;
-  amount: string;
+  amount: string | number;
   caseType: string;
   variant?: "icon" | "button" | "full";
   className?: string;
