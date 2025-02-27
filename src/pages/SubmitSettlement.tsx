@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -132,7 +131,22 @@ const SubmitSettlement = () => {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const verifyEmail = async (email: string) => {
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('attorney_email')
+      .eq('attorney_email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking email:', error);
+      return false;
+    }
+
+    return !!data;
+  };
+
+  const handleInputChange = async (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -141,6 +155,16 @@ const SubmitSettlement = () => {
       ...prev,
       [field]: undefined
     }));
+
+    if (field === 'attorneyEmail' && value) {
+      const emailExists = await verifyEmail(value);
+      if (emailExists) {
+        setErrors(prev => ({
+          ...prev,
+          attorneyEmail: "This email is already associated with settlements. Please log in to submit another case or use a different email."
+        }));
+      }
+    }
   };
 
   const handleImageUpload = (url: string) => {
@@ -221,6 +245,7 @@ const SubmitSettlement = () => {
         photo_url: formData.photoUrl,
         temporary_id: temporaryId,
         user_id: session?.user?.id,
+        attorney_email: formData.attorneyEmail,
         payment_completed: false,
         created_at: new Date().toISOString()
       };
@@ -231,7 +256,6 @@ const SubmitSettlement = () => {
 
       if (settlementError) throw settlementError;
 
-      // Open checkout in a new tab
       const returnUrl = `${window.location.origin}/confirmation?temporaryId=${temporaryId}`;
       
       console.log("Creating checkout session with: ", {
@@ -255,7 +279,7 @@ const SubmitSettlement = () => {
 
       const { url } = response.data;
       if (url) {
-        window.location.href = url;
+        window.open(url, '_blank');
       } else {
         throw new Error('No checkout URL received');
       }
