@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,35 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Load attorney email from the settlement to pre-populate
+  useEffect(() => {
+    const fetchSettlementEmail = async () => {
+      if (!temporaryId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('attorney_email')
+          .eq('temporary_id', temporaryId)
+          .maybeSingle();
+          
+        if (error) {
+          console.error("Error fetching attorney email:", error);
+          return;
+        }
+        
+        if (data?.attorney_email) {
+          console.log("Pre-populating email from settlement:", data.attorney_email);
+          setEmail(data.attorney_email);
+        }
+      } catch (error) {
+        console.error("Error in fetchSettlementEmail:", error);
+      }
+    };
+    
+    fetchSettlementEmail();
+  }, [temporaryId]);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,8 +194,10 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
               className="pl-10"
               placeholder="Create a password"
               required
+              minLength={6}
             />
           </div>
+          <p className="text-xs text-neutral-500 mt-1">Password must be at least 6 characters</p>
         </div>
 
         <Button

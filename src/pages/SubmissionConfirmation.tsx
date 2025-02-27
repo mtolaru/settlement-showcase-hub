@@ -194,7 +194,7 @@ const SubmissionConfirmation = () => {
         <div className="max-w-xl mx-auto">
           {shouldShowCreateAccount ? (
             <CreateAccountPrompt 
-              temporaryId={settlementData?.temporary_id || temporaryId} 
+              temporaryId={settlementData?.temporary_id || temporaryId!} 
               onClose={handleClose} 
             />
           ) : (
