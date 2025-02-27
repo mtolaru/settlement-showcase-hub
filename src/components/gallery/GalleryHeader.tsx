@@ -64,19 +64,23 @@ const GalleryHeader = ({
     "Other"
   ];
 
-  // Predefined static list of locations
+  // Predefined static list of locations - focusing on California cities
   const allLocations = [
     "all",
     "Los Angeles, CA",
     "San Francisco, CA",
-    "San Diego, CA",
-    "New York, NY",
-    "Chicago, IL",
-    "Houston, TX",
-    "Phoenix, AZ",
-    "Philadelphia, PA",
-    "San Antonio, TX",
-    "Dallas, TX"
+    "San Diego, CA"
+  ];
+
+  // Additional filter options
+  const amountRanges = [
+    { label: "All Amounts", value: "all" },
+    { label: "$0 - $50,000", value: "0-50000" },
+    { label: "$50,000 - $100,000", value: "50000-100000" },
+    { label: "$100,000 - $250,000", value: "100000-250000" },
+    { label: "$250,000 - $500,000", value: "250000-500000" },
+    { label: "$500,000 - $1,000,000", value: "500000-1000000" },
+    { label: "$1,000,000+", value: "1000000" },
   ];
 
   return (
@@ -85,7 +89,8 @@ const GalleryHeader = ({
         <h1 className="text-4xl font-bold font-display mb-4">
           Settlements Leaderboard
         </h1>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-y-4">
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-y-4 mb-6">
           <div className="text-primary-200">
             {isLoading ? (
               <div className="flex items-center gap-2">
@@ -127,6 +132,19 @@ const GalleryHeader = ({
               ))}
             </select>
             
+            {/* Amount Filter */}
+            <select
+              className="bg-primary-800 text-white rounded-full px-4 py-1 text-sm border border-primary-700"
+              value={filters.amount}
+              onChange={(e) => handleFilterChange("amount", e.target.value)}
+            >
+              {amountRanges.map((range) => (
+                <option key={range.value} value={range.value}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
+            
             {/* Sort Order */}
             <select
               className="bg-primary-800 text-white rounded-full px-4 py-1 text-sm border border-primary-700"
@@ -138,7 +156,7 @@ const GalleryHeader = ({
               <option value="newest">Most Recent</option>
             </select>
             
-            {(filters.caseType !== "all" || filters.location !== "all" || filters.sort !== "highest") && (
+            {(filters.caseType !== "all" || filters.location !== "all" || filters.amount !== "all" || filters.sort !== "highest") && (
               <Button 
                 variant="ghost" 
                 size="sm" 

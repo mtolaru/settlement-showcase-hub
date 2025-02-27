@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import FiltersPanel from "@/components/gallery/FiltersPanel";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 import SettlementGrid from "@/components/gallery/SettlementGrid";
 import SubmitCTA from "@/components/gallery/SubmitCTA";
@@ -158,38 +157,28 @@ const Leaderboard = () => {
       />
       
       <div className="container py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1">
-            <FiltersPanel 
-              filters={filters}
-              setFilters={handleFiltersChange}
-              caseTypes={caseTypes}
-              locations={locations}
-            />
-          </div>
-          <div className="lg:col-span-3">
-            <SettlementGrid 
-              settlements={filteredSettlements}
-            />
-            
-            {!isLoading && filteredSettlements.length === 0 && (
-              <div className="bg-white rounded-lg shadow p-8 text-center mt-6">
-                <h3 className="text-xl font-bold mb-2">No Settlements Found</h3>
-                <p className="text-neutral-600 mb-6">
-                  We couldn't find any settlements matching your current filters.
-                </p>
-                <button
-                  onClick={() => setFilters(initialFilters)}
-                  className="text-primary-600 hover:underline font-medium"
-                >
-                  Reset All Filters
-                </button>
-              </div>
-            )}
-            
-            <div className="mt-12">
-              <SubmitCTA />
+        <div>
+          <SettlementGrid 
+            settlements={filteredSettlements}
+          />
+          
+          {!isLoading && filteredSettlements.length === 0 && (
+            <div className="bg-white rounded-lg shadow p-8 text-center mt-6">
+              <h3 className="text-xl font-bold mb-2">No Settlements Found</h3>
+              <p className="text-neutral-600 mb-6">
+                We couldn't find any settlements matching your current filters.
+              </p>
+              <button
+                onClick={() => setFilters(initialFilters)}
+                className="text-primary-600 hover:underline font-medium"
+              >
+                Reset All Filters
+              </button>
             </div>
+          )}
+          
+          <div className="mt-12">
+            <SubmitCTA />
           </div>
         </div>
       </div>
