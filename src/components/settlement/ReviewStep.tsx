@@ -30,7 +30,13 @@ export const ReviewStep = ({
   onSubmitWithSubscription 
 }: ReviewStepProps) => {
   const formatCurrency = (value: string) => {
-    return value ? `$${value}` : "N/A";
+    if (!value) return "N/A";
+    
+    // Remove any existing formatting
+    const numericValue = value.replace(/[$,]/g, '');
+    
+    // Format with commas for thousands
+    return `$${Number(numericValue).toLocaleString('en-US')}`;
   };
 
   const formatSettlementPhase = (phase: string) => {
@@ -66,7 +72,7 @@ export const ReviewStep = ({
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Case Type</dt>
-                  <dd className="font-medium">{formData.caseType === "Other" ? formData.otherCaseType : formData.caseType}</dd>
+                  <dd className="font-medium break-words">{formData.caseType === "Other" ? formData.otherCaseType : formData.caseType}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Settlement Phase</dt>
@@ -79,23 +85,23 @@ export const ReviewStep = ({
               <dl className="space-y-2">
                 <div>
                   <dt className="text-sm text-neutral-600">Attorney Name</dt>
-                  <dd className="font-medium">{formData.attorneyName}</dd>
+                  <dd className="font-medium break-words">{formData.attorneyName}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Law Firm</dt>
-                  <dd className="font-medium">{formData.firmName}</dd>
+                  <dd className="font-medium break-words">{formData.firmName}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Location</dt>
-                  <dd className="font-medium">{formData.location}</dd>
+                  <dd className="font-medium break-words">{formData.location}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Email</dt>
-                  <dd className="font-medium">{formData.attorneyEmail}</dd>
+                  <dd className="font-medium break-words">{formData.attorneyEmail}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Website</dt>
-                  <dd className="font-medium">{formData.firmWebsite}</dd>
+                  <dd className="font-medium break-words overflow-hidden text-ellipsis">{formData.firmWebsite}</dd>
                 </div>
               </dl>
             </div>
@@ -104,7 +110,7 @@ export const ReviewStep = ({
           {formData.caseDescription && (
             <div className="pt-4 border-t border-neutral-200">
               <h4 className="font-medium mb-2">Case Description</h4>
-              <p className="text-neutral-700">{formData.caseDescription}</p>
+              <p className="text-neutral-700 break-words whitespace-pre-wrap">{formData.caseDescription}</p>
             </div>
           )}
         </div>
