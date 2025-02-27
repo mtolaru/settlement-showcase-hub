@@ -21,10 +21,18 @@ const SettlementDetail = () => {
 
       try {
         setIsLoading(true);
+        // Convert string ID to number for Supabase query
+        const numberId = parseInt(id, 10);
+        
+        // Check if conversion was successful
+        if (isNaN(numberId)) {
+          throw new Error("Invalid settlement ID");
+        }
+        
         const { data, error } = await supabase
           .from('settlements')
           .select('*')
-          .eq('id', id)
+          .eq('id', numberId)
           .eq('payment_completed', true)
           .single();
 
@@ -263,7 +271,7 @@ const SettlementDetail = () => {
                 title={`${formatCurrency(settlement.amount)} Settlement - ${settlement.type}`}
                 amount={settlement.amount.toString()}
                 caseType={settlement.type}
-                variant="social"
+                variant="full"
                 className="w-full"
               />
             </div>

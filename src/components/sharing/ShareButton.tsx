@@ -10,7 +10,7 @@ interface ShareButtonProps {
   title: string;
   amount: string | number;
   caseType: string;
-  variant?: "icon" | "button" | "full";
+  variant?: "icon" | "button" | "full" | "social";
   className?: string;
 }
 
@@ -264,6 +264,51 @@ export const ShareButton = ({
           </div>
         </PopoverContent>
       </Popover>
+    );
+  }
+  
+  // For social variant (simplified buttons for share section)
+  if (variant === "social") {
+    return (
+      <div className={`space-y-3 ${className}`}>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            className="w-full bg-[#0077B5] hover:bg-[#005885] flex items-center justify-center"
+            onClick={handleLinkedInShare}
+          >
+            <Linkedin className="h-4 w-4 mr-2" />
+            LinkedIn
+          </Button>
+          <Button
+            className="w-full bg-[#000000] hover:bg-[#333333] flex items-center justify-center"
+            onClick={handleTwitterShare}
+          >
+            <XLogo />
+            X
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            className="w-full bg-primary-600 hover:bg-primary-700 flex items-center justify-center"
+            onClick={handleEmailShare}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Email
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center"
+            onClick={handleCopyLink}
+          >
+            {copied ? (
+              <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4 mr-2" />
+            )}
+            Copy Link
+          </Button>
+        </div>
+      </div>
     );
   }
 
