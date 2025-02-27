@@ -109,7 +109,28 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
             console.error("Error updating subscription:", subscriptionError);
             // Continue anyway - this is not critical
           } else {
-            console.log("Subscription updated with user_id");
+            console.log("Updated subscription with user_id");
+          }
+          
+          // Additional check: look for the Stripe payment_id in subscriptions
+          const searchParams = new URLSearchParams(window.location.search);
+          const sessionId = searchParams.get("session_id");
+          
+          if (sessionId) {
+            console.log("Checking for subscription with session_id:", sessionId);
+            const { error: paymentError } = await supabase
+              .from('subscriptions')
+              .update({ 
+                user_id: signUpData.user.id,
+                is_active: true
+              })
+              .eq('payment_id', sessionId);
+              
+            if (paymentError) {
+              console.error("Error updating subscription with payment_id:", paymentError);
+            } else {
+              console.log("Updated subscription with payment_id");
+            }
           }
         } catch (error) {
           console.error("Error in database updates after signup:", error);

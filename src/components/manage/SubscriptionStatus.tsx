@@ -1,14 +1,17 @@
-
 import { format } from "date-fns";
 import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Subscription {
   id: string;
   starts_at: string;
   ends_at: string | null;
   is_active: boolean;
+  payment_id?: string | null;
 }
 
 interface SubscriptionStatusProps {
@@ -16,8 +19,81 @@ interface SubscriptionStatusProps {
   isLoading: boolean;
 }
 
-const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps) => {
+const SubscriptionStatus = ({ subscription: propSubscription, isLoading: propIsLoading }: SubscriptionStatusProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [subscription, setSubscription] = useState<Subscription | null>(propSubscription);
+  const [isLoading, setIsLoading] = useState(propIsLoading);
+
+  useEffect(() => {
+    if (propSubscription) {
+      setSubscription(propSubscription);
+      return;
+    }
+
+    const fetchSubscription = async () => {
+      if (!user) return;
+
+      try {
+        console.log("Explicitly fetching subscription for user:", user.id);
+        
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('starts_at', { ascending: false })
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Error fetching subscription:", error);
+          return;
+        }
+        
+        if (data) {
+          console.log("Found subscription by user_id:", data);
+          setSubscription(data);
+          return;
+        }
+        
+        if (user.user_metadata?.temporaryId) {
+          const { data: tempData, error: tempError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('temporary_id', user.user_metadata.temporaryId)
+            .eq('is_active', true)
+            .maybeSingle();
+            
+          if (tempError) {
+            console.error("Error fetching subscription by temporary_id:", tempError);
+            return;
+          }
+          
+          if (tempData) {
+            console.log("Found subscription by temporary_id:", tempData);
+            setSubscription(tempData);
+            
+            const { error: updateError } = await supabase
+              .from('subscriptions')
+              .update({ user_id: user.id })
+              .eq('id', tempData.id);
+              
+            if (updateError) {
+              console.error("Error updating subscription user_id:", updateError);
+            } else {
+              console.log("Updated subscription with user_id");
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error in fetchSubscription:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, [propSubscription, user]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -81,6 +157,12 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
             <div>
               <dt className="text-neutral-600">Expires on</dt>
               <dd className="font-medium">{formatDate(subscription.ends_at)}</dd>
+            </div>
+          )}
+          {subscription.payment_id && (
+            <div>
+              <dt className="text-neutral-600">Payment ID</dt>
+              <dd className="font-medium truncate text-xs">{subscription.payment_id}</dd>
             </div>
           )}
         </dl>
