@@ -1,7 +1,7 @@
 
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/components/ImageUpload";
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -38,6 +38,13 @@ export const AttorneyInformationForm = ({
   );
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [emailCheckTimeout, setEmailCheckTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  // Prevent form submission when Enter key is pressed
+  const handleFormSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    console.log("Form submission prevented");
+    return false;
+  };
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -97,6 +104,14 @@ export const AttorneyInformationForm = ({
     setEmailCheckTimeout(timeout);
   };
 
+  // Handle key press to prevent form submission on Enter
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      return false;
+    }
+  };
+
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -115,7 +130,7 @@ export const AttorneyInformationForm = ({
   };
 
   return (
-    <div className="space-y-6">
+    <form onSubmit={handleFormSubmit} className="space-y-6">
       <div>
         <label className="form-label">Attorney Name*</label>
         <Input
@@ -123,6 +138,7 @@ export const AttorneyInformationForm = ({
           value={formData.attorneyName}
           onChange={(e) => handleInputChange("attorneyName", e.target.value)}
           placeholder="John Smith"
+          onKeyDown={handleKeyDown}
         />
         {errors.attorneyName && (
           <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
@@ -145,6 +161,7 @@ export const AttorneyInformationForm = ({
           onChange={handleEmailChange}
           placeholder="john@example.com"
           className={isCheckingEmail ? "bg-neutral-50" : ""}
+          onKeyDown={handleKeyDown}
         />
         {isCheckingEmail && (
           <p className="text-neutral-500 text-sm mt-1">Checking email...</p>
@@ -161,6 +178,7 @@ export const AttorneyInformationForm = ({
           value={formData.firmName}
           onChange={(e) => handleInputChange("firmName", e.target.value)}
           placeholder="Smith & Associates"
+          onKeyDown={handleKeyDown}
         />
         {errors.firmName && (
           <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
@@ -174,6 +192,7 @@ export const AttorneyInformationForm = ({
           value={formData.firmWebsite}
           onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
           placeholder="https://www.example.com"
+          onKeyDown={handleKeyDown}
         />
         {errors.firmWebsite && (
           <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
@@ -186,6 +205,7 @@ export const AttorneyInformationForm = ({
           className="form-input w-full rounded-md border border-neutral-200 p-2"
           value={getSelectedValue()}
           onChange={handleLocationChange}
+          onKeyDown={handleKeyDown}
         >
           <option value="">Select your location</option>
           {availableLocations.map((location) => (
@@ -202,6 +222,7 @@ export const AttorneyInformationForm = ({
               value={otherLocation || formData.location}
               onChange={handleOtherLocationChange}
               placeholder="Please specify your location (City, State)"
+              onKeyDown={handleKeyDown}
             />
           </div>
         )}
@@ -209,6 +230,6 @@ export const AttorneyInformationForm = ({
           <p className="text-red-500 text-sm mt-1">{errors.location}</p>
         )}
       </div>
-    </div>
+    </form>
   );
 };
