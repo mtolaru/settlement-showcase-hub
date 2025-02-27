@@ -148,7 +148,7 @@ const ManageSettlements = () => {
               ...settlement,
               settlement_date: settlement.settlement_date || settlement.created_at,
               firmWebsite: settlement.firm_website
-            }));
+            })) as Settlement[];
             
             setSettlements(processedData);
             
@@ -176,7 +176,7 @@ const ManageSettlements = () => {
         ...settlement,
         settlement_date: settlement.settlement_date || settlement.created_at,
         firmWebsite: settlement.firm_website
-      }));
+      })) as Settlement[];
       
       setSettlements(processedData);
     } catch (error) {

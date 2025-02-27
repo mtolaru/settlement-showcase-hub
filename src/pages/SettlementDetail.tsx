@@ -46,7 +46,7 @@ const SettlementDetail = () => {
           ...data,
           settlement_date: data.settlement_date || data.created_at,
           firmWebsite: data.firm_website
-        };
+        } as Settlement;
 
         setSettlement(processedData);
       } catch (error) {

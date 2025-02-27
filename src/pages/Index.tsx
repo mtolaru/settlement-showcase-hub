@@ -46,7 +46,7 @@ const Index = () => {
           ...settlement,
           settlement_date: settlement.settlement_date || settlement.created_at,
           firmWebsite: settlement.firm_website
-        })) || [];
+        })) as Settlement[];
         
         // Deduplicate settlements by ID (in case there are duplicates in the database)
         const uniqueSettlements = processedData ? 

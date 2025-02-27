@@ -1,56 +1,121 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 
-interface FiltersPanelProps {
+export interface FiltersPanelProps {
+  filters: {
+    amount: string;
+    caseType: string;
+    location: string;
+    sort: string;
+  };
+  setFilters: (filters: {
+    amount: string;
+    caseType: string;
+    location: string;
+    sort: string;
+  }) => void;
   caseTypes: string[];
   locations: string[];
-  selectedType: string;
-  selectedLocation: string;
-  sortBy: string;
-  onTypeSelect: (type: string) => void;
-  onLocationChange: (location: string) => void;
-  onSortChange: (sort: string) => void;
 }
 
-const FiltersPanel = ({
-  caseTypes,
-  locations,
-  selectedType,
-  selectedLocation,
-  sortBy,
-  onTypeSelect,
-  onLocationChange,
-  onSortChange,
-}: FiltersPanelProps) => {
+const FiltersPanel = ({ filters, setFilters, caseTypes, locations }: FiltersPanelProps) => {
+  const [sliderValue, setSliderValue] = useState<number[]>([0]);
+  
+  const amountRanges = [
+    { label: "All Amounts", value: "all" },
+    { label: "$0 - $50,000", value: "0-50000" },
+    { label: "$50,000 - $100,000", value: "50000-100000" },
+    { label: "$100,000 - $250,000", value: "100000-250000" },
+    { label: "$250,000 - $500,000", value: "250000-500000" },
+    { label: "$500,000 - $1,000,000", value: "500000-1000000" },
+    { label: "$1,000,000+", value: "1000000" },
+  ];
+  
+  const sortOptions = [
+    { label: "Highest Amount", value: "highest" },
+    { label: "Lowest Amount", value: "lowest" },
+    { label: "Most Recent", value: "newest" },
+  ];
+  
+  const handleReset = () => {
+    setFilters({
+      amount: "all",
+      caseType: "all",
+      location: "all",
+      sort: "highest"
+    });
+  };
+
+  const handleFilterChange = (filterType: string, value: string) => {
+    setFilters({
+      ...filters,
+      [filterType]: value
+    });
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-          {caseTypes.map((type) => {
-            const isSelected = selectedType === type.toLowerCase();
-            return (
-              <Button
-                key={type}
-                variant={isSelected ? "default" : "outline"}
-                onClick={() => onTypeSelect(type.toLowerCase())}
-                className={`whitespace-nowrap flex items-center gap-2 ${
-                  isSelected
-                    ? "bg-primary-500 text-white hover:bg-primary-600"
-                    : "hover:border-primary-500 hover:text-primary-500"
-                }`}
-              >
-                {isSelected && <Check className="h-4 w-4" />}
-                {type}
-              </Button>
-            );
-          })}
+    <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-lg font-semibold">Filters</h3>
+        <button 
+          className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+          onClick={handleReset}
+        >
+          Reset All
+        </button>
+      </div>
+      
+      <div className="space-y-6">
+        {/* Settlement Amount Filter */}
+        <div>
+          <h4 className="text-sm font-medium mb-3">Settlement Amount</h4>
+          <div className="space-y-2">
+            {amountRanges.map((range) => (
+              <div key={range.value} className="flex items-center">
+                <input
+                  type="radio"
+                  id={`amount-${range.value}`}
+                  name="amount"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  checked={filters.amount === range.value}
+                  onChange={() => handleFilterChange("amount", range.value)}
+                />
+                <label 
+                  htmlFor={`amount-${range.value}`} 
+                  className="ml-2 text-sm text-neutral-700"
+                >
+                  {range.label}
+                </label>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-4">
+        
+        {/* Case Type Filter */}
+        <div>
+          <h4 className="text-sm font-medium mb-3">Case Type</h4>
           <select
-            className="form-input bg-white border rounded-md px-3 py-2"
-            value={selectedLocation}
-            onChange={(e) => onLocationChange(e.target.value)}
+            className="w-full rounded-md border border-neutral-200 p-2 text-sm"
+            value={filters.caseType}
+            onChange={(e) => handleFilterChange("caseType", e.target.value)}
+          >
+            {caseTypes.map((type) => (
+              <option key={type} value={type}>
+                {type === "all" ? "All Case Types" : type}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Location Filter */}
+        <div>
+          <h4 className="text-sm font-medium mb-3">Location</h4>
+          <select
+            className="w-full rounded-md border border-neutral-200 p-2 text-sm"
+            value={filters.location}
+            onChange={(e) => handleFilterChange("location", e.target.value)}
           >
             {locations.map((location) => (
               <option key={location} value={location}>
@@ -58,15 +123,40 @@ const FiltersPanel = ({
               </option>
             ))}
           </select>
-          <select
-            className="form-input bg-white border rounded-md px-3 py-2"
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value)}
-          >
-            <option value="amount">Sort by Amount</option>
-            <option value="date">Sort by Date</option>
-          </select>
         </div>
+        
+        {/* Sort Order */}
+        <div>
+          <h4 className="text-sm font-medium mb-3">Sort By</h4>
+          <div className="space-y-2">
+            {sortOptions.map((option) => (
+              <div key={option.value} className="flex items-center">
+                <input
+                  type="radio"
+                  id={`sort-${option.value}`}
+                  name="sort"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  checked={filters.sort === option.value}
+                  onChange={() => handleFilterChange("sort", option.value)}
+                />
+                <label 
+                  htmlFor={`sort-${option.value}`} 
+                  className="ml-2 text-sm text-neutral-700"
+                >
+                  {option.label}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <Button 
+          onClick={handleReset}
+          variant="outline" 
+          className="w-full mt-4"
+        >
+          Reset All Filters
+        </Button>
       </div>
     </div>
   );

@@ -40,12 +40,12 @@ const Leaderboard = () => {
           throw error;
         }
 
-        // Add settlement_date with fallback to created_at if it doesn't exist
+        // Process the data to ensure all required fields exist
         const processedData = data?.map(settlement => ({
           ...settlement,
           settlement_date: settlement.settlement_date || settlement.created_at,
           firmWebsite: settlement.firm_website
-        })) || [];
+        })) as Settlement[];
         
         setSettlements(processedData);
       } catch (error) {
