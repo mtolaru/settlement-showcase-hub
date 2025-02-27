@@ -13,6 +13,7 @@ const SubmissionConfirmation = () => {
   const [showCreateAccount, setShowCreateAccount] = useState(true);
   const [settlementData, setSettlementData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
   const temporaryId = new URLSearchParams(window.location.search).get("temporaryId");
 
@@ -25,6 +26,7 @@ const SubmissionConfirmation = () => {
       fetchSettlementData();
     } else {
       setIsLoading(false);
+      setError("No settlement ID found in URL");
     }
   }, [temporaryId]);
 
@@ -38,9 +40,15 @@ const SubmissionConfirmation = () => {
       
       if (error) throw error;
       
+      if (!data) {
+        throw new Error('Settlement not found');
+      }
+
       setSettlementData(data);
+      console.log("Found settlement data:", data);
     } catch (error) {
       console.error('Error fetching settlement data:', error);
+      setError("Could not find settlement data");
     } finally {
       setIsLoading(false);
     }
@@ -49,9 +57,33 @@ const SubmissionConfirmation = () => {
   // Show create account prompt only for non-authenticated users with a temporaryId
   const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && temporaryId;
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+          <p className="text-neutral-600">Fetching your settlement details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
+          <p className="text-neutral-600 mb-4">{error}</p>
+          <Link to="/submit">
+            <Button>Return to Submit Page</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
       <div className="bg-primary-900 text-white py-12">
         <div className="container">
           <Link to="/settlements">
@@ -66,7 +98,6 @@ const SubmissionConfirmation = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="container py-12">
         <div className="max-w-xl mx-auto">
           {shouldShowCreateAccount ? (
