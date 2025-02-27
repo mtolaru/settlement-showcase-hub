@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import type { Settlement } from "@/types/settlement";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface SettlementsListProps {
   settlements: Settlement[];
@@ -23,10 +22,6 @@ const SettlementsList = ({ settlements, isLoading }: SettlementsListProps) => {
       style: 'currency',
       currency: 'USD',
     }).format(amount);
-  };
-
-  const handleSettlementClick = (settlementId: number) => {
-    navigate(`/settlements/${settlementId}`);
   };
 
   if (isLoading) {
@@ -54,31 +49,25 @@ const SettlementsList = ({ settlements, isLoading }: SettlementsListProps) => {
   return (
     <div className="space-y-4">
       {settlements.map((settlement) => (
-        <Card 
-          key={settlement.id} 
-          className="border hover:shadow-md transition-shadow cursor-pointer"
-          onClick={() => handleSettlementClick(settlement.id)}
-        >
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold text-lg">{settlement.type}</h3>
-                <p className="text-neutral-600">{settlement.firm}</p>
+        <div key={settlement.id} className="border rounded-lg p-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-semibold text-lg">{settlement.type}</h3>
+              <p className="text-neutral-600">{settlement.firm}</p>
+            </div>
+            <div className="text-right">
+              <div className="font-semibold text-lg text-primary-600">
+                {formatCurrency(settlement.amount)}
               </div>
-              <div className="text-right">
-                <div className="font-semibold text-lg text-primary-600">
-                  {formatCurrency(settlement.amount)}
-                </div>
-                <div className="text-sm text-neutral-500">
-                  {formatDate(settlement.created_at)}
-                </div>
+              <div className="text-sm text-neutral-500">
+                {formatDate(settlement.created_at)}
               </div>
             </div>
-            {settlement.description && (
-              <p className="mt-2 text-neutral-600 line-clamp-2">{settlement.description}</p>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+          {settlement.description && (
+            <p className="mt-2 text-neutral-600">{settlement.description}</p>
+          )}
+        </div>
       ))}
     </div>
   );
