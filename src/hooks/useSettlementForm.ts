@@ -27,6 +27,27 @@ export const useSettlementForm = () => {
     }
     return undefined;
   };
+  
+  const validateDateField = (value: string) => {
+    if (!value) {
+      return "Settlement date is required";
+    }
+    
+    // Check if date is valid and not in the future
+    const inputDate = new Date(value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time part for proper comparison
+    
+    if (isNaN(inputDate.getTime())) {
+      return "Please enter a valid date";
+    }
+    
+    if (inputDate > today) {
+      return "Settlement date cannot be in the future";
+    }
+    
+    return undefined;
+  };
 
   const validateStep1 = (formData: any) => {
     const newErrors: Record<string, string> = {};
@@ -37,6 +58,10 @@ export const useSettlementForm = () => {
       const error = validateMoneyField(field, formData[field], label);
       if (error) newErrors[field] = error;
     });
+    
+    // Validate settlement date
+    const dateError = validateDateField(formData.settlementDate);
+    if (dateError) newErrors.settlementDate = dateError;
 
     // Validate other required fields
     if (!formData.settlementPhase) {
@@ -97,6 +122,7 @@ export const useSettlementForm = () => {
     unformatNumber,
     validateNumber,
     validateStep1,
-    validateStep2
+    validateStep2,
+    validateDateField
   };
 };

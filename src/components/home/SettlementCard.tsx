@@ -13,7 +13,8 @@ interface Settlement {
   firm: string;
   firmWebsite?: string;
   location: string;
-  date: string;
+  date: string; 
+  settlementDate?: string; // Added for new settlements
   photo_url?: string;
 }
 
@@ -90,7 +91,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
             {settlement.location}
           </div>
           <p className="text-sm text-neutral-600">
-            Settlement Date: {settlement.date}
+            Settlement Date: {settlement.settlementDate || settlement.date}
           </p>
         </div>
       </div>

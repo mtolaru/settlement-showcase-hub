@@ -8,6 +8,7 @@ export interface Settlement {
   attorney: string;
   location: string;
   created_at: string;
+  settlement_date: string | null;
   description: string | null;
   case_description: string | null;
   initial_offer: number | null;

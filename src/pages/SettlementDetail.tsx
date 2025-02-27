@@ -94,6 +94,21 @@ const SettlementDetail = () => {
       maximumFractionDigits: 0
     }).format(amount);
   };
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return "N/A";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -259,11 +274,7 @@ const SettlementDetail = () => {
                     <span className="text-sm">Settlement Date</span>
                   </div>
                   <div>
-                    {new Date(settlement.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
+                    {formatDate(settlement.settlement_date)}
                   </div>
                 </div>
               </div>

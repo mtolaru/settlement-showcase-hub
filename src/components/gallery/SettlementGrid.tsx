@@ -18,6 +18,20 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
       maximumFractionDigits: 0
     });
   };
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long'
+      });
+    } catch (e) {
+      return "N/A";
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -88,7 +102,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                   {settlement.location}
                 </div>
                 <p className="text-sm text-neutral-600">
-                  Settlement Date: {new Date(settlement.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                  Settlement Date: {formatDate(settlement.settlement_date) || formatDate(settlement.created_at)}
                 </p>
               </div>
             </div>

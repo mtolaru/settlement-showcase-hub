@@ -14,8 +14,13 @@ interface SettlementsListProps {
 const SettlementsList = ({ settlements, isLoading }: SettlementsListProps) => {
   const navigate = useNavigate();
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'MMMM d, yyyy');
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Unknown date";
+    try {
+      return format(new Date(dateString), 'MMMM d, yyyy');
+    } catch (e) {
+      return "Unknown date";
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -70,7 +75,7 @@ const SettlementsList = ({ settlements, isLoading }: SettlementsListProps) => {
                   {formatCurrency(settlement.amount)}
                 </div>
                 <div className="text-sm text-neutral-500">
-                  {formatDate(settlement.created_at)}
+                  {formatDate(settlement.settlement_date || settlement.created_at)}
                 </div>
               </div>
             </div>

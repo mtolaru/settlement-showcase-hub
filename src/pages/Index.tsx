@@ -77,6 +77,17 @@ const Index = () => {
   const topSettlements = [...filteredSettlements]
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);
+    
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Unknown";
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    } catch (e) {
+      return "Unknown";
+    }
+  };
 
   // Format the settlement data to match the SettlementCard props
   const formatSettlement = (settlement: Settlement) => ({
@@ -87,7 +98,8 @@ const Index = () => {
     firm: settlement.firm,
     firmWebsite: settlement.firmWebsite,
     location: settlement.location,
-    date: new Date(settlement.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+    date: formatDate(settlement.created_at),
+    settlementDate: formatDate(settlement.settlement_date),
     photo_url: settlement.photo_url
   });
 

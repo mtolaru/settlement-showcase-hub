@@ -13,6 +13,7 @@ interface ReviewStepProps {
     otherCaseType: string;
     caseDescription: string;
     settlementPhase: string;
+    settlementDate: string;
     attorneyName: string;
     attorneyEmail: string;
     firmName: string;
@@ -48,6 +49,21 @@ export const ReviewStep = ({
     return phase;
   };
   
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return dateString;
+    }
+  };
+  
   const handleCheckout = () => {
     setIsSubmitting(true);
     onCreateCheckout();
@@ -70,6 +86,10 @@ export const ReviewStep = ({
                 <div>
                   <dt className="text-sm text-neutral-600">Settlement Amount</dt>
                   <dd className="font-medium">{formatCurrency(formData.amount)}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-neutral-600">Settlement Date</dt>
+                  <dd className="font-medium">{formatDate(formData.settlementDate)}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-neutral-600">Initial Offer</dt>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ interface FormData {
   caseType: string;
   otherCaseType: string;
   caseDescription: string;
+  settlementDate: string;
   caseDetails: {
     carAccident: {
       vehicleType: string;
@@ -62,6 +64,10 @@ const SubmitSettlement = () => {
   const navigate = useNavigate();
   const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
 
+  // Set default date to today
+  const today = new Date();
+  const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   const [formData, setFormData] = useState<FormData>({
     amount: "",
     initialOffer: "",
@@ -71,6 +77,7 @@ const SubmitSettlement = () => {
     caseType: "",
     otherCaseType: "",
     caseDescription: "",
+    settlementDate: defaultDate,
     caseDetails: {
       carAccident: {
         vehicleType: "",
@@ -232,6 +239,7 @@ const SubmitSettlement = () => {
         policy_limit: Number(unformatNumber(formData.policyLimit)),
         medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
         settlement_phase: formData.settlementPhase,
+        settlement_date: formData.settlementDate,
         photo_url: formData.photoUrl,
         attorney_email: formData.attorneyEmail,
         user_id: session.user.id,
@@ -337,6 +345,7 @@ const SubmitSettlement = () => {
           policy_limit: Number(unformatNumber(formData.policyLimit)),
           medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
           settlement_phase: formData.settlementPhase,
+          settlement_date: formData.settlementDate,
           photo_url: formData.photoUrl,
           temporary_id: temporaryId,
           user_id: session?.user?.id,

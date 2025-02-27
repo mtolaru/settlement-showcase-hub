@@ -1,6 +1,6 @@
-
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
 
 interface SettlementDetailsFormProps {
   formData: {
@@ -12,6 +12,7 @@ interface SettlementDetailsFormProps {
     caseType: string;
     otherCaseType: string;
     caseDescription: string;
+    settlementDate: string;
   };
   errors: Record<string, string | undefined>;
   handleInputChange: (field: string, value: string) => void;
@@ -36,6 +37,8 @@ export const SettlementDetailsForm = ({
   errors,
   handleInputChange,
 }: SettlementDetailsFormProps) => {
+  const [focused, setFocused] = useState<string | null>(null);
+
   const formatDollarInput = (value: string) => {
     // Remove dollar sign and commas
     let numericValue = value.replace(/[$,]/g, '');
@@ -52,6 +55,88 @@ export const SettlementDetailsForm = ({
     const processedValue = value.replace(/[$,]/g, '');
     handleInputChange(field, processedValue);
   };
+  
+  const formatDateInput = (value: string) => {
+    // Remove any non-digits
+    const digits = value.replace(/\D/g, '');
+    
+    if (digits.length <= 2) {
+      return digits;
+    } else if (digits.length <= 4) {
+      return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    } else {
+      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+    }
+  };
+  
+  const handleDateInput = (field: string, value: string) => {
+    const formattedValue = formatDateInput(value);
+    
+    if (focused === field) {
+      // Keep formatting while typing
+      const inputElement = document.getElementById(field) as HTMLInputElement;
+      if (inputElement) {
+        inputElement.value = formattedValue;
+      }
+    }
+    
+    // Convert MM/DD/YYYY to YYYY-MM-DD for storage
+    const digits = value.replace(/\D/g, '');
+    if (digits.length === 8) {
+      const month = digits.slice(0, 2);
+      const day = digits.slice(2, 4);
+      const year = digits.slice(4, 8);
+      const isoDate = `${year}-${month}-${day}`;
+      handleInputChange(field, isoDate);
+    } else {
+      // Just pass the formatted value if not complete
+      handleInputChange(field, formattedValue);
+    }
+  };
+  
+  const handleDateBlur = (field: string, value: string) => {
+    setFocused(null);
+    
+    // If we have a full date in MM/DD/YYYY format, convert to YYYY-MM-DD
+    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (match) {
+      const [_, month, day, year] = match;
+      const isoDate = `${year}-${month}-${day}`;
+      handleInputChange(field, isoDate);
+    }
+  };
+  
+  const handleDateFocus = (field: string, value: string) => {
+    setFocused(field);
+    
+    // If we have an ISO date, convert to MM/DD/YYYY for display
+    if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = value.split('-');
+      const displayDate = `${month}/${day}/${year}`;
+      
+      const inputElement = document.getElementById(field) as HTMLInputElement;
+      if (inputElement) {
+        inputElement.value = displayDate;
+      }
+    }
+  };
+
+  // Display date in MM/DD/YYYY format for the input field
+  const getDisplayDate = (isoDate: string) => {
+    if (!isoDate) return '';
+    
+    // If already in MM/DD/YYYY format, return as is
+    if (isoDate.includes('/')) return isoDate;
+    
+    // If in YYYY-MM-DD format, convert to MM/DD/YYYY
+    const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const [_, year, month, day] = match;
+      return `${month}/${day}/${year}`;
+    }
+    
+    return isoDate;
+  };
 
   return (
     <div className="space-y-6">
@@ -66,6 +151,26 @@ export const SettlementDetailsForm = ({
         />
         {errors.amount && (
           <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="form-label">Settlement Date*</label>
+        <Input
+          id="settlementDate"
+          type="text"
+          value={focused === "settlementDate" ? "" : getDisplayDate(formData.settlementDate)}
+          onChange={(e) => handleDateInput("settlementDate", e.target.value)}
+          onFocus={() => handleDateFocus("settlementDate", formData.settlementDate)}
+          onBlur={() => handleDateBlur("settlementDate", formData.settlementDate)}
+          placeholder="MM/DD/YYYY"
+          className="no-spinner"
+        />
+        <p className="text-sm text-neutral-500 mt-1">
+          Enter the date when the settlement was finalized
+        </p>
+        {errors.settlementDate && (
+          <p className="text-red-500 text-sm mt-1">{errors.settlementDate}</p>
         )}
       </div>
 
