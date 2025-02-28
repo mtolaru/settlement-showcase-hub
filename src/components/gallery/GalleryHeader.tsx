@@ -156,7 +156,8 @@ const GalleryHeader = ({
         </div>
       </div>
 
-      <style jsx>{`
+      <style>
+        {`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
         }
@@ -164,7 +165,8 @@ const GalleryHeader = ({
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
