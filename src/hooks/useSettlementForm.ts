@@ -39,10 +39,45 @@ export const useSettlementForm = () => {
     if (value.includes('/')) {
       // It's in MM/DD/YYYY format
       const [month, day, year] = value.split('/');
-      inputDate = new Date(`${year}-${month}-${day}`);
+      
+      // Check if all parts exist and are valid numbers
+      if (!month || !day || !year || isNaN(Number(month)) || isNaN(Number(day)) || isNaN(Number(year))) {
+        return "Please enter a valid date in MM/DD/YYYY format";
+      }
+      
+      // Check if the parts form a valid date (e.g., not 02/31/2023)
+      inputDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      
+      // Check if the generated date matches what was input
+      // This catches cases like 02/31/2023 which silently rolls over to 03/03/2023
+      const resultMonth = (inputDate.getMonth() + 1).toString();
+      const resultDay = inputDate.getDate().toString();
+      const resultYear = inputDate.getFullYear().toString();
+      
+      if (resultMonth !== month.replace(/^0+/, '') || 
+          resultDay !== day.replace(/^0+/, '') || 
+          resultYear !== year) {
+        return "Please enter a valid date (the date you entered doesn't exist)";
+      }
     } else if (value.includes('-')) {
       // It's in YYYY-MM-DD format
+      const [year, month, day] = value.split('-');
+      
+      // Check if all parts exist and are valid numbers
+      if (!year || !month || !day || isNaN(Number(year)) || isNaN(Number(month)) || isNaN(Number(day))) {
+        return "Please enter a valid date";
+      }
+      
       inputDate = new Date(value);
+      
+      // Check if the generated date matches what was input
+      const resultYear = inputDate.getFullYear().toString();
+      const resultMonth = (inputDate.getMonth() + 1).toString().padStart(2, '0');
+      const resultDay = inputDate.getDate().toString().padStart(2, '0');
+      
+      if (resultYear !== year || resultMonth !== month || resultDay !== day) {
+        return "Please enter a valid date (the date you entered doesn't exist)";
+      }
     } else {
       return "Please enter a valid date in MM/DD/YYYY format";
     }

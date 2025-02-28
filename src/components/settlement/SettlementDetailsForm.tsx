@@ -1,6 +1,7 @@
+
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SettlementDetailsFormProps {
   formData: {
@@ -72,8 +73,6 @@ export const SettlementDetailsForm = ({
   
   const handleDateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Update the display value for the input
-    setDisplayDate(value);
     
     // Format the date for display
     const formatted = formatDateInput(value);
@@ -118,13 +117,15 @@ export const SettlementDetailsForm = ({
     }
   };
 
-  // Convert ISO date to display format when component mounts
-  useState(() => {
+  // Convert ISO date to display format when component mounts or formData changes
+  useEffect(() => {
     if (formData.settlementDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = formData.settlementDate.split('-');
       setDisplayDate(`${month}/${day}/${year}`);
+    } else if (formData.settlementDate.includes('/')) {
+      setDisplayDate(formData.settlementDate);
     }
-  });
+  }, [formData.settlementDate]);
 
   return (
     <div className="space-y-6">
@@ -146,7 +147,7 @@ export const SettlementDetailsForm = ({
         <label className="form-label">Settlement Date*</label>
         <Input
           type="text"
-          value={focused === "settlementDate" ? displayDate : displayDate || getDisplayDate(formData.settlementDate)}
+          value={focused === "settlementDate" ? displayDate : (displayDate || getDisplayDate(formData.settlementDate))}
           onChange={handleDateInput}
           onFocus={handleDateFocus}
           onBlur={handleDateBlur}

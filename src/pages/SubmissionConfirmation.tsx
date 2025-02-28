@@ -16,7 +16,7 @@ const SubmissionConfirmation = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -53,6 +53,40 @@ const SubmissionConfirmation = () => {
     console.log("Attempting to fetch settlement with temporary ID:", temporaryId);
     fetchSettlementData();
   }, [temporaryId, sessionId]);
+  
+  // Associate the user ID with settlements if the user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && settlementData && temporaryId && !settlementData.user_id) {
+      associateUserWithSettlement();
+    }
+  }, [isAuthenticated, user, settlementData, temporaryId]);
+
+  const associateUserWithSettlement = async () => {
+    if (!user?.id || !temporaryId || isUpdating) return;
+    
+    try {
+      setIsUpdating(true);
+      console.log("Associating user ID with settlement:", user.id, temporaryId);
+      
+      const { error: updateError } = await supabase
+        .from('settlements')
+        .update({ user_id: user.id })
+        .eq('temporary_id', temporaryId)
+        .is('user_id', null); // Only update if user_id is null
+        
+      if (updateError) {
+        console.error("Error associating user with settlement:", updateError);
+      } else {
+        console.log("Successfully associated user with settlement");
+        // Refresh settlement data
+        fetchSettlementData();
+      }
+    } catch (error) {
+      console.error("Error in associateUserWithSettlement:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const fetchSettlementBySessionId = async (sessionId: string) => {
     try {
@@ -135,6 +169,12 @@ const SubmissionConfirmation = () => {
             
           if (refreshedData) {
             setSettlementData(refreshedData);
+            
+            // If user is authenticated and settlement doesn't have a user_id yet,
+            // associate it with the current user
+            if (isAuthenticated && user && !refreshedData.user_id) {
+              associateUserWithSettlement();
+            }
           }
         }
       }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { SubmissionProgress } from "@/components/settlement/SubmissionProgress";
 import { ReviewStep } from "@/components/settlement/ReviewStep";
 import { useSettlementForm } from "@/hooks/useSettlementForm";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FormData {
   amount: string;
@@ -63,6 +63,7 @@ const SubmitSettlement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
+  const { user, isAuthenticated } = useAuth();
 
   // Set default date to today
   const today = new Date();
@@ -201,10 +202,6 @@ const SubmitSettlement = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.user) {
-        throw new Error("No authenticated user found");
-      }
-
       // Check if this temporaryId already has a completed payment
       const { data: existingSettlement, error: checkError } = await supabase
         .from('settlements')
@@ -242,7 +239,7 @@ const SubmitSettlement = () => {
         settlement_date: formData.settlementDate,
         photo_url: formData.photoUrl,
         attorney_email: formData.attorneyEmail,
-        user_id: session.user.id,
+        user_id: session?.user?.id || null,
         payment_completed: true,
         temporary_id: temporaryId,
         created_at: new Date().toISOString()
@@ -269,6 +266,7 @@ const SubmitSettlement = () => {
         title: "Error",
         description: "Failed to submit settlement. Please try again.",
       });
+      setSubmissionLock(false);
     } finally {
       setIsSubmitting(false);
       // We don't reset the submissionLock here to prevent repeated submissions
