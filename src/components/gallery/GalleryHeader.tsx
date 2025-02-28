@@ -65,7 +65,14 @@ const GalleryHeader = ({
     "all",
     "Los Angeles, CA",
     "San Francisco, CA",
-    "San Diego, CA"
+    "San Diego, CA",
+    "Sacramento, CA",
+    "Oakland, CA",
+    "San Jose, CA",
+    "Fresno, CA",
+    "Long Beach, CA",
+    "Irvine, CA",
+    "Anaheim, CA"
   ];
 
   return (
@@ -153,7 +160,7 @@ const GalleryHeader = ({
             <div className="flex flex-col gap-3 items-end">
               {/* Location Filter */}
               <select
-                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-auto"
+                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-[200px]"
                 value={filters.location}
                 onChange={(e) => handleFilterChange("location", e.target.value)}
               >
@@ -166,12 +173,13 @@ const GalleryHeader = ({
               
               {/* Sort Order */}
               <select
-                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-auto"
+                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-[200px]"
                 value={filters.sort}
                 onChange={(e) => handleFilterChange("sort", e.target.value)}
               >
-                <option value="highest">Sort by Amount</option>
-                <option value="newest">Most Recent</option>
+                <option value="highest">Sort by Highest Amount</option>
+                <option value="lowest">Sort by Lowest Amount</option>
+                <option value="newest">Sort by Most Recent</option>
               </select>
             </div>
           </div>
