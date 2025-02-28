@@ -38,6 +38,7 @@ export const SettlementDetailsForm = ({
   handleInputChange,
 }: SettlementDetailsFormProps) => {
   const [focused, setFocused] = useState<string | null>(null);
+  const [displayDate, setDisplayDate] = useState<string>("");
 
   const formatDollarInput = (value: string) => {
     // Remove dollar sign and commas
@@ -69,74 +70,61 @@ export const SettlementDetailsForm = ({
     }
   };
   
-  const handleDateInput = (field: string, value: string) => {
-    const formattedValue = formatDateInput(value);
+  const handleDateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Update the display value for the input
+    setDisplayDate(value);
     
-    if (focused === field) {
-      // Keep formatting while typing
-      const inputElement = document.getElementById(field) as HTMLInputElement;
-      if (inputElement) {
-        inputElement.value = formattedValue;
-      }
-    }
+    // Format the date for display
+    const formatted = formatDateInput(value);
+    setDisplayDate(formatted);
     
-    // Convert MM/DD/YYYY to YYYY-MM-DD for storage
+    // Convert MM/DD/YYYY to YYYY-MM-DD for storage if complete
     const digits = value.replace(/\D/g, '');
     if (digits.length === 8) {
       const month = digits.slice(0, 2);
       const day = digits.slice(2, 4);
       const year = digits.slice(4, 8);
       const isoDate = `${year}-${month}-${day}`;
-      handleInputChange(field, isoDate);
+      handleInputChange("settlementDate", isoDate);
     } else {
-      // Just pass the formatted value if not complete
-      handleInputChange(field, formattedValue);
+      // Just keep the formatted value if not complete
+      handleInputChange("settlementDate", formatted);
     }
   };
   
-  const handleDateBlur = (field: string, value: string) => {
+  const handleDateFocus = () => {
+    setFocused("settlementDate");
+    // If we have an ISO date, convert to MM/DD/YYYY for display
+    if (formData.settlementDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = formData.settlementDate.split('-');
+      setDisplayDate(`${month}/${day}/${year}`);
+    } else if (formData.settlementDate.includes('/')) {
+      setDisplayDate(formData.settlementDate);
+    } else {
+      setDisplayDate("");
+    }
+  };
+  
+  const handleDateBlur = () => {
     setFocused(null);
     
     // If we have a full date in MM/DD/YYYY format, convert to YYYY-MM-DD
-    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const match = displayDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (match) {
       const [_, month, day, year] = match;
       const isoDate = `${year}-${month}-${day}`;
-      handleInputChange(field, isoDate);
-    }
-  };
-  
-  const handleDateFocus = (field: string, value: string) => {
-    setFocused(field);
-    
-    // If we have an ISO date, convert to MM/DD/YYYY for display
-    if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = value.split('-');
-      const displayDate = `${month}/${day}/${year}`;
-      
-      const inputElement = document.getElementById(field) as HTMLInputElement;
-      if (inputElement) {
-        inputElement.value = displayDate;
-      }
+      handleInputChange("settlementDate", isoDate);
     }
   };
 
-  // Display date in MM/DD/YYYY format for the input field
-  const getDisplayDate = (isoDate: string) => {
-    if (!isoDate) return '';
-    
-    // If already in MM/DD/YYYY format, return as is
-    if (isoDate.includes('/')) return isoDate;
-    
-    // If in YYYY-MM-DD format, convert to MM/DD/YYYY
-    const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const [_, year, month, day] = match;
-      return `${month}/${day}/${year}`;
+  // Convert ISO date to display format when component mounts
+  useState(() => {
+    if (formData.settlementDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = formData.settlementDate.split('-');
+      setDisplayDate(`${month}/${day}/${year}`);
     }
-    
-    return isoDate;
-  };
+  });
 
   return (
     <div className="space-y-6">
@@ -157,12 +145,11 @@ export const SettlementDetailsForm = ({
       <div>
         <label className="form-label">Settlement Date*</label>
         <Input
-          id="settlementDate"
           type="text"
-          value={focused === "settlementDate" ? "" : getDisplayDate(formData.settlementDate)}
-          onChange={(e) => handleDateInput("settlementDate", e.target.value)}
-          onFocus={() => handleDateFocus("settlementDate", formData.settlementDate)}
-          onBlur={() => handleDateBlur("settlementDate", formData.settlementDate)}
+          value={focused === "settlementDate" ? displayDate : displayDate || getDisplayDate(formData.settlementDate)}
+          onChange={handleDateInput}
+          onFocus={handleDateFocus}
+          onBlur={handleDateBlur}
           placeholder="MM/DD/YYYY"
           className="no-spinner"
         />
@@ -281,4 +268,21 @@ export const SettlementDetailsForm = ({
       </div>
     </div>
   );
+};
+
+// Helper function to convert from ISO to display format
+const getDisplayDate = (isoDate: string) => {
+  if (!isoDate) return '';
+  
+  // If already in MM/DD/YYYY format, return as is
+  if (isoDate.includes('/')) return isoDate;
+  
+  // If in YYYY-MM-DD format, convert to MM/DD/YYYY
+  const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const [_, year, month, day] = match;
+    return `${month}/${day}/${year}`;
+  }
+  
+  return isoDate;
 };

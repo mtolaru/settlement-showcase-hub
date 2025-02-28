@@ -33,14 +33,28 @@ export const useSettlementForm = () => {
       return "Settlement date is required";
     }
     
-    // Check if date is valid and not in the future
-    const inputDate = new Date(value);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time part for proper comparison
+    // Handle both MM/DD/YYYY format and YYYY-MM-DD format
+    let inputDate: Date;
     
+    if (value.includes('/')) {
+      // It's in MM/DD/YYYY format
+      const [month, day, year] = value.split('/');
+      inputDate = new Date(`${year}-${month}-${day}`);
+    } else if (value.includes('-')) {
+      // It's in YYYY-MM-DD format
+      inputDate = new Date(value);
+    } else {
+      return "Please enter a valid date in MM/DD/YYYY format";
+    }
+    
+    // Check if date is valid
     if (isNaN(inputDate.getTime())) {
       return "Please enter a valid date";
     }
+    
+    // Check if date is not in the future
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of day for proper comparison
     
     if (inputDate > today) {
       return "Settlement date cannot be in the future";
