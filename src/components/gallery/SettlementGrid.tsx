@@ -44,22 +44,27 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
           className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
         >
           <div className="relative">
-            <Link to={`/settlements/${settlement.id}`} className="block">
-              <div className="relative h-48 bg-neutral-100">
+            {/* Photo and type banner */}
+            <div className="relative h-48 bg-neutral-100">
+              <Link to={`/settlements/${settlement.id}`} className="block absolute inset-0">
                 <img
                   src={settlement.photo_url || "/placeholder.svg"}
                   alt={`${settlement.type} case`}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute top-4 left-4">
-                  <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
-                    {settlement.type}
-                  </span>
-                </div>
+              </Link>
+              <div className="absolute top-4 left-4">
+                <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
+                  {settlement.type}
+                </span>
               </div>
+            </div>
             
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
+            {/* Card content */}
+            <div className="p-6">
+              {/* Amount and share button row */}
+              <div className="flex justify-between items-start mb-4">
+                <Link to={`/settlements/${settlement.id}`} className="block">
                   <div>
                     <span className="text-3xl font-bold text-primary-500">
                       {formatAmount(settlement.amount)}
@@ -68,9 +73,22 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                       {settlement.type}
                     </p>
                   </div>
-                  {/* We'll insert the ShareButton outside this Link component */}
-                </div>
+                </Link>
                 
+                {/* Share button */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ShareButton
+                    url={`${window.location.origin}/settlements/${settlement.id}`}
+                    title={`${formatAmount(settlement.amount)} Settlement - ${settlement.type}`}
+                    amount={settlement.amount.toString()}
+                    caseType={settlement.type}
+                    variant="icon"
+                  />
+                </div>
+              </div>
+              
+              {/* Settlement details */}
+              <Link to={`/settlements/${settlement.id}`} className="block">
                 <div className="space-y-2">
                   <h3 className="font-bold text-lg text-neutral-900">
                     {settlement.attorney}
@@ -102,22 +120,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                     Settlement Date: {formatDate(settlement.settlement_date) || formatDate(settlement.created_at)}
                   </p>
                 </div>
-              </div>
-            </Link>
-            
-            {/* Position the ShareButton absolutely */}
-            <div 
-              className="absolute top-[calc(48px+1.5rem)] right-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ShareButton
-                url={`${window.location.origin}/settlements/${settlement.id}`}
-                title={`${formatAmount(settlement.amount)} Settlement - ${settlement.type}`}
-                amount={settlement.amount.toString()}
-                caseType={settlement.type}
-                variant="icon"
-                className="z-10"
-              />
+              </Link>
             </div>
           </div>
         </motion.div>
