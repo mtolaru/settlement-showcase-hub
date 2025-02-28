@@ -1,6 +1,6 @@
 
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 export interface GalleryHeaderProps {
@@ -101,13 +101,15 @@ const GalleryHeader = ({
             )}
           </div>
           
-          <Button
-            variant="accent"
-            size="lg"
-            className="whitespace-nowrap font-medium"
-          >
-            Submit Your Settlement
-          </Button>
+          <Link to="/submit">
+            <Button
+              variant="accent"
+              size="lg"
+              className="whitespace-nowrap font-medium"
+            >
+              Submit Your Settlement
+            </Button>
+          </Link>
         </div>
         
         <div className="bg-white rounded-lg p-5">
