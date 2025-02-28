@@ -107,77 +107,91 @@ const GalleryHeader = ({
           </Button>
         </div>
         
-        <div className="mt-10 bg-white rounded-lg p-8">
-          {/* Case Types Scroll */}
-          <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-hide">
-            <button
-              onClick={() => handleFilterChange("caseType", "all")}
-              className={`
-                whitespace-nowrap px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center
-                ${filters.caseType === "all"
-                  ? "bg-primary-600 text-white"
-                  : "text-primary-900 border border-neutral-200 hover:bg-neutral-50"
-                }
-              `}
-            >
-              {filters.caseType === "all" && (
-                <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
-              All
-            </button>
+        <div className="bg-white rounded-lg p-5">
+          <div className="flex flex-col lg:flex-row justify-between gap-4">
+            {/* Case Types Scroll */}
+            <div className="flex-1 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-2 pb-2">
+                <button
+                  onClick={() => handleFilterChange("caseType", "all")}
+                  className={`
+                    whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center
+                    ${filters.caseType === "all"
+                      ? "bg-primary-600 text-white"
+                      : "text-primary-900 border border-neutral-200 hover:bg-neutral-50"
+                    }
+                  `}
+                >
+                  {filters.caseType === "all" && (
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                  All
+                </button>
+                
+                {allCaseTypes.filter(type => type !== "all").map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => handleFilterChange("caseType", type)}
+                    className={`
+                      whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center
+                      ${type === filters.caseType
+                        ? "bg-primary-600 text-white"
+                        : "text-primary-900 border border-neutral-200 hover:bg-neutral-50"
+                      }
+                    `}
+                  >
+                    {type === filters.caseType && (
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
             
-            {allCaseTypes.filter(type => type !== "all").map((type) => (
-              <button
-                key={type}
-                onClick={() => handleFilterChange("caseType", type)}
-                className={`
-                  whitespace-nowrap px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center
-                  ${type === filters.caseType
-                    ? "bg-primary-600 text-white"
-                    : "text-primary-900 border border-neutral-200 hover:bg-neutral-50"
-                  }
-                `}
+            {/* Filter Controls */}
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Location Filter */}
+              <select
+                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm"
+                value={filters.location}
+                onChange={(e) => handleFilterChange("location", e.target.value)}
               >
-                {type === filters.caseType && (
-                  <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-                {type}
-              </button>
-            ))}
-          </div>
-          
-          <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-end">
-            {/* Location Filter */}
-            <select
-              className="border border-neutral-200 text-neutral-800 rounded-md px-4 py-2.5 text-sm"
-              value={filters.location}
-              onChange={(e) => handleFilterChange("location", e.target.value)}
-            >
-              {allLocations.map((location) => (
-                <option key={location} value={location}>
-                  {location === "all" ? "All Locations" : location}
-                </option>
-              ))}
-            </select>
-            
-            {/* Sort Order */}
-            <select
-              className="border border-neutral-200 text-neutral-800 rounded-md px-4 py-2.5 text-sm"
-              value={filters.sort}
-              onChange={(e) => handleFilterChange("sort", e.target.value)}
-            >
-              <option value="highest">Sort by Amount</option>
-              <option value="newest">Most Recent</option>
-            </select>
+                {allLocations.map((location) => (
+                  <option key={location} value={location}>
+                    {location === "all" ? "All Locations" : location}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Sort Order */}
+              <select
+                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm"
+                value={filters.sort}
+                onChange={(e) => handleFilterChange("sort", e.target.value)}
+              >
+                <option value="highest">Sort by Amount</option>
+                <option value="newest">Most Recent</option>
+              </select>
+
+              {/* Reset button */}
+              {(filters.caseType !== "all" || filters.location !== "all" || filters.sort !== "highest") && (
+                <button
+                  onClick={handleReset}
+                  className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
       
-      {/* Add proper CSS classes instead of using style jsx */}
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
