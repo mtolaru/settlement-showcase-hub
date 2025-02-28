@@ -44,10 +44,6 @@ const GalleryHeader = ({
     });
   };
 
-  const handleReset = () => {
-    setFilters(initialFilters);
-  };
-
   // Predefined static list of case types from the submission form
   const allCaseTypes = [
     "all",
@@ -99,9 +95,9 @@ const GalleryHeader = ({
           </div>
           
           <Button
-            variant="outline-on-dark"
+            variant="accent"
             size="lg"
-            className="whitespace-nowrap"
+            className="whitespace-nowrap font-medium"
           >
             Submit Your Settlement
           </Button>
@@ -154,10 +150,10 @@ const GalleryHeader = ({
             </div>
             
             {/* Filter Controls */}
-            <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex flex-col gap-3 items-end">
               {/* Location Filter */}
               <select
-                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm"
+                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-auto"
                 value={filters.location}
                 onChange={(e) => handleFilterChange("location", e.target.value)}
               >
@@ -170,23 +166,13 @@ const GalleryHeader = ({
               
               {/* Sort Order */}
               <select
-                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm"
+                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-auto"
                 value={filters.sort}
                 onChange={(e) => handleFilterChange("sort", e.target.value)}
               >
                 <option value="highest">Sort by Amount</option>
                 <option value="newest">Most Recent</option>
               </select>
-
-              {/* Reset button */}
-              {(filters.caseType !== "all" || filters.location !== "all" || filters.sort !== "highest") && (
-                <button
-                  onClick={handleReset}
-                  className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                >
-                  Reset
-                </button>
-              )}
             </div>
           </div>
         </div>
