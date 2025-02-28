@@ -1,6 +1,6 @@
 
 import { Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export interface GalleryHeaderProps {
@@ -44,6 +44,10 @@ const GalleryHeader = ({
     });
   };
 
+  const handleReset = () => {
+    setFilters(initialFilters);
+  };
+
   // Predefined static list of case types from the submission form
   const allCaseTypes = [
     "all",
@@ -65,104 +69,58 @@ const GalleryHeader = ({
     "all",
     "Los Angeles, CA",
     "San Francisco, CA",
-    "San Diego, CA",
-    "Sacramento, CA",
-    "Oakland, CA",
-    "San Jose, CA",
-    "Fresno, CA",
-    "Long Beach, CA",
-    "Irvine, CA",
-    "Anaheim, CA"
+    "San Diego, CA"
   ];
 
   return (
     <div className="bg-primary-900 text-white py-12">
       <div className="container">
         <h1 className="text-4xl font-bold font-display mb-4">
-          Settlement Leaderboard
+          Settlements Leaderboard
         </h1>
         
-        <p className="text-lg text-primary-200 mb-8">
-          Browse through top-ranked settlements by case type and location. Find industry-leading results and benchmark your success.
-        </p>
-        
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="text-primary-200">
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading settlements...</span>
-              </div>
-            ) : (
-              <p>
-                Showing <span className="font-semibold">{settlementCount}</span>{" "}
-                {settlementCount === 1 ? "settlement" : "settlements"}
-              </p>
-            )}
-          </div>
-          
-          <Link to="/submit">
-            <Button
-              variant="accent"
-              size="lg"
-              className="whitespace-nowrap font-medium"
-            >
-              Submit Your Settlement
-            </Button>
-          </Link>
-        </div>
-        
-        <div className="bg-white rounded-lg p-5">
-          <div className="flex flex-col lg:flex-row justify-between gap-4">
-            {/* Case Types Scroll */}
-            <div className="flex-1 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 pb-2">
+        <div className="flex flex-col gap-y-6">
+          {/* Case Types Scroll */}
+          <div className="relative">
+            <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar">
+              {allCaseTypes.map((type) => (
                 <button
-                  onClick={() => handleFilterChange("caseType", "all")}
+                  key={type}
+                  onClick={() => handleFilterChange("caseType", type)}
                   className={`
-                    whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center
-                    ${filters.caseType === "all"
-                      ? "bg-primary-600 text-white"
-                      : "text-primary-900 border border-neutral-200 hover:bg-neutral-50"
+                    whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-colors
+                    ${type === filters.caseType
+                      ? "bg-white text-primary-900"
+                      : "text-white border border-primary-700 hover:bg-primary-800"
                     }
                   `}
                 >
-                  {filters.caseType === "all" && (
-                    <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                  All
+                  {type === "all" ? "All Case Types" : type}
                 </button>
-                
-                {allCaseTypes.filter(type => type !== "all").map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => handleFilterChange("caseType", type)}
-                    className={`
-                      whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center
-                      ${type === filters.caseType
-                        ? "bg-primary-600 text-white"
-                        : "text-primary-900 border border-neutral-200 hover:bg-neutral-50"
-                      }
-                    `}
-                  >
-                    {type === filters.caseType && (
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {type}
-                  </button>
-                ))}
-              </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters Row */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="text-primary-200">
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading settlements...</span>
+                </div>
+              ) : (
+                <p>
+                  Showing <span className="font-semibold">{settlementCount}</span>{" "}
+                  {settlementCount === 1 ? "settlement" : "settlements"}
+                </p>
+              )}
             </div>
             
-            {/* Filter Controls */}
-            <div className="flex flex-col gap-3 items-end">
+            <div className="flex flex-wrap gap-2">
               {/* Location Filter */}
               <select
-                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-[200px]"
+                className="bg-primary-800 text-white rounded-full px-4 py-1.5 text-sm border border-primary-700"
                 value={filters.location}
                 onChange={(e) => handleFilterChange("location", e.target.value)}
               >
@@ -175,24 +133,34 @@ const GalleryHeader = ({
               
               {/* Sort Order */}
               <select
-                className="border border-neutral-200 text-neutral-800 rounded-md px-3 py-2 text-sm w-full sm:w-[200px]"
+                className="bg-primary-800 text-white rounded-full px-4 py-1.5 text-sm border border-primary-700"
                 value={filters.sort}
                 onChange={(e) => handleFilterChange("sort", e.target.value)}
               >
-                <option value="highest">Sort by Highest Amount</option>
-                <option value="lowest">Sort by Lowest Amount</option>
-                <option value="newest">Sort by Most Recent</option>
+                <option value="highest">Highest Amount</option>
+                <option value="newest">Most Recent</option>
               </select>
+              
+              {(filters.caseType !== "all" || filters.location !== "all" || filters.sort !== "highest") && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleReset}
+                  className="text-primary-200 hover:text-white text-sm hover:bg-primary-800 rounded-full"
+                >
+                  Reset
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </div>
-      
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar {
+
+      <style jsx>{`
+        .no-scrollbar::-webkit-scrollbar {
           display: none;
         }
-        .scrollbar-hide {
+        .no-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }

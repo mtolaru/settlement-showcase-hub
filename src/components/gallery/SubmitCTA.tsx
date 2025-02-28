@@ -15,7 +15,7 @@ const SubmitCTA = () => {
           to attract high-value cases.
         </p>
         <Link to="/submit">
-          <Button variant="accent" className="font-medium">
+          <Button className="bg-primary-500 hover:bg-primary-600">
             Submit Your Settlement <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
