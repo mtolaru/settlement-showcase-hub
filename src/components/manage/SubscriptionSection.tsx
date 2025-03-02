@@ -6,11 +6,13 @@ import SubscriptionStatus from "@/components/manage/SubscriptionStatus";
 interface SubscriptionSectionProps {
   subscription: Subscription | null;
   isLoading: boolean;
+  refreshSubscription?: () => void;
 }
 
 const SubscriptionSection = ({ 
   subscription, 
-  isLoading
+  isLoading,
+  refreshSubscription
 }: SubscriptionSectionProps) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
@@ -21,6 +23,7 @@ const SubscriptionSection = ({
       <SubscriptionStatus 
         subscription={subscription} 
         isLoading={isLoading} 
+        refreshSubscription={refreshSubscription}
       />
     </div>
   );

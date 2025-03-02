@@ -1,20 +1,84 @@
 
 import { format } from "date-fns";
-import { CreditCard, Loader2 } from "lucide-react";
+import { CreditCard, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Subscription } from "@/hooks/useSubscription";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SubscriptionStatusProps {
   subscription: Subscription | null;
   isLoading: boolean;
+  refreshSubscription?: () => void;
 }
 
-const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps) => {
+const SubscriptionStatus = ({ 
+  subscription, 
+  isLoading,
+  refreshSubscription 
+}: SubscriptionStatusProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!subscription) return;
+    
+    setIsCancelling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+        body: { subscriptionId: subscription.id }
+      });
+      
+      if (error) {
+        console.error('Error canceling subscription:', error);
+        toast({
+          variant: "destructive",
+          title: "Error canceling subscription",
+          description: "Please try again later or contact support."
+        });
+      } else {
+        console.log('Subscription canceled:', data);
+        toast({
+          title: "Subscription Canceled",
+          description: data.canceled_immediately 
+            ? "Your subscription has been canceled immediately." 
+            : `Your subscription will remain active until ${format(new Date(data.active_until), 'MMMM d, yyyy')}.`
+        });
+        
+        // Refresh the subscription data
+        if (refreshSubscription) {
+          refreshSubscription();
+        }
+      }
+    } catch (err) {
+      console.error('Exception canceling subscription:', err);
+      toast({
+        variant: "destructive",
+        title: "Error canceling subscription",
+        description: "Please try again later or contact support."
+      });
+    } finally {
+      setIsCancelling(false);
+      setShowCancelDialog(false);
+    }
   };
 
   if (isLoading) {
@@ -45,6 +109,9 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
     );
   }
 
+  // Check if subscription is already canceled but still active
+  const isCanceled = subscription?.ends_at && new Date(subscription.ends_at) > new Date();
+
   // User has an active subscription
   return (
     <div className="space-y-6">
@@ -52,10 +119,16 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
         <div className="rounded-full bg-primary-100 p-3">
           <CreditCard className="h-6 w-6 text-primary-600" />
         </div>
-        <div>
-          <h3 className="font-semibold text-primary-900">Active Subscription</h3>
+        <div className="flex-1">
+          <h3 className="font-semibold text-primary-900">
+            {isCanceled ? 'Subscription Ending Soon' : 'Active Subscription'}
+          </h3>
           <p className="text-primary-700 mt-1">
-            Your subscription is active {subscription.ends_at ? `until ${formatDate(subscription.ends_at)}` : '(ongoing)'}
+            {isCanceled 
+              ? `Your subscription will end on ${formatDate(subscription.ends_at!)}`
+              : subscription.ends_at 
+                ? `Your subscription is active until ${formatDate(subscription.ends_at)}` 
+                : 'Your subscription is active (ongoing)'}
           </p>
           <ul className="mt-4 space-y-2 text-primary-700">
             <li className="flex items-center gap-2">
@@ -72,7 +145,19 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
       </div>
 
       <div className="border-t pt-6">
-        <h4 className="font-medium mb-2">Subscription Details</h4>
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="font-medium">Subscription Details</h4>
+          {!isCanceled && (
+            <Button 
+              variant="outline" 
+              className="text-red-600 border-red-300 hover:bg-red-50"
+              onClick={() => setShowCancelDialog(true)}
+              disabled={isCancelling}
+            >
+              {isCancelling ? "Processing..." : "Cancel Subscription"}
+            </Button>
+          )}
+        </div>
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-neutral-600">Started on</dt>
@@ -80,7 +165,7 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
           </div>
           {subscription.ends_at && (
             <div>
-              <dt className="text-neutral-600">Expires on</dt>
+              <dt className="text-neutral-600">{isCanceled ? 'Ends on' : 'Expires on'}</dt>
               <dd className="font-medium">{formatDate(subscription.ends_at)}</dd>
             </div>
           )}
@@ -92,6 +177,27 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
           )}
         </dl>
       </div>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your subscription will remain active until the end of your current billing period. 
+              After that, you will no longer be able to submit new settlements.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCancelSubscription}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isCancelling ? "Processing..." : "Cancel Subscription"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
