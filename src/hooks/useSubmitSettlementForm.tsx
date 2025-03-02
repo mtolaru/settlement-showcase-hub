@@ -5,6 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettlementForm } from "@/hooks/useSettlementForm";
 
+interface FormErrors {
+  [key: string]: string | undefined;
+}
+
 interface FormData {
   amount: string;
   initialOffer: string;
@@ -191,42 +195,6 @@ export const useSubmitSettlementForm = () => {
 
   const handleImageUpload = (url: string) => {
     handleInputChange("photoUrl", url);
-  };
-
-  const validateStep2 = (data: FormData, skipEmailValidation = false) => {
-    const newErrors: FormErrors = {};
-    let isValid = true;
-
-    if (!data.attorneyName) {
-      newErrors.attorneyName = "Attorney name is required";
-      isValid = false;
-    }
-
-    if (!skipEmailValidation && !data.attorneyEmail) {
-      newErrors.attorneyEmail = "Attorney email is required";
-      isValid = false;
-    } else if (!skipEmailValidation && !/^\S+@\S+\.\S+$/.test(data.attorneyEmail)) {
-      newErrors.attorneyEmail = "Please enter a valid email address";
-      isValid = false;
-    }
-
-    if (!data.firmName) {
-      newErrors.firmName = "Firm name is required";
-      isValid = false;
-    }
-
-    if (!data.location) {
-      newErrors.location = "Location is required";
-      isValid = false;
-    }
-    
-    if (!data.photoUrl) {
-      newErrors.photoUrl = "Attorney photo is required";
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
   };
 
   return {
