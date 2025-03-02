@@ -30,10 +30,10 @@ const Leaderboard = () => {
     const fetchSettlements = async () => {
       try {
         setIsLoading(true);
+        // Remove the payment_completed filter to show all settlements
         const { data, error } = await supabase
           .from('settlements')
-          .select('*')
-          .eq('payment_completed', true); // Only show paid/completed settlements
+          .select('*');
 
         if (error) {
           throw error;

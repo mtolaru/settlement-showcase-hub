@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
@@ -24,10 +25,10 @@ const Index = () => {
     const fetchSettlements = async () => {
       try {
         setIsLoading(true);
+        // Remove the payment_completed filter to show all settlements
         const { data, error } = await supabase
           .from('settlements')
-          .select('*')
-          .eq('payment_completed', true);
+          .select('*');
 
         if (error) {
           throw error;
