@@ -139,5 +139,26 @@ export const settlementService = {
       console.error('Error creating checkout session:', error);
       throw error;
     }
+  },
+
+  async deleteSettlement(settlementId: number, userId: string | undefined) {
+    try {
+      if (!userId) {
+        throw new Error("User ID is required to delete a settlement");
+      }
+
+      const { error } = await supabase
+        .from('settlements')
+        .delete()
+        .eq('id', settlementId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Delete settlement error:', error);
+      throw error;
+    }
   }
 };

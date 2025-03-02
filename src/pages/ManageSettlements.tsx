@@ -34,7 +34,9 @@ const ManageSettlements = () => {
 
         <SettlementsSection 
           settlements={settlements} 
-          isLoading={isLoadingSettlements} 
+          isLoading={isLoadingSettlements}
+          refreshSettlements={refreshSettlements}
+          userId={user?.id}
         />
       </div>
     </div>
