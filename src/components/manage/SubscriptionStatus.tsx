@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,7 @@ const SubscriptionStatus = ({
   const { toast } = useToast();
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -42,52 +42,61 @@ const SubscriptionStatus = ({
     if (!subscription) return;
     
     setIsCancelling(true);
+    setCancelError(null);
+    
     try {
       console.log('Attempting to cancel subscription:', subscription.id);
-      console.log('Subscription details:', JSON.stringify(subscription, null, 2));
+      console.log('Subscription details:', JSON.stringify(subscription));
       
       const { data, error } = await supabase.functions.invoke('cancel-subscription', {
-        body: { 
-          subscriptionId: subscription.id,
-          customerId: subscription.customer_id // Pass customer ID if available
-        }
+        body: { subscriptionId: subscription.id }
       });
       
       if (error) {
         console.error('Error canceling subscription:', error);
+        setCancelError('Error canceling subscription. Please try again later or contact support.');
         toast({
           variant: "destructive",
           title: "Error canceling subscription",
           description: "Please try again later or contact support."
         });
-      } else {
-        console.log('Subscription cancellation response:', data);
+        return;
+      }
+      
+      console.log('Subscription cancellation response:', data);
+      
+      // Check if we have a redirectUrl for Stripe portal
+      if (data.redirectUrl) {
+        console.log('Redirecting to Stripe portal:', data.redirectUrl);
         
-        // Check if we have a redirectUrl for Stripe portal
-        if (data.redirectUrl) {
-          console.log('Redirecting to Stripe portal:', data.redirectUrl);
-          // Open in a new tab to ensure the portal loads properly
-          window.open(data.redirectUrl, '_blank');
-          setShowCancelDialog(false);
-          setIsCancelling(false);
-          return; // Don't proceed with the rest of the function
-        }
+        // Open in a new tab to ensure the portal loads properly
+        window.open(data.redirectUrl, '_blank');
         
-        // For virtual subscriptions that are canceled directly
         toast({
-          title: "Subscription Canceled",
-          description: data.canceled_immediately 
-            ? "Your subscription has been canceled immediately." 
-            : `Your subscription will remain active until ${format(new Date(data.active_until), 'MMMM d, yyyy')}.`
+          title: "Redirecting to Stripe",
+          description: "We're redirecting you to Stripe to manage your subscription."
         });
         
-        // Refresh the subscription data
-        if (refreshSubscription) {
-          refreshSubscription();
-        }
+        setShowCancelDialog(false);
+        setIsCancelling(false);
+        return; // Don't proceed with the rest of the function
+      }
+      
+      // For virtual subscriptions or database-only cancellations
+      toast({
+        title: "Subscription Canceled",
+        description: data.canceled_immediately 
+          ? "Your subscription has been canceled immediately." 
+          : `Your subscription will remain active until ${format(new Date(data.active_until), 'MMMM d, yyyy')}.`
+      });
+      
+      // Refresh the subscription data
+      if (refreshSubscription) {
+        refreshSubscription();
       }
     } catch (err) {
       console.error('Exception canceling subscription:', err);
+      setCancelError('Error canceling subscription. Please try again later or contact support.');
       toast({
         variant: "destructive",
         title: "Error canceling subscription",
@@ -95,7 +104,11 @@ const SubscriptionStatus = ({
       });
     } finally {
       setIsCancelling(false);
-      setShowCancelDialog(false);
+      // Only close the dialog if no redirect URL was returned
+      // Otherwise, we'll keep it open until the user manually closes it or completes the Stripe flow
+      if (!cancelError) {
+        setShowCancelDialog(false);
+      }
     }
   };
 
@@ -202,13 +215,26 @@ const SubscriptionStatus = ({
         </dl>
       </div>
 
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+      <AlertDialog 
+        open={showCancelDialog} 
+        onOpenChange={(open) => {
+          setShowCancelDialog(open);
+          if (!open) {
+            setCancelError(null);
+          }
+        }}
+      >
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
             <AlertDialogDescription>
               Your subscription will remain active until the end of your current billing period. 
               After that, your settlements will be delisted from search results and other lawyers will rank above you in search results.
+              {cancelError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
+                  {cancelError}
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -216,8 +242,16 @@ const SubscriptionStatus = ({
             <AlertDialogAction 
               onClick={handleCancelSubscription}
               className="bg-red-500 hover:bg-red-600"
+              disabled={isCancelling}
             >
-              {isCancelling ? "Processing..." : "Cancel Subscription"}
+              {isCancelling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Cancel Subscription"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

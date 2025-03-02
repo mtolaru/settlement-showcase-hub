@@ -8,7 +8,6 @@ import {
   findPaidSettlementsByEmail,
   linkSubscriptionToUser
 } from "@/utils/subscriptionUtils";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface Subscription {
   id: string;
@@ -16,7 +15,7 @@ export interface Subscription {
   ends_at: string | null;
   is_active: boolean;
   payment_id: string | null;
-  customer_id: string | null; // Add customer_id to the interface
+  customer_id: string | null;
   temporary_id: string | null;
   user_id: string | null;
 }
@@ -87,6 +86,7 @@ export const useSubscription = (user: User | null) => {
             ends_at: null, // Ongoing subscription
             is_active: true,
             payment_id: null,
+            customer_id: null, // Add this property
             temporary_id: emailSettlements[0].temporary_id,
             user_id: user.id
           };
@@ -110,6 +110,7 @@ export const useSubscription = (user: User | null) => {
           ends_at: null, // Ongoing subscription
           is_active: true,
           payment_id: stripeCustomerId,
+          customer_id: stripeCustomerId, // Add the customer ID here
           temporary_id: null,
           user_id: user.id
         };

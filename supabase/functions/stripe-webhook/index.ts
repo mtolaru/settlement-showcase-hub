@@ -113,7 +113,7 @@ serve(async (req) => {
           .from('subscriptions')
           .select('*')
           .eq('customer_id', subscription.customer)
-          .order('starts_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(1);
         
         if (findError) {
