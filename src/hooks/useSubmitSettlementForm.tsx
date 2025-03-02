@@ -147,9 +147,9 @@ export const useSubmitSettlementForm = () => {
   };
 
   const verifyEmail = async (email: string) => {
-    // Skip email verification for authenticated users
+    // Skip email verification for authenticated users with matching email
     if (isAuthenticated && user?.email === email) {
-      return false;
+      return false; // Return false to indicate email doesn't exist (no conflict)
     }
     
     try {
@@ -183,7 +183,7 @@ export const useSubmitSettlementForm = () => {
       [field]: undefined
     }));
 
-    // If changing email, check if it exists (but skip for authenticated users)
+    // If changing email, check if it exists (but skip for authenticated users with matching email)
     if (field === 'attorneyEmail' && value && !(isAuthenticated && user?.email === value)) {
       verifyEmail(value).then(emailExists => {
         if (emailExists) {

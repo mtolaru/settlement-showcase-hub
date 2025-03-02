@@ -148,33 +148,46 @@ const SubmitSettlement = () => {
     }
 
     if (step === 2) {
-      // Skip email verification for authenticated users
-      if (formData.attorneyEmail && !(isAuthenticated && user?.email === formData.attorneyEmail)) {
-        // Additional check for email existence before proceeding
-        const emailExists = await verifyEmail(formData.attorneyEmail);
-        if (emailExists) {
-          setErrors(prev => ({
-            ...prev,
-            attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
-          }));
+      // Skip email verification completely for authenticated users
+      if (isAuthenticated && user?.email) {
+        // If user is authenticated, don't validate email existence, just validate other fields
+        if (!validateStep2(formData, true)) {
           toast({
             variant: "destructive",
-            title: "Email Already Exists",
-            description: "Please use a different email or log in to submit another case.",
+            title: "Error",
+            description: "Please fill in all required fields correctly.",
+          });
+          return;
+        }
+      } else {
+        // For non-authenticated users, perform normal validation including email check
+        if (formData.attorneyEmail) {
+          const emailExists = await verifyEmail(formData.attorneyEmail);
+          if (emailExists) {
+            setErrors(prev => ({
+              ...prev,
+              attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
+            }));
+            toast({
+              variant: "destructive",
+              title: "Email Already Exists",
+              description: "Please use a different email or log in to submit another case.",
+            });
+            return;
+          }
+        }
+        
+        if (!validateStep2(formData, false)) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Please fill in all required fields correctly.",
           });
           return;
         }
       }
       
-      if (!validateStep2(formData)) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please fill in all required fields correctly.",
-        });
-        return;
-      }
-      
+      // After successful validation, proceed to the next step or submit with subscription
       if (!hasActiveSubscription) {
         setStep(3);
       } else {

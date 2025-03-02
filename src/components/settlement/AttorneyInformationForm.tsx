@@ -1,10 +1,10 @@
 
-import { Input } from "@/components/ui/input";
-import ImageUpload from "@/components/ImageUpload";
-import { useState, useEffect, FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Textarea } from "@/components/ui/textarea";
+import React from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/ImageUpload";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -15,240 +15,117 @@ interface AttorneyInformationFormProps {
     location: string;
     photoUrl: string;
   };
-  errors: Record<string, string | undefined>;
+  errors: {
+    [key: string]: string | undefined;
+  };
   handleInputChange: (field: string, value: string) => void;
   handleImageUpload: (url: string) => void;
 }
 
-export const AttorneyInformationForm = ({
+export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = ({
   formData,
   errors,
   handleInputChange,
   handleImageUpload,
-}: AttorneyInformationFormProps) => {
-  // Get the current user to check if they're logged in
-  const { user, isAuthenticated } = useAuth();
-  
-  // Locations that are available for filtering
-  const availableLocations = [
-    "Los Angeles, CA",
-    "San Francisco, CA",
-    "San Diego, CA"
-  ];
-  
-  const [otherLocation, setOtherLocation] = useState("");
-  const [showOtherLocationInput, setShowOtherLocationInput] = useState(
-    formData.location !== "" && !availableLocations.includes(formData.location)
-  );
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  const [emailCheckTimeout, setEmailCheckTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
-
-  // Auto-populate email for authenticated users
-  useEffect(() => {
-    if (isAuthenticated && user?.email && !formData.attorneyEmail) {
-      handleInputChange("attorneyEmail", user.email);
-    }
-  }, [isAuthenticated, user, formData.attorneyEmail]);
-
-  // Prevent form submission when Enter key is pressed
-  const handleFormSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    console.log("Form submission prevented");
-    return false;
-  };
-
-  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value === "other") {
-      setShowOtherLocationInput(true);
-      // Don't update the formData location yet, wait for the user to input the custom location
-    } else {
-      setShowOtherLocationInput(false);
-      handleInputChange("location", value);
-    }
-  };
-
-  const handleOtherLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setOtherLocation(value);
-    handleInputChange("location", value);
-  };
-
-  const handleEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const email = e.target.value;
-    handleInputChange("attorneyEmail", email);
-    
-    // Skip email checking if user is authenticated
-    if (isAuthenticated) return;
-    
-    // Clear any previous timeout
-    if (emailCheckTimeout) {
-      clearTimeout(emailCheckTimeout);
-    }
-    
-    // Skip validation for empty or clearly invalid emails
-    if (!email || !email.includes('@') || !email.includes('.')) {
-      return;
-    }
-    
-    // Set a timeout to avoid too many API calls while typing
-    setIsCheckingEmail(true);
-    const timeout = setTimeout(async () => {
-      try {
-        const { data, error } = await supabase
-          .from('settlements')
-          .select('attorney_email')
-          .eq('attorney_email', email)
-          .maybeSingle();
-        
-        if (error) throw error;
-        
-        // If we found data with this email, it already exists
-        if (data) {
-          handleInputChange("attorneyEmail", email); // Update the value
-          // The error will be set in the parent component
-        }
-      } catch (error) {
-        console.error('Error checking email:', error);
-      } finally {
-        setIsCheckingEmail(false);
-      }
-    }, 500); // 500ms debounce
-    
-    setEmailCheckTimeout(timeout);
-  };
-
-  // Handle key press to prevent form submission on Enter
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      return false;
-    }
-  };
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (emailCheckTimeout) {
-        clearTimeout(emailCheckTimeout);
-      }
-    };
-  }, [emailCheckTimeout]);
-
-  // Determine the current selection value for the dropdown
-  const getSelectedValue = () => {
-    if (!formData.location) return "";
-    if (availableLocations.includes(formData.location)) return formData.location;
-    if (formData.location && !availableLocations.includes(formData.location)) return "other";
-    return "";
-  };
+}) => {
+  const { isAuthenticated, user } = useAuth();
+  const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-6">
-      <div>
-        <label className="form-label">Attorney Name*</label>
-        <Input
-          type="text"
-          value={formData.attorneyName}
-          onChange={(e) => handleInputChange("attorneyName", e.target.value)}
-          placeholder="John Smith"
-          onKeyDown={handleKeyDown}
-        />
-        {errors.attorneyName && (
-          <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
-        )}
-      </div>
+    <div>
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Attorney Information</h2>
 
-      <div>
-        <label className="form-label">Professional Photo</label>
-        <p className="text-sm text-neutral-600 mb-2">
-          Upload a professional headshot to be displayed with your settlement
-        </p>
-        <ImageUpload onImageUpload={handleImageUpload} />
-      </div>
+      <div className="space-y-6">
+        <div>
+          <Label htmlFor="attorneyName">
+            Attorney Name <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="attorneyName"
+            value={formData.attorneyName}
+            onChange={(e) => handleInputChange("attorneyName", e.target.value)}
+            placeholder="John Doe"
+            className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""}`}
+          />
+          {errors.attorneyName && (
+            <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
+          )}
+        </div>
 
-      <div>
-        <label className="form-label">Email*</label>
-        <Input
-          type="email"
-          value={formData.attorneyEmail}
-          onChange={handleEmailChange}
-          placeholder="john@example.com"
-          className={isCheckingEmail ? "bg-neutral-50" : ""}
-          onKeyDown={handleKeyDown}
-          disabled={isAuthenticated && !!user?.email}
-          readOnly={isAuthenticated && !!user?.email}
-        />
-        {isAuthenticated && user?.email && (
-          <p className="text-neutral-500 text-sm mt-1">Using your account email</p>
-        )}
-        {isCheckingEmail && !isAuthenticated && (
-          <p className="text-neutral-500 text-sm mt-1">Checking email...</p>
-        )}
-        {errors.attorneyEmail && !isAuthenticated && (
-          <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
-        )}
-      </div>
+        <div>
+          <Label htmlFor="attorneyEmail">
+            Attorney Email <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="attorneyEmail"
+            value={formData.attorneyEmail}
+            onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
+            placeholder="john.doe@lawfirm.com"
+            className={`mt-1 ${errors.attorneyEmail ? "border-red-500" : ""}`}
+            disabled={isEmailDisabled}
+          />
+          {errors.attorneyEmail && (
+            <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
+          )}
+          {isEmailDisabled && (
+            <p className="text-gray-500 text-sm mt-1">Using email from your account</p>
+          )}
+        </div>
 
-      <div>
-        <label className="form-label">Law Firm*</label>
-        <Input
-          type="text"
-          value={formData.firmName}
-          onChange={(e) => handleInputChange("firmName", e.target.value)}
-          placeholder="Smith & Associates"
-          onKeyDown={handleKeyDown}
-        />
-        {errors.firmName && (
-          <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
-        )}
-      </div>
+        <div>
+          <Label htmlFor="firmName">
+            Firm Name <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="firmName"
+            value={formData.firmName}
+            onChange={(e) => handleInputChange("firmName", e.target.value)}
+            placeholder="Law Firm LLC"
+            className={`mt-1 ${errors.firmName ? "border-red-500" : ""}`}
+          />
+          {errors.firmName && (
+            <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
+          )}
+        </div>
 
-      <div>
-        <label className="form-label">Law Firm Website*</label>
-        <Input
-          type="url"
-          value={formData.firmWebsite}
-          onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
-          placeholder="https://www.example.com"
-          onKeyDown={handleKeyDown}
-        />
-        {errors.firmWebsite && (
-          <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
-        )}
-      </div>
+        <div>
+          <Label htmlFor="firmWebsite">Firm Website</Label>
+          <Input
+            id="firmWebsite"
+            value={formData.firmWebsite}
+            onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
+            placeholder="https://lawfirm.com"
+            className="mt-1"
+          />
+        </div>
 
-      <div>
-        <label className="form-label">Location*</label>
-        <select
-          className="form-input w-full rounded-md border border-neutral-200 p-2"
-          value={getSelectedValue()}
-          onChange={handleLocationChange}
-          onKeyDown={handleKeyDown}
-        >
-          <option value="">Select your location</option>
-          {availableLocations.map((location) => (
-            <option key={location} value={location}>
-              {location}
-            </option>
-          ))}
-          <option value="other">Other</option>
-        </select>
-        {showOtherLocationInput && (
+        <div>
+          <Label htmlFor="location">
+            Location <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="location"
+            value={formData.location}
+            onChange={(e) => handleInputChange("location", e.target.value)}
+            placeholder="San Francisco, CA"
+            className={`mt-1 ${errors.location ? "border-red-500" : ""}`}
+          />
+          {errors.location && (
+            <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+          )}
+        </div>
+
+        <div>
+          <Label>Attorney Photo (Optional)</Label>
           <div className="mt-2">
-            <Input
-              type="text"
-              value={otherLocation || formData.location}
-              onChange={handleOtherLocationChange}
-              placeholder="Please specify your location (City, State)"
-              onKeyDown={handleKeyDown}
+            <ImageUpload
+              imageUrl={formData.photoUrl}
+              onImageUploaded={handleImageUpload}
+              className="w-full"
             />
           </div>
-        )}
-        {errors.location && (
-          <p className="text-red-500 text-sm mt-1">{errors.location}</p>
-        )}
+        </div>
       </div>
-    </form>
+    </div>
   );
 };
