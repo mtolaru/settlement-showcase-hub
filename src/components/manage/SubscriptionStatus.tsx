@@ -1,6 +1,6 @@
 
 import { format } from "date-fns";
-import { CreditCard, Loader2, AlertCircle } from "lucide-react";
+import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Subscription } from "@/hooks/useSubscription";
@@ -43,6 +43,7 @@ const SubscriptionStatus = ({
     
     setIsCancelling(true);
     try {
+      console.log('Attempting to cancel subscription:', subscription.id);
       const { data, error } = await supabase.functions.invoke('cancel-subscription', {
         body: { subscriptionId: subscription.id }
       });
@@ -55,7 +56,7 @@ const SubscriptionStatus = ({
           description: "Please try again later or contact support."
         });
       } else {
-        console.log('Subscription canceled:', data);
+        console.log('Subscription cancellation response:', data);
         toast({
           title: "Subscription Canceled",
           description: data.canceled_immediately 
@@ -179,12 +180,12 @@ const SubscriptionStatus = ({
       </div>
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
             <AlertDialogDescription>
               Your subscription will remain active until the end of your current billing period. 
-              After that, you will no longer be able to submit new settlements.
+              After that, your settlements will be delisted from search results and other lawyers will rank above you in search results.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
