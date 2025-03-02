@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -108,22 +109,23 @@ const Pricing = () => {
                 </li>
               ))}
             </ul>
-            <Button 
-              className="w-full bg-primary-500 hover:bg-primary-600"
-              onClick={handleSubscribe}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            <Link to="/payment-selection">
+              <Button 
+                className="w-full bg-primary-500 hover:bg-primary-600"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </Link>
           </motion.div>
         </div>
 
