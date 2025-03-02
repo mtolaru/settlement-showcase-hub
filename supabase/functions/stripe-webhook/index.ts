@@ -43,6 +43,7 @@ serve(async (req) => {
 
         const userId = session.metadata?.userId;
         const temporaryId = session.metadata?.temporaryId;
+        const customerId = session.customer;
 
         if (!userId && !temporaryId) {
           throw new Error('No user ID or temporary ID found in session metadata');
@@ -66,7 +67,8 @@ serve(async (req) => {
             temporary_id: temporaryId,
             starts_at: new Date().toISOString(),
             is_active: true,
-            payment_id: session.payment_intent
+            payment_id: session.payment_intent,
+            customer_id: customerId, // Store the customer ID for future use
           });
 
         if (subscriptionError) {
@@ -74,7 +76,22 @@ serve(async (req) => {
           throw subscriptionError;
         }
 
-        console.log('Successfully created subscription record');
+        console.log('Successfully created subscription record with customer ID:', customerId);
+        
+        // Also update any existing settlement with the customer ID
+        if (temporaryId) {
+          const { error: settlementError } = await supabase
+            .from('settlements')
+            .update({ payment_completed: true })
+            .eq('temporary_id', temporaryId);
+            
+          if (settlementError) {
+            console.error('Error updating settlement status:', settlementError);
+          } else {
+            console.log('Successfully marked settlement as paid');
+          }
+        }
+        
         break;
       }
 
@@ -90,22 +107,88 @@ serve(async (req) => {
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // Try to find any subscription record with this customer
+        const { data: subscriptions, error: findError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('customer_id', subscription.customer)
+          .order('starts_at', { ascending: false })
+          .limit(1);
+        
+        if (findError) {
+          console.error('Error finding subscription by customer ID:', findError);
+        } else if (subscriptions && subscriptions.length > 0) {
+          // Found a subscription with this customer ID, update it
+          const { error: updateError } = await supabase
+            .from('subscriptions')
+            .update({
+              is_active: subscription.status === 'active',
+              ends_at: subscription.current_period_end 
+                ? new Date(subscription.current_period_end * 1000).toISOString() 
+                : null
+            })
+            .eq('id', subscriptions[0].id);
+            
+          if (updateError) {
+            console.error('Error updating subscription:', updateError);
+          } else {
+            console.log('Successfully updated subscription for customer', subscription.customer);
+          }
+        } else {
+          // Fallback: try to update by payment_id
+          console.log('No subscription found with customer ID, trying by payment_id');
+          
+          const { error: updateError } = await supabase
+            .from('subscriptions')
+            .update({
+              is_active: subscription.status === 'active',
+              ends_at: subscription.current_period_end 
+                ? new Date(subscription.current_period_end * 1000).toISOString() 
+                : null,
+              // Also update the customer ID for future reference
+              customer_id: subscription.customer
+            })
+            .eq('payment_id', subscription.latest_invoice);
+            
+          if (updateError) {
+            console.error('Error updating subscription by payment_id:', updateError);
+          } else {
+            console.log('Successfully updated subscription by payment_id');
+          }
+        }
+        
+        break;
+      }
+      
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        console.log('Processing subscription deletion:', subscription.id);
+        
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        
+        if (!supabaseUrl || !supabaseKey) {
+          throw new Error('Missing Supabase configuration');
+        }
 
-        // Update subscription status based on payment_id since that's what we store
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // Try to find and update any subscription with this customer ID
         const { error: updateError } = await supabase
           .from('subscriptions')
           .update({
-            is_active: subscription.status === 'active',
-            ends_at: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+            is_active: false,
+            ends_at: new Date().toISOString() // End immediately
           })
-          .eq('payment_id', subscription.latest_invoice);
-
+          .eq('customer_id', subscription.customer);
+          
         if (updateError) {
-          console.error('Error updating subscription:', updateError);
-          throw updateError;
+          console.error('Error marking subscription as inactive:', updateError);
+        } else {
+          console.log('Successfully marked subscription as inactive for customer', subscription.customer);
         }
-
-        console.log('Successfully updated subscription record for', subscription.id);
+        
         break;
       }
     }

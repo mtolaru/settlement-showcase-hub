@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
@@ -15,6 +16,7 @@ export interface Subscription {
   ends_at: string | null;
   is_active: boolean;
   payment_id: string | null;
+  customer_id: string | null; // Add customer_id to the interface
   temporary_id: string | null;
   user_id: string | null;
 }

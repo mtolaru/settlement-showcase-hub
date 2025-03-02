@@ -44,8 +44,13 @@ const SubscriptionStatus = ({
     setIsCancelling(true);
     try {
       console.log('Attempting to cancel subscription:', subscription.id);
+      console.log('Subscription details:', JSON.stringify(subscription, null, 2));
+      
       const { data, error } = await supabase.functions.invoke('cancel-subscription', {
-        body: { subscriptionId: subscription.id }
+        body: { 
+          subscriptionId: subscription.id,
+          customerId: subscription.customer_id // Pass customer ID if available
+        }
       });
       
       if (error) {
@@ -186,6 +191,12 @@ const SubscriptionStatus = ({
             <div>
               <dt className="text-neutral-600">Payment ID</dt>
               <dd className="font-medium">{subscription.payment_id}</dd>
+            </div>
+          )}
+          {subscription.customer_id && (
+            <div>
+              <dt className="text-neutral-600">Customer ID</dt>
+              <dd className="font-medium">{subscription.customer_id}</dd>
             </div>
           )}
         </dl>

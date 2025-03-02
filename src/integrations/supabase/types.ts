@@ -83,6 +83,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          customer_id: string | null
           ends_at: string | null
           id: string
           is_active: boolean | null
@@ -92,6 +93,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          customer_id?: string | null
           ends_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -101,6 +103,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          customer_id?: string | null
           ends_at?: string | null
           id?: string
           is_active?: boolean | null
