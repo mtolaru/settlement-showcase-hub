@@ -119,8 +119,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label>Attorney Photo (Optional)</Label>
           <div className="mt-2">
             <ImageUpload
-              imageUrl={formData.photoUrl}
-              onImageUploaded={handleImageUpload}
+              onImageUpload={handleImageUpload}
               className="w-full"
             />
           </div>

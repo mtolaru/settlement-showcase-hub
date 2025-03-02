@@ -8,9 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface ImageUploadProps {
   onImageUpload: (url: string) => void;
+  className?: string;
 }
 
-const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
+const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
@@ -96,7 +97,7 @@ const ImageUpload = ({ onImageUpload }: ImageUploadProps) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className}`}>
       <div
         {...getRootProps()}
         className={`
