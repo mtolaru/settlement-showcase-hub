@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
@@ -172,7 +171,7 @@ export const ReviewStep = ({
           className="w-full bg-primary-500 hover:bg-primary-600"
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Processing..." : "Submit Settlement"}
+          {isSubmitting ? "Processing..." : "Post Settlement"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       )}
