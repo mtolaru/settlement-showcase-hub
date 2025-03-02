@@ -1,5 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 export const settlementService = {
   async submitWithSubscription(temporaryId: string, formData: any, unformatNumber: (value: string) => string) {
@@ -158,48 +158,6 @@ export const settlementService = {
       return { success: true };
     } catch (error: any) {
       console.error('Delete settlement error:', error);
-      throw error;
-    }
-  },
-
-  async cancelSubscription(subscriptionId: string) {
-    try {
-      // Get current JWT
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session');
-      }
-      
-      console.log('Calling cancel-subscription endpoint with ID:', subscriptionId);
-      
-      // First, get the Stripe portal URL for the customer
-      const response = await supabase.functions.invoke('cancel-subscription', {
-        body: { 
-          subscriptionId,
-          action: 'get_portal_url'
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (response.error) {
-        console.error('Error response from cancel-subscription:', response.error);
-        throw response.error;
-      }
-
-      console.log('Subscription cancellation response:', response.data);
-      
-      // Check if we got a portal URL back
-      if (response.data?.url) {
-        // Return the portal URL to redirect the user
-        return response.data;
-      } else {
-        throw new Error(response.data?.message || 'Could not generate customer portal URL');
-      }
-    } catch (error: any) {
-      console.error('Cancel subscription error:', error);
       throw error;
     }
   }

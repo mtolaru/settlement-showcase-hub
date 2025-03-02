@@ -35,18 +35,16 @@ export const useSettlements = (user: User | null) => {
       const hasActiveSubscription = !!subscriptionData;
       console.log('User has active subscription:', hasActiveSubscription);
       
+      // If user has an active subscription, get all their settlements
+      // If not, only get settlements marked as payment_completed
       let query = supabase
         .from('settlements')
         .select('*')
         .eq('user_id', user.id);
         
       if (!hasActiveSubscription) {
-        // For users without active subscription, only show settlements marked as payment_completed
-        // or settlements that were made while they had an active subscription, and not hidden
-        query = query.or('payment_completed.eq.true,hidden.eq.false');
-      } else {
-        // For users with active subscription, don't show hidden settlements
-        query = query.eq('hidden', false);
+        // Only get settlements that have been individually paid for
+        query = query.eq('payment_completed', true);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -63,18 +61,10 @@ export const useSettlements = (user: User | null) => {
         if (user.user_metadata?.temporaryId) {
           const tempId = user.user_metadata.temporaryId;
           
-          let tempQuery = supabase
+          const { data: tempData, error: tempError } = await supabase
             .from('settlements')
             .select('*')
-            .eq('temporary_id', tempId);
-            
-          if (!hasActiveSubscription) {
-            tempQuery = tempQuery.or('payment_completed.eq.true,hidden.eq.false');
-          } else {
-            tempQuery = tempQuery.eq('hidden', false);
-          }
-            
-          const { data: tempData, error: tempError } = await tempQuery
+            .eq('temporary_id', tempId)
             .order('created_at', { ascending: false });
             
           if (tempError) {
@@ -103,8 +93,7 @@ export const useSettlements = (user: User | null) => {
                 temporary_id: settlement.temporary_id,
                 user_id: settlement.user_id,
                 payment_completed: settlement.payment_completed,
-                photo_url: settlement.photo_url,
-                hidden: settlement.hidden
+                photo_url: settlement.photo_url
               };
             });
             
@@ -151,8 +140,7 @@ export const useSettlements = (user: User | null) => {
           temporary_id: settlement.temporary_id,
           user_id: settlement.user_id,
           payment_completed: settlement.payment_completed,
-          photo_url: settlement.photo_url,
-          hidden: settlement.hidden
+          photo_url: settlement.photo_url
         };
       });
       
