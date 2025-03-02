@@ -3,21 +3,26 @@ import { format } from "date-fns";
 import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Subscription {
   id: string;
   starts_at: string;
   ends_at: string | null;
   is_active: boolean;
+  payment_id?: string | null;
+  temporary_id?: string | null;
 }
 
 interface SubscriptionStatusProps {
   subscription: Subscription | null;
   isLoading: boolean;
+  onRefresh?: () => void;
 }
 
-const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps) => {
+const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: SubscriptionStatusProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -32,15 +37,33 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
     );
   }
 
+  const handleManualSync = () => {
+    if (onRefresh) {
+      toast({
+        title: "Syncing subscription status",
+        description: "Checking for recent subscription changes...",
+      });
+      onRefresh();
+    }
+  };
+
   if (!subscription?.is_active) {
     return (
       <div className="space-y-4">
         <p className="text-neutral-600">
           You currently don't have an active subscription. Subscribe to unlock unlimited settlement submissions and more features.
         </p>
-        <Button onClick={() => navigate('/pricing')}>
-          Subscribe Now
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button onClick={() => navigate('/pricing')}>
+            Subscribe Now
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleManualSync}
+          >
+            Sync Subscription Status
+          </Button>
+        </div>
       </div>
     );
   }
@@ -81,6 +104,12 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
             <div>
               <dt className="text-neutral-600">Expires on</dt>
               <dd className="font-medium">{formatDate(subscription.ends_at)}</dd>
+            </div>
+          )}
+          {subscription.payment_id && (
+            <div>
+              <dt className="text-neutral-600">Payment ID</dt>
+              <dd className="font-medium">{subscription.payment_id}</dd>
             </div>
           )}
         </dl>

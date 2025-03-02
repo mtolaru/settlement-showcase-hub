@@ -15,6 +15,7 @@ interface Subscription {
   ends_at: string | null;
   is_active: boolean;
   payment_id: string | null;
+  temporary_id: string | null;
 }
 
 const ManageSettlements = () => {
@@ -44,6 +45,7 @@ const ManageSettlements = () => {
 
       console.log('Fetching subscription for user:', user.id);
       
+      // Try to find subscription by user_id first
       const { data: subscriptionData, error } = await supabase
         .from('subscriptions')
         .select('*')
@@ -57,44 +59,51 @@ const ManageSettlements = () => {
         throw error;
       }
 
-      console.log('Found subscription:', subscriptionData);
-      setSubscription(subscriptionData);
+      console.log('Found subscription by user_id:', subscriptionData);
       
-      if (!subscriptionData) {
-        console.log('No active subscription found');
+      if (subscriptionData) {
+        setSubscription(subscriptionData);
+        return;
+      }
+      
+      console.log('No active subscription found by user_id');
+      
+      // Try to fetch by temporary ID if no direct user_id match
+      if (user.user_metadata?.temporaryId) {
+        const tempId = user.user_metadata.temporaryId;
+        console.log('Checking for subscription with temporary_id:', tempId);
         
-        // Try to fetch by temporary ID if no direct user_id match
-        if (user.user_metadata?.temporaryId) {
-          const tempId = user.user_metadata.temporaryId;
-          console.log('Checking for subscription with temporary_id:', tempId);
+        const { data: tempSubscription, error: tempError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('temporary_id', tempId)
+          .eq('is_active', true)
+          .maybeSingle();
           
-          const { data: tempSubscription, error: tempError } = await supabase
+        if (tempError) {
+          console.error('Error fetching subscription by temporary_id:', tempError);
+        } else if (tempSubscription) {
+          console.log('Found subscription by temporary_id:', tempSubscription);
+          setSubscription(tempSubscription);
+          
+          // Update the subscription with the user_id
+          const { error: updateError } = await supabase
             .from('subscriptions')
-            .select('*')
-            .eq('temporary_id', tempId)
-            .eq('is_active', true)
-            .maybeSingle();
+            .update({ user_id: user.id })
+            .eq('id', tempSubscription.id);
             
-          if (tempError) {
-            console.error('Error fetching subscription by temporary_id:', tempError);
-          } else if (tempSubscription) {
-            console.log('Found subscription by temporary_id:', tempSubscription);
-            setSubscription(tempSubscription);
-            
-            // Update the subscription with the user_id
-            const { error: updateError } = await supabase
-              .from('subscriptions')
-              .update({ user_id: user.id })
-              .eq('id', tempSubscription.id);
-              
-            if (updateError) {
-              console.error('Error updating subscription with user_id:', updateError);
-            } else {
-              console.log('Updated subscription with user_id');
-            }
+          if (updateError) {
+            console.error('Error updating subscription with user_id:', updateError);
+          } else {
+            console.log('Updated subscription with user_id');
           }
+          
+          return;
         }
       }
+      
+      // If we get here, no subscription was found
+      setSubscription(null);
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
       toast({
@@ -102,6 +111,8 @@ const ManageSettlements = () => {
         title: "Error",
         description: "Failed to fetch subscription status. Please try again.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -227,6 +238,12 @@ const ManageSettlements = () => {
     }
   };
 
+  const handleRefresh = () => {
+    setIsLoading(true);
+    fetchSubscriptionStatus();
+    fetchSettlements();
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 py-12">
       <div className="container max-w-4xl">
@@ -257,6 +274,7 @@ const ManageSettlements = () => {
           <SubscriptionStatus 
             subscription={subscription} 
             isLoading={isLoading} 
+            onRefresh={handleRefresh}
           />
         </div>
 
