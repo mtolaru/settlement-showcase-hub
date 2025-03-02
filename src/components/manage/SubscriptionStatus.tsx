@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
 import { Subscription } from "@/hooks/useSubscription";
 
 interface SubscriptionStatusProps {
@@ -12,9 +11,8 @@ interface SubscriptionStatusProps {
   onRefresh?: () => void;
 }
 
-const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: SubscriptionStatusProps) => {
+const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -29,33 +27,15 @@ const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: Subscription
     );
   }
 
-  const handleManualSync = () => {
-    if (onRefresh) {
-      toast({
-        title: "Syncing subscription status",
-        description: "Checking for recent subscription changes...",
-      });
-      onRefresh();
-    }
-  };
-
   if (!subscription) {
     return (
       <div className="space-y-4">
         <p className="text-neutral-600">
           You currently don't have an active subscription. Subscribe to unlock unlimited settlement submissions and more features.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button onClick={() => navigate('/pricing')}>
-            Subscribe Now
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleManualSync}
-          >
-            Sync Subscription Status
-          </Button>
-        </div>
+        <Button onClick={() => navigate('/pricing')}>
+          Subscribe Now
+        </Button>
       </div>
     );
   }
@@ -67,17 +47,9 @@ const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: Subscription
         <p className="text-neutral-600">
           You currently don't have an active subscription. Subscribe to unlock unlimited settlement submissions and more features.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button onClick={() => navigate('/pricing')}>
-            Subscribe Now
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleManualSync}
-          >
-            Sync Subscription Status
-          </Button>
-        </div>
+        <Button onClick={() => navigate('/pricing')}>
+          Subscribe Now
+        </Button>
       </div>
     );
   }

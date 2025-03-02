@@ -16,11 +16,6 @@ const ManageSettlements = () => {
     checkAuth();
   }, [checkAuth]);
 
-  const handleRefresh = () => {
-    refreshSubscription();
-    refreshSettlements();
-  };
-
   return (
     <div className="min-h-screen bg-neutral-50 py-12">
       <div className="container max-w-4xl">
@@ -29,7 +24,7 @@ const ManageSettlements = () => {
         <SubscriptionSection 
           subscription={subscription} 
           isLoading={isLoadingSubscription} 
-          onRefresh={handleRefresh}
+          onRefresh={refreshSubscription}
         />
 
         <SettlementsSection 
