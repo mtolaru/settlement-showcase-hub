@@ -6,7 +6,7 @@ import SubscriptionStatus from "@/components/manage/SubscriptionStatus";
 interface SubscriptionSectionProps {
   subscription: Subscription | null;
   isLoading: boolean;
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 const SubscriptionSection = ({ 

@@ -1,8 +1,13 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
+import { 
+  fetchSubscriptionByUserId, 
+  fetchSubscriptionByTemporaryId, 
+  findPaidSettlementsByEmail,
+  linkSubscriptionToUser
+} from "@/utils/subscriptionUtils";
 
 export interface Subscription {
   id: string;
@@ -29,67 +34,28 @@ export const useSubscription = (user: User | null) => {
 
       console.log('Fetching subscription for user:', user.id);
       
-      // Check directly by user_id first
-      const { data: userSubscription, error: userSubError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('starts_at', { ascending: false })
-        .maybeSingle();
-
-      if (userSubError) {
-        console.error('Error fetching user subscription:', userSubError);
-      } else if (userSubscription) {
-        console.log('Found active subscription by user_id:', userSubscription);
+      // Step 1: Check directly by user_id first
+      const userSubscription = await fetchSubscriptionByUserId(user.id);
+      if (userSubscription) {
         setSubscription(userSubscription);
         setIsLoading(false);
         return;
       }
 
-      // If we're here, we didn't find an active subscription directly linked to the user
-      
-      // Check for settlements with this user's email to find temporary_id
+      // Step 2: If no direct subscription, check settlements with user's email
       if (user.email) {
-        const { data: emailSettlements, error: emailSettlementsError } = await supabase
-          .from('settlements')
-          .select('temporary_id, payment_completed')
-          .eq('attorney_email', user.email)
-          .eq('payment_completed', true)
-          .order('created_at', { ascending: false });
-          
-        if (emailSettlementsError) {
-          console.error('Error fetching settlements by email:', emailSettlementsError);
-        } else if (emailSettlements && emailSettlements.length > 0) {
-          console.log('Found settlements with matching email:', emailSettlements);
-          
-          // Check all temporary_ids for a subscription
+        const emailSettlements = await findPaidSettlementsByEmail(user.email);
+        
+        if (emailSettlements && emailSettlements.length > 0) {
+          // Step 3: Check all temporary_ids for a subscription
           for (const settlement of emailSettlements) {
             if (settlement.temporary_id) {
-              const { data: tempSubscription, error: tempSubError } = await supabase
-                .from('subscriptions')
-                .select('*')
-                .eq('temporary_id', settlement.temporary_id)
-                .eq('is_active', true)
-                .maybeSingle();
+              const tempSubscription = await fetchSubscriptionByTemporaryId(settlement.temporary_id);
                 
-              if (tempSubError) {
-                console.error('Error fetching subscription by temporary_id:', tempSubError);
-              } else if (tempSubscription) {
-                console.log('Found subscription by temporary_id:', tempSubscription);
-                
-                // Update the subscription with user_id if needed
+              if (tempSubscription) {
+                // Step 4: Update the subscription with user_id if needed
                 if (!tempSubscription.user_id) {
-                  const { error: updateError } = await supabase
-                    .from('subscriptions')
-                    .update({ user_id: user.id })
-                    .eq('id', tempSubscription.id);
-                    
-                  if (updateError) {
-                    console.error('Error updating subscription with user_id:', updateError);
-                  } else {
-                    console.log('Updated subscription with user_id');
-                  }
+                  await linkSubscriptionToUser(tempSubscription.id, user.id);
                 }
                 
                 setSubscription({
