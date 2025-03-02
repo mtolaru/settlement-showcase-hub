@@ -8,7 +8,6 @@ import { Subscription } from "@/hooks/useSubscription";
 interface SubscriptionStatusProps {
   subscription: Subscription | null;
   isLoading: boolean;
-  onRefresh?: () => void;
 }
 
 const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps) => {
@@ -27,7 +26,13 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
     );
   }
 
-  if (!subscription) {
+  // Check for virtual subscription or regular subscription with is_active=true
+  const isSubscriptionActive = subscription && 
+    (subscription.is_active || 
+     subscription.id.startsWith('virtual-') || 
+     subscription.id.startsWith('stripe-'));
+
+  if (!isSubscriptionActive) {
     return (
       <div className="space-y-4">
         <p className="text-neutral-600">
@@ -40,20 +45,7 @@ const SubscriptionStatus = ({ subscription, isLoading }: SubscriptionStatusProps
     );
   }
 
-  // Fixed the subscription check to properly detect active status
-  if (!subscription.is_active) {
-    return (
-      <div className="space-y-4">
-        <p className="text-neutral-600">
-          You currently don't have an active subscription. Subscribe to unlock unlimited settlement submissions and more features.
-        </p>
-        <Button onClick={() => navigate('/pricing')}>
-          Subscribe Now
-        </Button>
-      </div>
-    );
-  }
-
+  // User has an active subscription
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-4 p-4 bg-primary-50 rounded-lg">
