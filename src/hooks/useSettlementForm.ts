@@ -34,57 +34,82 @@ export const useSettlementForm = () => {
     }
     
     // Handle both MM/DD/YYYY format and YYYY-MM-DD format
-    let inputDate: Date;
+    let inputDate: Date | null = null;
+    let isValidFormat = false;
     
     if (value.includes('/')) {
       // It's in MM/DD/YYYY format
-      const [month, day, year] = value.split('/');
+      const parts = value.split('/');
       
-      // Check if all parts exist and are valid numbers
-      if (!month || !day || !year || isNaN(Number(month)) || isNaN(Number(day)) || isNaN(Number(year))) {
+      if (parts.length !== 3) {
         return "Please enter a valid date in MM/DD/YYYY format";
       }
       
-      // Check if the parts form a valid date (e.g., not 02/31/2023)
-      inputDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
-      
-      // Check if the generated date matches what was input
-      // This catches cases like 02/31/2023 which silently rolls over to 03/03/2023
-      const resultMonth = (inputDate.getMonth() + 1).toString();
-      const resultDay = inputDate.getDate().toString();
-      const resultYear = inputDate.getFullYear().toString();
-      
-      if (resultMonth !== month.replace(/^0+/, '') || 
-          resultDay !== day.replace(/^0+/, '') || 
-          resultYear !== year) {
-        return "Please enter a valid date (the date you entered doesn't exist)";
-      }
-    } else if (value.includes('-')) {
-      // It's in YYYY-MM-DD format
-      const [year, month, day] = value.split('-');
+      const [month, day, year] = parts;
       
       // Check if all parts exist and are valid numbers
-      if (!year || !month || !day || isNaN(Number(year)) || isNaN(Number(month)) || isNaN(Number(day))) {
+      if (!month || !day || !year || 
+          isNaN(Number(month)) || isNaN(Number(day)) || isNaN(Number(year))) {
+        return "Please enter a valid date in MM/DD/YYYY format";
+      }
+      
+      // Create a date object and check validity
+      inputDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      isValidFormat = true;
+      
+      // Validate the actual date components
+      const m = Number(month);
+      const d = Number(day);
+      const y = Number(year);
+      
+      if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 9999) {
         return "Please enter a valid date";
       }
       
-      inputDate = new Date(value);
+    } else if (value.includes('-')) {
+      // It's in YYYY-MM-DD format
+      const parts = value.split('-');
       
-      // Check if the generated date matches what was input
-      const resultYear = inputDate.getFullYear().toString();
-      const resultMonth = (inputDate.getMonth() + 1).toString().padStart(2, '0');
-      const resultDay = inputDate.getDate().toString().padStart(2, '0');
-      
-      if (resultYear !== year || resultMonth !== month || resultDay !== day) {
-        return "Please enter a valid date (the date you entered doesn't exist)";
+      if (parts.length !== 3) {
+        return "Please enter a valid date";
       }
+      
+      const [year, month, day] = parts;
+      
+      // Check if all parts exist and are valid numbers
+      if (!year || !month || !day || 
+          isNaN(Number(year)) || isNaN(Number(month)) || isNaN(Number(day))) {
+        return "Please enter a valid date";
+      }
+      
+      // Create a date object
+      inputDate = new Date(value);
+      isValidFormat = true;
     } else {
       return "Please enter a valid date in MM/DD/YYYY format";
     }
     
     // Check if date is valid
-    if (isNaN(inputDate.getTime())) {
+    if (!inputDate || isNaN(inputDate.getTime())) {
       return "Please enter a valid date";
+    }
+    
+    // Verify the date is not invalid (e.g., Feb 31 would be converted to Mar 3)
+    const formattedDate = inputDate.toISOString().slice(0, 10); // YYYY-MM-DD
+    const originalDate = value.includes('/') ? 
+      `${value.split('/')[2]}-${value.split('/')[0].padStart(2, '0')}-${value.split('/')[1].padStart(2, '0')}` : 
+      value;
+    
+    if (formattedDate !== originalDate && isValidFormat) {
+      // Compare with more flexibility to account for leading zeros
+      const [origYear, origMonth, origDay] = originalDate.split('-');
+      const [formYear, formMonth, formDay] = formattedDate.split('-');
+      
+      if (Number(origYear) !== Number(formYear) || 
+          Number(origMonth) !== Number(formMonth) || 
+          Number(origDay) !== Number(formDay)) {
+        return "The date you entered doesn't exist (e.g., February 31)";
+      }
     }
     
     // Check if date is not in the future

@@ -41,23 +41,32 @@ export const DateInputField = ({
     const formatted = formatDateInput(value);
     setDisplayDate(formatted);
     
-    // Convert MM/DD/YYYY to YYYY-MM-DD for storage if complete
-    const digits = value.replace(/\D/g, '');
-    if (digits.length === 8) {
-      const month = digits.slice(0, 2);
-      const day = digits.slice(2, 4);
-      const year = digits.slice(4, 8);
-      const isoDate = `${year}-${month}-${day}`;
-      onChange(isoDate);
+    // Only if we have a complete date, convert to ISO format
+    if (formatted.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      const [month, day, year] = formatted.split('/');
+      
+      // Make sure we have valid date components
+      if (
+        Number(month) >= 1 && Number(month) <= 12 &&
+        Number(day) >= 1 && Number(day) <= 31 &&
+        Number(year) >= 1900
+      ) {
+        const isoDate = `${year}-${month}-${day}`;
+        onChange(isoDate);
+      } else {
+        // Keep the formatted value if components are invalid
+        onChange(formatted);
+      }
     } else {
-      // Just keep the formatted value if not complete
+      // Keep the formatted value if incomplete
       onChange(formatted);
     }
   };
   
   const handleDateFocus = () => {
     setFocused(true);
-    // If we have an ISO date, convert to MM/DD/YYYY for display
+    
+    // Format the date for editing
     if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = value.split('-');
       setDisplayDate(`${month}/${day}/${year}`);
@@ -75,43 +84,52 @@ export const DateInputField = ({
     const match = displayDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (match) {
       const [_, month, day, year] = match;
-      const isoDate = `${year}-${month}-${day}`;
-      onChange(isoDate);
+      
+      // Check if date parts are valid
+      if (
+        Number(month) >= 1 && Number(month) <= 12 &&
+        Number(day) >= 1 && Number(day) <= 31 &&
+        Number(year) >= 1900
+      ) {
+        const isoDate = `${year}-${month}-${day}`;
+        onChange(isoDate);
+      }
     }
   };
 
+  // Initialize the display date from the provided value
   useEffect(() => {
-    if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = value.split('-');
-      setDisplayDate(`${month}/${day}/${year}`);
-    } else if (value.includes('/')) {
-      setDisplayDate(value);
+    if (!focused) {
+      if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = value.split('-');
+        setDisplayDate(`${month}/${day}/${year}`);
+      } else if (value.includes('/')) {
+        setDisplayDate(value);
+      } else if (value) {
+        // Handle any other format or clear if not a recognizable format
+        try {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            setDisplayDate(`${month}/${day}/${year}`);
+          } else {
+            setDisplayDate(value);
+          }
+        } catch (e) {
+          setDisplayDate(value);
+        }
+      }
     }
-  }, [value]);
-
-  // Helper function to convert from ISO to display format
-  const getDisplayDate = (isoDate: string) => {
-    if (!isoDate) return '';
-    
-    // If already in MM/DD/YYYY format, return as is
-    if (isoDate.includes('/')) return isoDate;
-    
-    // If in YYYY-MM-DD format, convert to MM/DD/YYYY
-    const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const [_, year, month, day] = match;
-      return `${month}/${day}/${year}`;
-    }
-    
-    return isoDate;
-  };
+  }, [value, focused]);
 
   return (
     <div>
       <label className="form-label">{label}</label>
       <Input
         type="text"
-        value={focused ? displayDate : (displayDate || getDisplayDate(value))}
+        value={displayDate}
         onChange={handleDateInput}
         onFocus={handleDateFocus}
         onBlur={handleDateBlur}
