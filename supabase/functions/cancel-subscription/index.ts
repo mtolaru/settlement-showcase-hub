@@ -105,19 +105,15 @@ serve(async (req) => {
       }
       
       try {
+        console.log('Creating Stripe portal session with customer ID:', subscriptionData.customer_id || 'Using payment_id as fallback');
+        
         // Create a customer portal session for cancellation
         const session = await stripe.billingPortal.sessions.create({
           customer: subscriptionData.customer_id || subscriptionData.payment_id,
           return_url: `${req.headers.get('origin') || 'https://your-app-url.com'}/manage`,
-          flow_data: {
-            type: 'subscription_cancel',
-            subscription_cancel: {
-              subscription: subscriptionData.payment_id
-            }
-          }
         });
         
-        console.log('Created Stripe portal session:', session.url)
+        console.log('Created Stripe portal session:', session.url);
         
         // Return the session URL so the frontend can redirect to it
         return new Response(

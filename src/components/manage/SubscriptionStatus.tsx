@@ -60,8 +60,11 @@ const SubscriptionStatus = ({
         
         // Check if we have a redirectUrl for Stripe portal
         if (data.redirectUrl) {
-          // Redirect to Stripe's portal for cancellation
-          window.location.href = data.redirectUrl;
+          console.log('Redirecting to Stripe portal:', data.redirectUrl);
+          // Open in a new tab to ensure the portal loads properly
+          window.open(data.redirectUrl, '_blank');
+          setShowCancelDialog(false);
+          setIsCancelling(false);
           return; // Don't proceed with the rest of the function
         }
         
