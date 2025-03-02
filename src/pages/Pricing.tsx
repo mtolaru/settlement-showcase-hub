@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -7,7 +6,6 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { LoginDialog } from "@/components/auth/LoginDialog";
 
 const Pricing = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +27,6 @@ const Pricing = () => {
   ];
 
   const handleSubscribe = async () => {
-    // Skip authentication check if coming from submission flow
     if (!isAuthenticated && !isSubmissionFlow) {
       toast({
         title: "Authentication Required",
@@ -111,26 +108,22 @@ const Pricing = () => {
                 </li>
               ))}
             </ul>
-            {(isAuthenticated || isSubmissionFlow) ? (
-              <Button 
-                className="w-full bg-primary-500 hover:bg-primary-600"
-                onClick={handleSubscribe}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            ) : (
-              <LoginDialog />
-            )}
+            <Button 
+              className="w-full bg-primary-500 hover:bg-primary-600"
+              onClick={handleSubscribe}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
           </motion.div>
         </div>
 
