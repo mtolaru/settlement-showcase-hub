@@ -74,6 +74,9 @@ export const ReviewStep = ({
     onSubmitWithSubscription();
   };
 
+  // Add this for debugging
+  console.log("ReviewStep render - hasActiveSubscription:", hasActiveSubscription);
+
   return (
     <div className="space-y-8">
       <div>

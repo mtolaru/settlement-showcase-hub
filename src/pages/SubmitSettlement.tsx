@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -12,6 +11,7 @@ import { SettlementFormHeader } from "@/components/settlement/SettlementFormHead
 import { FormNavigation } from "@/components/settlement/FormNavigation";
 import { settlementService } from "@/services/settlementService";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 const SubmitSettlement = () => {
   const { toast } = useToast();
@@ -40,8 +40,16 @@ const SubmitSettlement = () => {
     unformatNumber
   } = useSubmitSettlementForm();
 
+  useEffect(() => {
+    console.log("SubmitSettlement component - Current subscription status:", {
+      isAuthenticated,
+      userId: user?.id,
+      hasActiveSubscription,
+      isCheckingSubscription
+    });
+  }, [isAuthenticated, user, hasActiveSubscription, isCheckingSubscription]);
+
   const handleSubmitWithSubscription = async () => {
-    // Prevent duplicate submissions
     if (submissionLock) return;
     setSubmissionLock(true);
     setIsSubmitting(true);
@@ -76,18 +84,15 @@ const SubmitSettlement = () => {
       setSubmissionLock(false);
     } finally {
       setIsSubmitting(false);
-      // We don't reset the submissionLock here to prevent repeated submissions
     }
   };
 
   const createCheckoutSession = async () => {
-    // Prevent duplicate submissions
     if (submissionLock) return;
     setSubmissionLock(true);
     setIsLoading(true);
     
     try {
-      // First check if email already exists (skip for authenticated users)
       if (formData.attorneyEmail && !(isAuthenticated && user?.email === formData.attorneyEmail)) {
         const emailExists = await verifyEmail(formData.attorneyEmail);
         if (emailExists) {
@@ -96,8 +101,8 @@ const SubmitSettlement = () => {
             attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
           }));
           setIsLoading(false);
-          setSubmissionLock(false); // Reset lock if we're staying on the form
-          setStep(2); // Go back to step 2
+          setSubmissionLock(false);
+          setStep(2);
           return;
         }
       }
@@ -119,7 +124,7 @@ const SubmitSettlement = () => {
       
       const { url } = response;
       if (url) {
-        window.location.href = url; // Use direct navigation instead of window.open
+        window.location.href = url;
       } else {
         throw new Error('No checkout URL received');
       }
@@ -130,10 +135,9 @@ const SubmitSettlement = () => {
         title: "Error",
         description: "Failed to initiate checkout. Please try again.",
       });
-      setSubmissionLock(false); // Reset lock on error
+      setSubmissionLock(false);
     } finally {
       setIsLoading(false);
-      // We don't reset submissionLock here on success to prevent repeated submissions
     }
   };
 
@@ -148,9 +152,7 @@ const SubmitSettlement = () => {
     }
 
     if (step === 2) {
-      // Skip email verification completely for authenticated users
       if (isAuthenticated && user?.email) {
-        // If user is authenticated, don't validate email existence, just validate other fields
         if (!validateStep2(formData, true)) {
           toast({
             variant: "destructive",
@@ -160,7 +162,6 @@ const SubmitSettlement = () => {
           return;
         }
       } else {
-        // For non-authenticated users, perform normal validation including email check
         if (formData.attorneyEmail) {
           const emailExists = await verifyEmail(formData.attorneyEmail);
           if (emailExists) {
@@ -187,7 +188,6 @@ const SubmitSettlement = () => {
         }
       }
       
-      // After successful validation, proceed to the next step or submit with subscription
       if (!hasActiveSubscription) {
         setStep(3);
       } else {

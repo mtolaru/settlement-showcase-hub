@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -122,6 +123,9 @@ export const useSubmitSettlementForm = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
+        // Add logging to debug subscription status check
+        console.log("Checking subscription status for user:", session.user.id);
+        
         const { data: subscriptions, error } = await supabase
           .from('subscriptions')
           .select('*')
@@ -130,9 +134,40 @@ export const useSubmitSettlementForm = () => {
           .gt('ends_at', new Date().toISOString())
           .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error checking subscription:', error);
+          throw error;
+        }
         
-        setHasActiveSubscription(!!subscriptions);
+        // Log the subscription result
+        console.log("Subscription query result:", subscriptions);
+        
+        // Check if the user has an active subscription
+        const hasActiveSubscription = !!subscriptions;
+        console.log("Setting hasActiveSubscription to:", hasActiveSubscription);
+        
+        setHasActiveSubscription(hasActiveSubscription);
+        
+        // If we didn't find a subscription by user_id, try checking if there's one without an end date
+        if (!hasActiveSubscription) {
+          const { data: openSubscriptions, error: openError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('is_active', true)
+            .is('ends_at', null)
+            .maybeSingle();
+            
+          if (openError) {
+            console.error('Error checking open-ended subscription:', openError);
+          } else {
+            console.log("Open-ended subscription check result:", openSubscriptions);
+            if (openSubscriptions) {
+              console.log("Found open-ended subscription, setting hasActiveSubscription to true");
+              setHasActiveSubscription(true);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
