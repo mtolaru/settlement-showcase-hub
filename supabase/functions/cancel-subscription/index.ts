@@ -1,180 +1,143 @@
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
-import { Stripe } from 'https://esm.sh/stripe@13.8.0'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from 'https://esm.sh/stripe@14.13.0';
 
+// Define CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
-// Handle OPTIONS request for CORS
-const handleOptions = () => {
-  return new Response(null, {
-    headers: corsHeaders,
-    status: 204,
-  })
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return handleOptions()
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  // Get the authorization header
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Authorization header missing' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
     // Get request body
-    const { subscriptionId } = await req.json()
-
-    // Check if we have the necessary data
+    const { subscriptionId } = await req.json();
+    
     if (!subscriptionId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing subscription ID' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      throw new Error('Subscription ID is required');
     }
+    
+    console.log('Received request to cancel subscription:', subscriptionId);
 
-    // Get environment variables
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')
-
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !STRIPE_SECRET_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'Missing environment variables' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // Get the user from the request
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // Initialize Supabase client with the user's JWT
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
-    })
-
-    // Get user information
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // Initialize Supabase admin client for sensitive operations
-    const supabaseAdmin = createClient(
-      SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY
-    )
+    // Initialize the Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Initialize Stripe
-    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
-    })
+    });
 
-    // Get subscription from database to verify ownership
-    const { data: subscription, error: subError } = await supabase
+    // Extract the token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
+    // Verify the JWT and get the user
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error('User verification error:', userError);
+      throw new Error('Unauthorized');
+    }
+
+    // Fetch the subscription from our database
+    const { data: subscriptionData, error: fetchError } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('id', subscriptionId)
-      .eq('user_id', user.id)
-      .maybeSingle()
+      .single();
 
-    if (subError || !subscription) {
-      return new Response(
-        JSON.stringify({ error: 'Subscription not found or not owned by user' }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+    if (fetchError || !subscriptionData) {
+      console.error('Fetch subscription error:', fetchError);
+      throw new Error('Subscription not found');
     }
 
-    // Check if subscription has a Stripe payment ID
-    if (subscription.payment_id) {
+    // Verify user owns the subscription
+    if (subscriptionData.user_id !== user.id) {
+      throw new Error('Unauthorized: User does not own this subscription');
+    }
+    
+    // Check if the subscription is already cancelled (to avoid redundant API calls)
+    if (subscriptionData.stripe_subscription_id) {
+      console.log('Cancelling Stripe subscription:', subscriptionData.stripe_subscription_id);
+      
       try {
         // Cancel the subscription in Stripe
-        await stripe.subscriptions.cancel(subscription.payment_id)
-        console.log(`Stripe subscription ${subscription.payment_id} canceled`)
+        // Note: This keeps the subscription active until the end of the current period
+        await stripe.subscriptions.update(subscriptionData.stripe_subscription_id, {
+          cancel_at_period_end: true,
+        });
+        
+        console.log('Stripe subscription cancelled successfully');
       } catch (stripeError) {
-        console.error('Stripe cancellation error:', stripeError)
-        // Continue anyway - we'll update our database
+        console.error('Stripe cancellation error:', stripeError);
+        
+        // Check if the subscription doesn't exist in Stripe (already cancelled)
+        if (stripeError.code === 'resource_missing') {
+          console.log('Subscription already cancelled or not found in Stripe');
+        } else {
+          throw stripeError;
+        }
       }
+    } else {
+      console.log('No Stripe subscription ID found, skipping Stripe API call');
     }
 
-    // Mark subscription as cancelled in our database
-    const now = new Date().toISOString()
-    const { error: updateError } = await supabaseAdmin
+    // Update our database to mark subscription as cancelled
+    const { error: updateError } = await supabase
       .from('subscriptions')
       .update({
         is_active: false,
-        ends_at: now
+        ends_at: subscriptionData.ends_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       })
-      .eq('id', subscriptionId)
+      .eq('id', subscriptionId);
 
     if (updateError) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to update subscription' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      console.error('Update subscription error:', updateError);
+      throw updateError;
     }
 
-    // Hide settlements instead of deleting them
-    const { error: hideError } = await supabaseAdmin
-      .from('settlements')
-      .update({ hidden: true })
-      .eq('user_id', user.id)
-      .is('payment_completed', true)
-      .is('hidden', false)
-
-    if (hideError) {
-      console.error('Error hiding settlements:', hideError)
-      // Continue anyway to return success for the cancellation
-    }
-
+    // Return success response
     return new Response(
-      JSON.stringify({ success: true, message: 'Subscription canceled successfully' }),
+      JSON.stringify({
+        success: true,
+        message: 'Subscription cancelled successfully'
+      }),
       {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
-
+    );
   } catch (error) {
-    console.error('Unexpected error:', error)
+    console.error('Error cancelling subscription:', error);
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({
+        success: false,
+        message: error.message || 'Error cancelling subscription'
+      }),
       {
-        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
       }
-    )
+    );
   }
-})
+});

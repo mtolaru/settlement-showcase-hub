@@ -92,8 +92,14 @@ const SubscriptionSection = ({ subscription, isLoading, onRefresh }: Subscriptio
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel your subscription? Your premium settlements will be hidden until you resubscribe.
+            <AlertDialogDescription className="space-y-2">
+              <p>Are you sure you want to cancel your subscription?</p>
+              <p>You will still have access to all features until the end of your billing period, but after that:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Your settlements will disappear from public view</li>
+                <li>Other lawyers will be ranked higher than you</li>
+                <li>You'll lose premium features and analytics</li>
+              </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

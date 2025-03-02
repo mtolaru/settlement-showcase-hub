@@ -172,6 +172,9 @@ export const settlementService = {
         throw new Error('No active session');
       }
       
+      console.log('Calling cancel-subscription endpoint with ID:', subscriptionId);
+      
+      // First, cancel with Stripe through our edge function
       const response = await supabase.functions.invoke('cancel-subscription', {
         body: { subscriptionId },
         headers: {
@@ -180,10 +183,20 @@ export const settlementService = {
       });
 
       if (response.error) {
+        console.error('Error response from cancel-subscription:', response.error);
         throw response.error;
       }
 
-      return response.data;
+      console.log('Subscription cancellation response:', response.data);
+      
+      // Now check if we need to update our local subscription state
+      // If the subscription status was already updated by webhook, this is a no-op
+      if (response.data?.success) {
+        console.log('Subscription cancelled successfully in Stripe.');
+        return response.data;
+      } else {
+        throw new Error(response.data?.message || 'Unknown error cancelling subscription');
+      }
     } catch (error: any) {
       console.error('Cancel subscription error:', error);
       throw error;
