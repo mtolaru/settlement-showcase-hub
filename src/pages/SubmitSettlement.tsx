@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -188,13 +189,8 @@ const SubmitSettlement = () => {
         }
       }
       
-      if (!hasActiveSubscription) {
-        setStep(3);
-      } else {
-        handleSubmitWithSubscription();
-      }
-    } else {
-      setStep(step + 1);
+      // Always proceed to step 3 (review) regardless of subscription status
+      setStep(3);
     }
   };
 
