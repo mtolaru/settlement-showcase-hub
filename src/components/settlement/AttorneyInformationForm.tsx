@@ -32,6 +32,12 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   const { isAuthenticated, user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
 
+  // Prevent event propagation to avoid step navigation issues
+  const handleSelectClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-6 text-gray-800">Attorney Information</h2>
@@ -109,21 +115,23 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="location">
             Location <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={formData.location}
-            onValueChange={(value) => handleInputChange("location", value)}
-          >
-            <SelectTrigger id="location" className={`mt-1 ${errors.location ? "border-red-500" : ""}`}>
-              <SelectValue placeholder="Select a location" />
-            </SelectTrigger>
-            <SelectContent>
-              {LOCATIONS.map((location) => (
-                <SelectItem key={location} value={location}>
-                  {location}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div onClick={handleSelectClick}>
+            <Select
+              value={formData.location}
+              onValueChange={(value) => handleInputChange("location", value)}
+            >
+              <SelectTrigger id="location" className={`mt-1 ${errors.location ? "border-red-500" : ""}`}>
+                <SelectValue placeholder="Select a location" />
+              </SelectTrigger>
+              <SelectContent>
+                {LOCATIONS.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {errors.location && (
             <p className="text-red-500 text-sm mt-1">{errors.location}</p>
           )}
