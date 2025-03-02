@@ -30,10 +30,31 @@ const Leaderboard = () => {
     const fetchSettlements = async () => {
       try {
         setIsLoading(true);
-        // Remove the payment_completed filter to show all settlements
+        
+        // First, get all users with active subscriptions
+        const { data: subscribedUsers, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .select('user_id, temporary_id')
+          .eq('is_active', true);
+          
+        if (subscriptionError) {
+          throw subscriptionError;
+        }
+        
+        // Collect all user IDs and temporary IDs from active subscriptions
+        const userIds = subscribedUsers
+          ?.filter(sub => sub.user_id)
+          .map(sub => sub.user_id) || [];
+          
+        const temporaryIds = subscribedUsers
+          ?.filter(sub => sub.temporary_id)
+          .map(sub => sub.temporary_id) || [];
+        
+        // Fetch settlements from subscribed users or with payment_completed=true
         const { data, error } = await supabase
           .from('settlements')
-          .select('*');
+          .select('*')
+          .or(`user_id.in.(${userIds.join(',')}),temporary_id.in.(${temporaryIds.join(',')}),payment_completed.eq.true`);
 
         if (error) {
           throw error;

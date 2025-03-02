@@ -20,11 +20,34 @@ export const useSettlements = (user: User | null) => {
 
       console.log('Fetching settlements for user:', user.id);
       
-      const { data, error } = await supabase
-        .from('settlements')
+      // Check if the user has an active subscription first
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true)
+        .maybeSingle();
+        
+      if (subscriptionError) {
+        console.error('Error checking subscription:', subscriptionError);
+      }
+      
+      const hasActiveSubscription = !!subscriptionData;
+      console.log('User has active subscription:', hasActiveSubscription);
+      
+      // If user has an active subscription, get all their settlements
+      // If not, only get settlements marked as payment_completed
+      let query = supabase
+        .from('settlements')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      if (!hasActiveSubscription) {
+        // Only get settlements that have been individually paid for
+        query = query.eq('payment_completed', true);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching settlements:', error);
