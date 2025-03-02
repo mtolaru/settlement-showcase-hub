@@ -1,143 +1,189 @@
+
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from 'https://esm.sh/stripe@14.13.0';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0'
+import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
 
-// Define CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
+
+type RequestParams = {
+  subscriptionId: string;
+  action?: 'get_portal_url' | 'cancel';
+}
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // Get the authorization header
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Authorization header missing' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(null, {
+      headers: corsHeaders
+    })
   }
 
   try {
+    // Get environment variables
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') || ''
+    
+    // Initialize Stripe and Supabase clients
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+      httpClient: Stripe.createFetchHttpClient(),
+      apiVersion: '2022-11-15',
+    })
+    
+    // Create admin Supabase client for accessing restricted tables
+    const supabaseAdmin = createClient(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY
+    )
+
     // Get request body
-    const { subscriptionId } = await req.json();
+    const { subscriptionId, action = 'get_portal_url' } = await req.json() as RequestParams
     
-    if (!subscriptionId) {
-      throw new Error('Subscription ID is required');
+    // Get current user ID from the token
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
     
-    console.log('Received request to cancel subscription:', subscriptionId);
-
-    // Initialize the Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
-    });
-
-    // Extract the token from the Authorization header
-    const token = authHeader.replace('Bearer ', '');
-
-    // Verify the JWT and get the user
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Create a Supabase client that works with the user's token
+    const supabaseClient = createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader
+          }
+        }
+      }
+    )
     
-    if (userError || !user) {
-      console.error('User verification error:', userError);
-      throw new Error('Unauthorized');
+    // Get user data from the token
+    const { data: { user } } = await supabaseClient.auth.getUser()
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid user token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
-
-    // Fetch the subscription from our database
-    const { data: subscriptionData, error: fetchError } = await supabase
+    
+    console.log(`Processing subscription cancel request for user ${user.id}, subscription ${subscriptionId}`)
+    
+    // Fetch subscription details to verify ownership
+    const { data: subscription, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
       .eq('id', subscriptionId)
-      .single();
-
-    if (fetchError || !subscriptionData) {
-      console.error('Fetch subscription error:', fetchError);
-      throw new Error('Subscription not found');
-    }
-
-    // Verify user owns the subscription
-    if (subscriptionData.user_id !== user.id) {
-      throw new Error('Unauthorized: User does not own this subscription');
-    }
+      .eq('user_id', user.id)
+      .single()
     
-    // Check if the subscription is already cancelled (to avoid redundant API calls)
-    if (subscriptionData.stripe_subscription_id) {
-      console.log('Cancelling Stripe subscription:', subscriptionData.stripe_subscription_id);
-      
-      try {
-        // Cancel the subscription in Stripe
-        // Note: This keeps the subscription active until the end of the current period
-        await stripe.subscriptions.update(subscriptionData.stripe_subscription_id, {
-          cancel_at_period_end: true,
-        });
-        
-        console.log('Stripe subscription cancelled successfully');
-      } catch (stripeError) {
-        console.error('Stripe cancellation error:', stripeError);
-        
-        // Check if the subscription doesn't exist in Stripe (already cancelled)
-        if (stripeError.code === 'resource_missing') {
-          console.log('Subscription already cancelled or not found in Stripe');
-        } else {
-          throw stripeError;
-        }
-      }
-    } else {
-      console.log('No Stripe subscription ID found, skipping Stripe API call');
-    }
-
-    // Update our database to mark subscription as cancelled
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({
-        is_active: false,
-        ends_at: subscriptionData.ends_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    if (subscriptionError || !subscription) {
+      console.error('Subscription not found or access denied:', subscriptionError)
+      return new Response(JSON.stringify({ 
+        error: 'Subscription not found or you do not have permission to cancel it' 
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
-      .eq('id', subscriptionId);
-
-    if (updateError) {
-      console.error('Update subscription error:', updateError);
-      throw updateError;
     }
-
-    // Return success response
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Subscription cancelled successfully'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error('Error cancelling subscription:', error);
     
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: error.message || 'Error cancelling subscription'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+    // Look up the Stripe customer ID
+    const { data: stripeCustomers, error: customerError } = await supabaseAdmin
+      .from('stripe_customers')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .single()
+    
+    if (customerError || !stripeCustomers) {
+      console.error('Stripe customer not found:', customerError)
+      return new Response(JSON.stringify({ 
+        error: 'Stripe customer record not found' 
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    const customerId = stripeCustomers.stripe_customer_id
+    
+    if (action === 'get_portal_url') {
+      console.log(`Creating Stripe portal session for customer: ${customerId}`)
+      
+      // Create a Stripe customer portal session
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${req.headers.get('origin')}/manage`, // Return to manage page after cancellation
+      })
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        url: session.url 
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    } else if (action === 'cancel') {
+      // Direct cancellation via API (reserved for future use)
+      // We'll primarily use the customer portal flow instead
+      
+      console.log(`Cancelling subscription via API: ${subscriptionId}`)
+      
+      // Look up the Stripe subscription ID
+      const { data: stripeSubscriptions, error: subLookupError } = await supabaseAdmin
+        .from('stripe_subscriptions')
+        .select('stripe_subscription_id')
+        .eq('subscription_id', subscriptionId)
+        .single()
+      
+      if (subLookupError || !stripeSubscriptions) {
+        console.error('Stripe subscription record not found:', subLookupError)
+        return new Response(JSON.stringify({ 
+          error: 'Stripe subscription record not found' 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
       }
-    );
+      
+      const stripeSubId = stripeSubscriptions.stripe_subscription_id
+      
+      // Cancel the subscription in Stripe (at period end)
+      await stripe.subscriptions.update(stripeSubId, {
+        cancel_at_period_end: true
+      })
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Subscription set to cancel at the end of billing period' 
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    return new Response(JSON.stringify({ 
+      error: 'Invalid action' 
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+    
+  } catch (error) {
+    console.error('Error in cancel-subscription function:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
-});
+})

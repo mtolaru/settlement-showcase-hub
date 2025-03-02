@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 
 export const settlementService = {
   async submitWithSubscription(temporaryId: string, formData: any, unformatNumber: (value: string) => string) {
@@ -174,9 +173,12 @@ export const settlementService = {
       
       console.log('Calling cancel-subscription endpoint with ID:', subscriptionId);
       
-      // First, cancel with Stripe through our edge function
+      // First, get the Stripe portal URL for the customer
       const response = await supabase.functions.invoke('cancel-subscription', {
-        body: { subscriptionId },
+        body: { 
+          subscriptionId,
+          action: 'get_portal_url'
+        },
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
@@ -189,13 +191,12 @@ export const settlementService = {
 
       console.log('Subscription cancellation response:', response.data);
       
-      // Now check if we need to update our local subscription state
-      // If the subscription status was already updated by webhook, this is a no-op
-      if (response.data?.success) {
-        console.log('Subscription cancelled successfully in Stripe.');
+      // Check if we got a portal URL back
+      if (response.data?.url) {
+        // Return the portal URL to redirect the user
         return response.data;
       } else {
-        throw new Error(response.data?.message || 'Unknown error cancelling subscription');
+        throw new Error(response.data?.message || 'Could not generate customer portal URL');
       }
     } catch (error: any) {
       console.error('Cancel subscription error:', error);

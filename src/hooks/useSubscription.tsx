@@ -12,6 +12,7 @@ export interface Subscription {
   payment_id: string | null;
   temporary_id: string | null;
   user_id: string | null;
+  cancel_at_period_end?: boolean;
 }
 
 export const useSubscription = (user: User | null) => {
@@ -177,6 +178,9 @@ export const useSubscription = (user: User | null) => {
   useEffect(() => {
     if (user) {
       fetchSubscriptionStatus();
+    } else {
+      setSubscription(null);
+      setIsLoading(false);
     }
   }, [user]);
 

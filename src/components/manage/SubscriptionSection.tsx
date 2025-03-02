@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,13 @@ const SubscriptionSection = ({ subscription, isLoading, onRefresh }: Subscriptio
 
     setIsCancelling(true);
     try {
-      await settlementService.cancelSubscription(subscription.id);
+      const response = await settlementService.cancelSubscription(subscription.id);
+      
+      if (response?.url) {
+        window.location.href = response.url;
+        return;
+      }
+      
       toast({
         title: "Subscription Cancelled",
         description: "Your subscription has been successfully cancelled."
@@ -86,7 +91,7 @@ const SubscriptionSection = ({ subscription, isLoading, onRefresh }: Subscriptio
         )}
       </div>
 
-      <SubscriptionStatus subscription={subscription} isLoading={isLoading} />
+      <SubscriptionStatus subscription={subscription} isLoading={isLoading} onRefresh={onRefresh} />
 
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
@@ -94,12 +99,7 @@ const SubscriptionSection = ({ subscription, isLoading, onRefresh }: Subscriptio
             <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>Are you sure you want to cancel your subscription?</p>
-              <p>You will still have access to all features until the end of your billing period, but after that:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Your settlements will disappear from public view</li>
-                <li>Other lawyers will be ranked higher than you</li>
-                <li>You'll lose premium features and analytics</li>
-              </ul>
+              <p>Your settlements will be delisted at the end of your current billing period and others will rank above you.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
