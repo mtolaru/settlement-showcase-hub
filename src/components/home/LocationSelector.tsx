@@ -1,20 +1,17 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-type City = {
-  name: string;
-  active: boolean;
-  location: string;
-};
+import { getCities } from "@/lib/locations";
 
 interface LocationSelectorProps {
-  cities: City[];
+  cities?: { name: string; active: boolean; location: string }[];
   onCitySelect: (location: string) => void;
   selectedCity: string;
 }
 
-const LocationSelector = ({ cities, onCitySelect, selectedCity }: LocationSelectorProps) => {
+const LocationSelector = ({ 
+  cities = getCities(), 
+  onCitySelect, 
+  selectedCity 
+}: LocationSelectorProps) => {
   return (
     <section className="bg-neutral-50 border-b border-neutral-200">
       <div className="container py-4">
@@ -35,6 +32,7 @@ const LocationSelector = ({ cities, onCitySelect, selectedCity }: LocationSelect
                   : "text-neutral-400 cursor-not-allowed"
               }`}
               disabled={!city.active}
+              type="button" // Explicitly set type to prevent form submission
             >
               {city.name}
               {!city.active && <span className="ml-2">(Coming Soon)</span>}

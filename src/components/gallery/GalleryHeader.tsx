@@ -2,6 +2,7 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getLocationOptions } from "@/lib/locations";
 
 export interface GalleryHeaderProps {
   settlementCount: number;
@@ -64,13 +65,9 @@ const GalleryHeader = ({
     "Other"
   ];
 
-  // Predefined static list of locations - focusing on California cities
-  const allLocations = [
-    "all",
-    "Los Angeles, CA",
-    "San Francisco, CA",
-    "San Diego, CA"
-  ];
+  // Use the centralized locations
+  const allLocations = ["all", ...locations];
+  const locationOptions = getLocationOptions(true);
 
   return (
     <div className="bg-primary-900 text-white py-12">
@@ -94,6 +91,7 @@ const GalleryHeader = ({
                       : "text-white border border-primary-700 hover:bg-primary-800"
                     }
                   `}
+                  type="button"
                 >
                   {type === "all" ? "All Case Types" : type}
                 </button>
@@ -124,9 +122,9 @@ const GalleryHeader = ({
                 value={filters.location}
                 onChange={(e) => handleFilterChange("location", e.target.value)}
               >
-                {allLocations.map((location) => (
-                  <option key={location} value={location}>
-                    {location === "all" ? "All Locations" : location}
+                {locationOptions.map((location) => (
+                  <option key={location.value} value={location.value}>
+                    {location.label}
                   </option>
                 ))}
               </select>
@@ -147,6 +145,7 @@ const GalleryHeader = ({
                   size="sm" 
                   onClick={handleReset}
                   className="text-primary-200 hover:text-white text-sm hover:bg-primary-800 rounded-full"
+                  type="button"
                 >
                   Reset
                 </Button>

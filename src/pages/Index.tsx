@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from "react";
+import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
 import LocationSelector from "@/components/home/LocationSelector";
 import SettlementCard from "@/components/home/SettlementCard";
@@ -18,14 +18,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  const cities = [
-    { name: "All Cities", active: true, location: "all" },
-    { name: "San Francisco", active: true, location: "San Francisco, CA" },
-    { name: "San Diego", active: true, location: "San Diego, CA" },
-    { name: "Los Angeles", active: true, location: "Los Angeles, CA" },
-  ];
+  const cities = getCities();
 
-  // Fetch settlements from Supabase
   useEffect(() => {
     const fetchSettlements = async () => {
       try {
@@ -33,7 +27,7 @@ const Index = () => {
         const { data, error } = await supabase
           .from('settlements')
           .select('*')
-          .eq('payment_completed', true); // Only show paid/completed settlements
+          .eq('payment_completed', true);
 
         if (error) {
           throw error;
@@ -41,7 +35,6 @@ const Index = () => {
 
         console.log('Fetched settlements for homepage:', data);
         
-        // Process the data to conform to the Settlement type
         const processedData: Settlement[] = data?.map(settlement => {
           return {
             id: settlement.id,
@@ -66,7 +59,6 @@ const Index = () => {
           };
         }) || [];
         
-        // Deduplicate settlements by ID (in case there are duplicates in the database)
         const uniqueSettlements = processedData ? 
           Array.from(new Map(processedData.map(item => [item.id, item])).values()) : 
           [];
@@ -88,17 +80,14 @@ const Index = () => {
     fetchSettlements();
   }, [toast]);
 
-  // Filter settlements based on selected city
   const filteredSettlements = settlements.filter(settlement => 
     selectedCity === "all" || settlement.location === selectedCity
   );
 
-  // Sort settlements by created_at for recent cases
   const recentSettlements = [...filteredSettlements]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 3);
 
-  // Sort settlements by amount for top settlements
   const topSettlements = [...filteredSettlements]
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);
@@ -114,7 +103,6 @@ const Index = () => {
     }
   };
 
-  // Format the settlement data to match the SettlementCard props
   const formatSettlement = (settlement: Settlement) => ({
     id: settlement.id,
     type: settlement.type,
@@ -169,7 +157,6 @@ const Index = () => {
         selectedCity={selectedCity}
       />
 
-      {/* Recent Settlements Section */}
       <section className="py-12 bg-neutral-50">
         <div className="container">
           <div className="flex justify-between items-center mb-8">
@@ -204,7 +191,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Top Settlements Section */}
       <section className="py-12 bg-primary-900 text-white">
         <div className="container">
           <div className="flex justify-between items-center mb-8">

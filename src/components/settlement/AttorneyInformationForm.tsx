@@ -3,9 +3,9 @@ import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import ImageUpload from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LOCATIONS } from "@/lib/locations";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -31,19 +31,6 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 }) => {
   const { isAuthenticated, user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
-
-  const locations = [
-    "San Francisco, CA",
-    "Los Angeles, CA",
-    "New York, NY",
-    "Chicago, IL",
-    "Miami, FL",
-    "Houston, TX",
-    "Boston, MA",
-    "Seattle, WA",
-    "Denver, CO",
-    "Atlanta, GA"
-  ];
 
   return (
     <div>
@@ -130,7 +117,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               <SelectValue placeholder="Select a location" />
             </SelectTrigger>
             <SelectContent>
-              {locations.map((location) => (
+              {LOCATIONS.map((location) => (
                 <SelectItem key={location} value={location}>
                   {location}
                 </SelectItem>
