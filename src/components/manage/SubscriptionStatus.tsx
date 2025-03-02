@@ -4,6 +4,9 @@ import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Subscription {
   id: string;
@@ -23,6 +26,8 @@ interface SubscriptionStatusProps {
 const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: SubscriptionStatusProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [unsubscribeDialogOpen, setUnsubscribeDialogOpen] = useState(false);
+  const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -44,6 +49,46 @@ const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: Subscription
         description: "Checking for recent subscription changes...",
       });
       onRefresh();
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    if (!subscription?.id) return;
+    
+    setIsUnsubscribing(true);
+    try {
+      // Call Stripe to cancel subscription
+      const response = await supabase.functions.invoke('cancel-subscription', {
+        body: {
+          subscriptionId: subscription.id
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+      
+      // Update local state and close dialog
+      setUnsubscribeDialogOpen(false);
+      
+      // Refresh subscription status
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      toast({
+        title: "Subscription cancelled",
+        description: "Your subscription has been cancelled. You'll have access until the end of your current billing period.",
+      });
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to cancel subscription. Please try again.",
+      });
+    } finally {
+      setIsUnsubscribing(false);
     }
   };
 
@@ -113,7 +158,47 @@ const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: Subscription
             </div>
           )}
         </dl>
+        
+        <div className="mt-6">
+          <Button 
+            variant="outline"
+            onClick={() => setUnsubscribeDialogOpen(true)}
+            className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/50"
+          >
+            Cancel Subscription
+          </Button>
+        </div>
       </div>
+
+      <Dialog open={unsubscribeDialogOpen} onOpenChange={setUnsubscribeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel your subscription? You'll still have access to all features until the end of your current billing period.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnsubscribeDialogOpen(false)} disabled={isUnsubscribing}>
+              Keep Subscription
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleUnsubscribe}
+              disabled={isUnsubscribing}
+            >
+              {isUnsubscribing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                'Cancel Subscription'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

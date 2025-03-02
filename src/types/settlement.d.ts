@@ -19,4 +19,5 @@ export interface Settlement {
   user_id?: string;
   payment_completed?: boolean;
   photo_url?: string;
+  hidden?: boolean;
 }

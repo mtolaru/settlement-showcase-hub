@@ -36,6 +36,16 @@ serve(async (req) => {
 
     console.log('Processing webhook event:', event.type);
 
+    // Connect to Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
@@ -47,16 +57,6 @@ serve(async (req) => {
         if (!userId && !temporaryId) {
           throw new Error('No user ID or temporary ID found in session metadata');
         }
-
-        // Connect to Supabase
-        const supabaseUrl = Deno.env.get('SUPABASE_URL');
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        
-        if (!supabaseUrl || !supabaseKey) {
-          throw new Error('Missing Supabase configuration');
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseKey);
 
         // Create a new subscription record
         const { error: subscriptionError } = await supabase
@@ -74,6 +74,21 @@ serve(async (req) => {
           throw subscriptionError;
         }
 
+        // If the user has hidden settlements, unhide them
+        if (userId) {
+          const { error: unhideError } = await supabase
+            .from('settlements')
+            .update({ hidden: false })
+            .eq('user_id', userId)
+            .eq('hidden', true);
+
+          if (unhideError) {
+            console.error('Error unhiding settlements:', unhideError);
+          } else {
+            console.log('Successfully unhid settlements for user:', userId);
+          }
+        }
+
         console.log('Successfully created subscription record');
         break;
       }
@@ -82,15 +97,6 @@ serve(async (req) => {
         const subscription = event.data.object;
         console.log('Processing subscription update:', subscription.id, 'Status:', subscription.status);
         
-        const supabaseUrl = Deno.env.get('SUPABASE_URL');
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        
-        if (!supabaseUrl || !supabaseKey) {
-          throw new Error('Missing Supabase configuration');
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
         // Update subscription status based on payment_id since that's what we store
         const { error: updateError } = await supabase
           .from('subscriptions')
@@ -104,8 +110,76 @@ serve(async (req) => {
           console.error('Error updating subscription:', updateError);
           throw updateError;
         }
+        
+        // If subscription is becoming inactive, hide settlements
+        if (subscription.status !== 'active') {
+          // Find the user associated with this subscription
+          const { data: subData, error: subError } = await supabase
+            .from('subscriptions')
+            .select('user_id')
+            .eq('payment_id', subscription.latest_invoice)
+            .single();
+            
+          if (!subError && subData?.user_id) {
+            const { error: hideError } = await supabase
+              .from('settlements')
+              .update({ hidden: true })
+              .eq('user_id', subData.user_id)
+              .eq('payment_completed', false);
+              
+            if (hideError) {
+              console.error('Error hiding settlements:', hideError);
+            } else {
+              console.log('Successfully hid settlements for user:', subData.user_id);
+            }
+          }
+        }
 
         console.log('Successfully updated subscription record for', subscription.id);
+        break;
+      }
+      
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        console.log('Processing subscription deletion:', subscription.id);
+        
+        // Mark the subscription as inactive
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            is_active: false,
+            ends_at: new Date().toISOString() // Set end date to now
+          })
+          .eq('payment_id', subscription.latest_invoice);
+
+        if (updateError) {
+          console.error('Error updating subscription:', updateError);
+          throw updateError;
+        }
+        
+        // Find the user associated with this subscription
+        const { data: subData, error: subError } = await supabase
+          .from('subscriptions')
+          .select('user_id')
+          .eq('payment_id', subscription.latest_invoice)
+          .single();
+          
+        if (!subError && subData?.user_id) {
+          // Hide all settlements that are not individually paid for
+          const { error: hideError } = await supabase
+            .from('settlements')
+            .update({ hidden: true })
+            .eq('user_id', subData.user_id)
+            .eq('payment_completed', false);
+            
+          if (hideError) {
+            console.error('Error hiding settlements:', hideError);
+          } else {
+            console.log('Successfully hid settlements for user:', subData.user_id);
+          }
+        }
+        
+        console.log('Successfully processed subscription deletion for', subscription.id);
         break;
       }
     }

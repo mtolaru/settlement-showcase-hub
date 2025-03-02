@@ -35,16 +35,15 @@ export const useSettlements = (user: User | null) => {
       const hasActiveSubscription = !!subscriptionData;
       console.log('User has active subscription:', hasActiveSubscription);
       
-      // If user has an active subscription, get all their settlements
-      // If not, only get settlements marked as payment_completed
       let query = supabase
         .from('settlements')
         .select('*')
         .eq('user_id', user.id);
         
       if (!hasActiveSubscription) {
-        // Only get settlements that have been individually paid for
-        query = query.eq('payment_completed', true);
+        // For users without active subscription, only show settlements marked as payment_completed
+        // or settlements that were made while they had an active subscription
+        query = query.or('payment_completed.eq.true,hidden.eq.false');
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -61,10 +60,16 @@ export const useSettlements = (user: User | null) => {
         if (user.user_metadata?.temporaryId) {
           const tempId = user.user_metadata.temporaryId;
           
-          const { data: tempData, error: tempError } = await supabase
+          let tempQuery = supabase
             .from('settlements')
             .select('*')
-            .eq('temporary_id', tempId)
+            .eq('temporary_id', tempId);
+            
+          if (!hasActiveSubscription) {
+            tempQuery = tempQuery.or('payment_completed.eq.true,hidden.eq.false');
+          }
+            
+          const { data: tempData, error: tempError } = await tempQuery
             .order('created_at', { ascending: false });
             
           if (tempError) {
@@ -93,7 +98,8 @@ export const useSettlements = (user: User | null) => {
                 temporary_id: settlement.temporary_id,
                 user_id: settlement.user_id,
                 payment_completed: settlement.payment_completed,
-                photo_url: settlement.photo_url
+                photo_url: settlement.photo_url,
+                hidden: settlement.hidden
               };
             });
             
@@ -140,7 +146,8 @@ export const useSettlements = (user: User | null) => {
           temporary_id: settlement.temporary_id,
           user_id: settlement.user_id,
           payment_completed: settlement.payment_completed,
-          photo_url: settlement.photo_url
+          photo_url: settlement.photo_url,
+          hidden: settlement.hidden
         };
       });
       
