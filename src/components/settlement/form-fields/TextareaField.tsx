@@ -8,6 +8,7 @@ interface TextareaFieldProps {
   placeholder?: string;
   description?: string;
   error?: string;
+  rows?: number;
 }
 
 export const TextareaField = ({
@@ -17,6 +18,7 @@ export const TextareaField = ({
   placeholder,
   description,
   error,
+  rows = 4
 }: TextareaFieldProps) => {
   return (
     <div>
@@ -25,6 +27,8 @@ export const TextareaField = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        rows={rows}
+        className="resize-y min-h-[100px]"
       />
       {description && (
         <p className="text-sm text-neutral-500 mt-1">{description}</p>
