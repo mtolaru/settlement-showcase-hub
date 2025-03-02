@@ -103,14 +103,19 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
         </div>
 
         <div>
-          <Label htmlFor="firmWebsite">Firm Website</Label>
+          <Label htmlFor="firmWebsite">
+            Firm Website <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="firmWebsite"
             value={formData.firmWebsite}
             onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
             placeholder="https://lawfirm.com"
-            className="mt-1"
+            className={`mt-1 ${errors.firmWebsite ? "border-red-500" : ""}`}
           />
+          {errors.firmWebsite && (
+            <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
+          )}
         </div>
 
         <div>

@@ -27,20 +27,29 @@ export const useSettlementForm = () => {
       isValid = false;
     }
 
-    // Validate initial offer if provided
-    if (formData.initialOffer && isNaN(Number(unformatNumber(formData.initialOffer)))) {
+    // Validate initial offer - now required
+    if (!formData.initialOffer) {
+      newErrors.initialOffer = "Initial offer is required";
+      isValid = false;
+    } else if (isNaN(Number(unformatNumber(formData.initialOffer)))) {
       newErrors.initialOffer = "Please enter a valid number";
       isValid = false;
     }
 
-    // Validate policy limit if provided
-    if (formData.policyLimit && isNaN(Number(unformatNumber(formData.policyLimit)))) {
+    // Validate policy limit - now required
+    if (!formData.policyLimit) {
+      newErrors.policyLimit = "Policy limit is required";
+      isValid = false;
+    } else if (isNaN(Number(unformatNumber(formData.policyLimit)))) {
       newErrors.policyLimit = "Please enter a valid number";
       isValid = false;
     }
 
-    // Validate medical expenses if provided
-    if (formData.medicalExpenses && isNaN(Number(unformatNumber(formData.medicalExpenses)))) {
+    // Validate medical expenses - now required
+    if (!formData.medicalExpenses) {
+      newErrors.medicalExpenses = "Medical expenses are required";
+      isValid = false;
+    } else if (isNaN(Number(unformatNumber(formData.medicalExpenses)))) {
       newErrors.medicalExpenses = "Please enter a valid number";
       isValid = false;
     }
@@ -92,9 +101,14 @@ export const useSettlementForm = () => {
     }
 
     // Validate attorney email (unless we're skipping email validation)
-    if (!skipEmailValidation && (!formData.attorneyEmail || !isValidEmail(formData.attorneyEmail))) {
-      newErrors.attorneyEmail = "Valid email is required";
-      isValid = false;
+    if (!skipEmailValidation) {
+      if (!formData.attorneyEmail) {
+        newErrors.attorneyEmail = "Email is required";
+        isValid = false;
+      } else if (!isValidEmail(formData.attorneyEmail)) {
+        newErrors.attorneyEmail = "Valid email is required";
+        isValid = false;
+      }
     }
 
     // Validate firm name
@@ -103,9 +117,21 @@ export const useSettlementForm = () => {
       isValid = false;
     }
 
+    // Validate firm website - now required
+    if (!formData.firmWebsite) {
+      newErrors.firmWebsite = "Firm website is required";
+      isValid = false;
+    }
+
     // Validate location
     if (!formData.location) {
       newErrors.location = "Location is required";
+      isValid = false;
+    }
+
+    // Validate photo upload
+    if (!formData.photoUrl) {
+      newErrors.photoUrl = "Attorney photo is required";
       isValid = false;
     }
 
