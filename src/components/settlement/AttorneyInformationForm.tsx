@@ -4,6 +4,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -25,6 +26,9 @@ export const AttorneyInformationForm = ({
   handleInputChange,
   handleImageUpload,
 }: AttorneyInformationFormProps) => {
+  // Get the current user to check if they're logged in
+  const { user, isAuthenticated } = useAuth();
+  
   // Locations that are available for filtering
   const availableLocations = [
     "Los Angeles, CA",
@@ -38,6 +42,13 @@ export const AttorneyInformationForm = ({
   );
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [emailCheckTimeout, setEmailCheckTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-populate email for authenticated users
+  useEffect(() => {
+    if (isAuthenticated && user?.email && !formData.attorneyEmail) {
+      handleInputChange("attorneyEmail", user.email);
+    }
+  }, [isAuthenticated, user, formData.attorneyEmail]);
 
   // Prevent form submission when Enter key is pressed
   const handleFormSubmit = (e: FormEvent) => {
@@ -66,6 +77,9 @@ export const AttorneyInformationForm = ({
   const handleEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const email = e.target.value;
     handleInputChange("attorneyEmail", email);
+    
+    // Skip email checking if user is authenticated
+    if (isAuthenticated) return;
     
     // Clear any previous timeout
     if (emailCheckTimeout) {
@@ -162,11 +176,16 @@ export const AttorneyInformationForm = ({
           placeholder="john@example.com"
           className={isCheckingEmail ? "bg-neutral-50" : ""}
           onKeyDown={handleKeyDown}
+          disabled={isAuthenticated && !!user?.email}
+          readOnly={isAuthenticated && !!user?.email}
         />
-        {isCheckingEmail && (
+        {isAuthenticated && user?.email && (
+          <p className="text-neutral-500 text-sm mt-1">Using your account email</p>
+        )}
+        {isCheckingEmail && !isAuthenticated && (
           <p className="text-neutral-500 text-sm mt-1">Checking email...</p>
         )}
-        {errors.attorneyEmail && (
+        {errors.attorneyEmail && !isAuthenticated && (
           <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
         )}
       </div>

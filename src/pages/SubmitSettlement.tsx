@@ -11,10 +11,12 @@ import { LoadingState } from "@/components/settlement/LoadingState";
 import { SettlementFormHeader } from "@/components/settlement/SettlementFormHeader";
 import { FormNavigation } from "@/components/settlement/FormNavigation";
 import { settlementService } from "@/services/settlementService";
+import { useAuth } from "@/hooks/useAuth";
 
 const SubmitSettlement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const {
     step,
     setStep,
@@ -85,8 +87,8 @@ const SubmitSettlement = () => {
     setIsLoading(true);
     
     try {
-      // First check if email already exists
-      if (formData.attorneyEmail) {
+      // First check if email already exists (skip for authenticated users)
+      if (formData.attorneyEmail && !(isAuthenticated && user?.email === formData.attorneyEmail)) {
         const emailExists = await verifyEmail(formData.attorneyEmail);
         if (emailExists) {
           setErrors(prev => ({
@@ -146,8 +148,9 @@ const SubmitSettlement = () => {
     }
 
     if (step === 2) {
-      // Additional check for email existence before proceeding
-      if (formData.attorneyEmail) {
+      // Skip email verification for authenticated users
+      if (formData.attorneyEmail && !(isAuthenticated && user?.email === formData.attorneyEmail)) {
+        // Additional check for email existence before proceeding
         const emailExists = await verifyEmail(formData.attorneyEmail);
         if (emailExists) {
           setErrors(prev => ({

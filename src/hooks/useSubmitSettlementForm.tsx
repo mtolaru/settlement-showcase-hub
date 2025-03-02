@@ -107,7 +107,15 @@ export const useSubmitSettlementForm = () => {
     checkSubscriptionStatus();
     // Generate a temporary ID when the component mounts
     setTemporaryId(crypto.randomUUID());
-  }, []);
+    
+    // Autofill email for authenticated users
+    if (isAuthenticated && user?.email) {
+      setFormData(prev => ({
+        ...prev,
+        attorneyEmail: user.email || ""
+      }));
+    }
+  }, [isAuthenticated, user]);
 
   const checkSubscriptionStatus = async () => {
     try {
@@ -139,6 +147,11 @@ export const useSubmitSettlementForm = () => {
   };
 
   const verifyEmail = async (email: string) => {
+    // Skip email verification for authenticated users
+    if (isAuthenticated && user?.email === email) {
+      return false;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('settlements')
@@ -170,8 +183,8 @@ export const useSubmitSettlementForm = () => {
       [field]: undefined
     }));
 
-    // If changing email, check if it exists
-    if (field === 'attorneyEmail' && value) {
+    // If changing email, check if it exists (but skip for authenticated users)
+    if (field === 'attorneyEmail' && value && !(isAuthenticated && user?.email === value)) {
       verifyEmail(value).then(emailExists => {
         if (emailExists) {
           setErrors(prev => ({
