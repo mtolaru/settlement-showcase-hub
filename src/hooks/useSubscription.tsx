@@ -11,6 +11,7 @@ export interface Subscription {
   is_active: boolean;
   payment_id: string | null;
   temporary_id: string | null;
+  user_id: string | null;
 }
 
 export const useSubscription = (user: User | null) => {
