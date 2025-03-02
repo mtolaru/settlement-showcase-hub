@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettlementForm } from "@/hooks/useSettlementForm";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface FormErrors {
   [key: string]: string | undefined;
@@ -62,6 +62,7 @@ export const useSubmitSettlementForm = () => {
   const navigate = useNavigate();
   const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
   const { user, isAuthenticated } = useAuth();
+  const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
 
   const today = new Date();
   const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -107,7 +108,6 @@ export const useSubmitSettlementForm = () => {
   });
 
   useEffect(() => {
-    checkSubscriptionStatus();
     setTemporaryId(crypto.randomUUID());
     
     if (isAuthenticated && user?.email) {
@@ -116,14 +116,20 @@ export const useSubmitSettlementForm = () => {
         attorneyEmail: user.email || ""
       }));
     }
-  }, [isAuthenticated, user]);
+    
+    if (!isLoadingSubscription) {
+      const hasActiveSub = !!subscription;
+      console.log("Setting hasActiveSubscription based on subscription hook:", hasActiveSub, subscription);
+      setHasActiveSubscription(hasActiveSub);
+      setIsCheckingSubscription(false);
+    }
+  }, [isAuthenticated, user, subscription, isLoadingSubscription]);
 
   const checkSubscriptionStatus = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // Add logging to debug subscription status check
         console.log("Checking subscription status for user:", session.user.id);
         
         const { data: subscriptions, error } = await supabase
@@ -139,16 +145,13 @@ export const useSubmitSettlementForm = () => {
           throw error;
         }
         
-        // Log the subscription result
         console.log("Subscription query result:", subscriptions);
         
-        // Check if the user has an active subscription
         const hasActiveSubscription = !!subscriptions;
         console.log("Setting hasActiveSubscription to:", hasActiveSubscription);
         
         setHasActiveSubscription(hasActiveSubscription);
         
-        // If we didn't find a subscription by user_id, try checking if there's one without an end date
         if (!hasActiveSubscription) {
           const { data: openSubscriptions, error: openError } = await supabase
             .from('subscriptions')
@@ -237,7 +240,7 @@ export const useSubmitSettlementForm = () => {
     setStep,
     formData,
     errors,
-    isCheckingSubscription,
+    isCheckingSubscription: isCheckingSubscription || isLoadingSubscription,
     hasActiveSubscription,
     isLoading,
     isSubmitting,

@@ -46,7 +46,8 @@ const SubmitSettlement = () => {
       isAuthenticated,
       userId: user?.id,
       hasActiveSubscription,
-      isCheckingSubscription
+      isCheckingSubscription,
+      hasActiveSubscriptionType: typeof hasActiveSubscription
     });
   }, [isAuthenticated, user, hasActiveSubscription, isCheckingSubscription]);
 
@@ -202,6 +203,10 @@ const SubmitSettlement = () => {
     return <LoadingState />;
   }
 
+  // Force boolean conversion here to ensure hasActiveSubscription is a boolean
+  const activeSubscription = hasActiveSubscription === true;
+  console.log("FINAL RENDER - Active subscription status:", activeSubscription, typeof activeSubscription);
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <SettlementFormHeader />
@@ -235,7 +240,7 @@ const SubmitSettlement = () => {
             {step === 3 && (
               <ReviewStep 
                 formData={formData}
-                hasActiveSubscription={hasActiveSubscription}
+                hasActiveSubscription={activeSubscription}
                 onCreateCheckout={createCheckoutSession}
                 onSubmitWithSubscription={handleSubmitWithSubscription}
               />

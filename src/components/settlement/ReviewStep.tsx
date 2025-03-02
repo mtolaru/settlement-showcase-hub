@@ -33,6 +33,11 @@ export const ReviewStep = ({
 }: ReviewStepProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Add a debugging effect to log subscription status changes
+  useEffect(() => {
+    console.log("ReviewStep: hasActiveSubscription value changed to:", hasActiveSubscription);
+  }, [hasActiveSubscription]);
+  
   const formatCurrency = (value: string) => {
     if (!value) return "N/A";
     
@@ -74,8 +79,8 @@ export const ReviewStep = ({
     onSubmitWithSubscription();
   };
 
-  // Add this for debugging
-  console.log("ReviewStep render - hasActiveSubscription:", hasActiveSubscription);
+  // Add this for better debugging
+  console.log("ReviewStep render with hasActiveSubscription:", hasActiveSubscription, typeof hasActiveSubscription);
 
   return (
     <div className="space-y-8">
@@ -152,7 +157,7 @@ export const ReviewStep = ({
         </div>
       </div>
 
-      {!hasActiveSubscription ? (
+      {hasActiveSubscription === false ? (
         <div className="bg-primary-50 border border-primary-100 p-6 rounded-lg">
           <h4 className="font-medium text-primary-900 mb-2">Professional Plan Subscription</h4>
           <p className="text-sm text-primary-700 mb-4">
