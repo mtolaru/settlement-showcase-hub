@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ReviewStepProps {
   formData: {
@@ -152,7 +152,7 @@ export const ReviewStep = ({
         </div>
       </div>
 
-      {!hasActiveSubscription && (
+      {!hasActiveSubscription ? (
         <div className="bg-primary-50 border border-primary-100 p-6 rounded-lg">
           <h4 className="font-medium text-primary-900 mb-2">Professional Plan Subscription</h4>
           <p className="text-sm text-primary-700 mb-4">
@@ -167,9 +167,7 @@ export const ReviewStep = ({
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
-      )}
-
-      {hasActiveSubscription && (
+      ) : (
         <Button 
           onClick={handleSubmit}
           className="w-full bg-primary-500 hover:bg-primary-600"
