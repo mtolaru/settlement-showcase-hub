@@ -30,8 +30,15 @@ export const DollarInputField = ({
   };
 
   const handleDollarInput = (inputValue: string) => {
-    // Remove dollar sign for processing
-    const processedValue = inputValue.replace(/[$,]/g, '');
+    // First remove any non-numeric characters (except decimal point)
+    const sanitizedValue = inputValue.replace(/[^\d.]/g, '');
+    
+    // Ensure only one decimal point
+    const parts = sanitizedValue.split('.');
+    const processedValue = parts.length > 2 
+      ? `${parts[0]}.${parts.slice(1).join('')}`
+      : sanitizedValue;
+    
     onChange(processedValue);
   };
 
@@ -44,6 +51,7 @@ export const DollarInputField = ({
         onChange={(e) => handleDollarInput(e.target.value)}
         placeholder={placeholder}
         className="no-spinner"
+        inputMode="decimal"
       />
       {description && (
         <p className="text-sm text-neutral-500 mt-1">{description}</p>

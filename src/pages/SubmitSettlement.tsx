@@ -143,12 +143,16 @@ const SubmitSettlement = () => {
   };
 
   const handleNextStep = async () => {
-    if (step === 1 && !validateStep1(formData)) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please fill in all required fields correctly.",
-      });
+    if (step === 1) {
+      if (!validateStep1(formData)) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please fill in all required fields correctly.",
+        });
+        return;
+      }
+      setStep(2);
       return;
     }
 
