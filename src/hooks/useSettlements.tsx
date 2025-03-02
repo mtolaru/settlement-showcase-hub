@@ -42,8 +42,11 @@ export const useSettlements = (user: User | null) => {
         
       if (!hasActiveSubscription) {
         // For users without active subscription, only show settlements marked as payment_completed
-        // or settlements that were made while they had an active subscription
+        // or settlements that were made while they had an active subscription, and not hidden
         query = query.or('payment_completed.eq.true,hidden.eq.false');
+      } else {
+        // For users with active subscription, don't show hidden settlements
+        query = query.eq('hidden', false);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -67,6 +70,8 @@ export const useSettlements = (user: User | null) => {
             
           if (!hasActiveSubscription) {
             tempQuery = tempQuery.or('payment_completed.eq.true,hidden.eq.false');
+          } else {
+            tempQuery = tempQuery.eq('hidden', false);
           }
             
           const { data: tempData, error: tempError } = await tempQuery

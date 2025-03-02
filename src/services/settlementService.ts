@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -158,6 +159,33 @@ export const settlementService = {
       return { success: true };
     } catch (error: any) {
       console.error('Delete settlement error:', error);
+      throw error;
+    }
+  },
+
+  async cancelSubscription(subscriptionId: string) {
+    try {
+      // Get current JWT
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session');
+      }
+      
+      const response = await supabase.functions.invoke('cancel-subscription', {
+        body: { subscriptionId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Cancel subscription error:', error);
       throw error;
     }
   }

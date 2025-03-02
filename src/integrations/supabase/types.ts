@@ -19,6 +19,7 @@ export type Database = {
           description: string | null
           firm: string
           firm_website: string | null
+          hidden: boolean | null
           id: number
           initial_offer: number | null
           location: string
@@ -41,6 +42,7 @@ export type Database = {
           description?: string | null
           firm: string
           firm_website?: string | null
+          hidden?: boolean | null
           id?: number
           initial_offer?: number | null
           location: string
@@ -63,6 +65,7 @@ export type Database = {
           description?: string | null
           firm?: string
           firm_website?: string | null
+          hidden?: boolean | null
           id?: number
           initial_offer?: number | null
           location?: string
