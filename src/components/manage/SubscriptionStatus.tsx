@@ -57,6 +57,15 @@ const SubscriptionStatus = ({
         });
       } else {
         console.log('Subscription cancellation response:', data);
+        
+        // Check if we have a redirectUrl for Stripe portal
+        if (data.redirectUrl) {
+          // Redirect to Stripe's portal for cancellation
+          window.location.href = data.redirectUrl;
+          return; // Don't proceed with the rest of the function
+        }
+        
+        // For virtual subscriptions that are canceled directly
         toast({
           title: "Subscription Canceled",
           description: data.canceled_immediately 

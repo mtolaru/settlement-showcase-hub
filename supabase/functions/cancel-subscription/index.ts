@@ -53,8 +53,6 @@ serve(async (req) => {
       subscriptionId.startsWith('virtual-') || 
       subscriptionId.startsWith('stripe-')
 
-    let result
-    
     if (isVirtualSubscription) {
       // For virtual subscriptions, we just update our database
       console.log('Handling virtual subscription cancellation')
@@ -82,16 +80,19 @@ serve(async (req) => {
         )
       }
       
-      result = {
-        id: subscriptionId,
-        canceled_immediately: false,
-        active_until: endDate.toISOString()
-      }
+      return new Response(
+        JSON.stringify({
+          id: subscriptionId,
+          canceled_immediately: false,
+          active_until: endDate.toISOString()
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      )
     } else {
-      // For real Stripe subscriptions, we need to cancel in Stripe and update our database
-      console.log('Cancelling Stripe subscription:', subscriptionData.payment_id)
-      
-      // First, check if the payment_id is a valid Stripe subscription ID
+      // For real Stripe subscriptions, we need to redirect to Stripe's cancellation page
       if (!subscriptionData.payment_id) {
         console.error('No payment_id found for subscription')
         return new Response(
@@ -104,39 +105,35 @@ serve(async (req) => {
       }
       
       try {
-        // Cancel the subscription in Stripe
-        // By default, this will cancel at period end, not immediately
-        const stripeSubscription = await stripe.subscriptions.update(
-          subscriptionData.payment_id,
-          { cancel_at_period_end: true }
+        // Create a customer portal session for cancellation
+        const session = await stripe.billingPortal.sessions.create({
+          customer: subscriptionData.customer_id || subscriptionData.payment_id,
+          return_url: `${req.headers.get('origin') || 'https://your-app-url.com'}/manage`,
+          flow_data: {
+            type: 'subscription_cancel',
+            subscription_cancel: {
+              subscription: subscriptionData.payment_id
+            }
+          }
+        });
+        
+        console.log('Created Stripe portal session:', session.url)
+        
+        // Return the session URL so the frontend can redirect to it
+        return new Response(
+          JSON.stringify({ 
+            redirectUrl: session.url 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
         )
-        
-        console.log('Stripe subscription updated:', stripeSubscription)
-        
-        // Check if we have the period end date from Stripe
-        const periodEnd = stripeSubscription.current_period_end 
-          ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
-          : null
-          
-        // Update our database
-        await supabase
-          .from('subscriptions')
-          .update({ 
-            is_active: true, // Still active until period end
-            ends_at: periodEnd 
-          })
-          .eq('id', subscriptionId)
-        
-        result = {
-          id: subscriptionId,
-          canceled_immediately: false,
-          active_until: periodEnd
-        }
       } catch (stripeError) {
         console.error('Stripe error:', stripeError)
         return new Response(
           JSON.stringify({ 
-            error: 'Error canceling subscription with Stripe',
+            error: 'Error creating Stripe cancellation session',
             details: stripeError 
           }),
           { 
@@ -146,14 +143,6 @@ serve(async (req) => {
         )
       }
     }
-    
-    return new Response(
-      JSON.stringify(result),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
-    )
   } catch (error) {
     console.error('Unhandled error:', error)
     return new Response(
