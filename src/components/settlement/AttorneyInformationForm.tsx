@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ImageUpload from "@/components/ImageUpload";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -30,6 +31,19 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 }) => {
   const { isAuthenticated, user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
+
+  const locations = [
+    "San Francisco, CA",
+    "Los Angeles, CA",
+    "New York, NY",
+    "Chicago, IL",
+    "Miami, FL",
+    "Houston, TX",
+    "Boston, MA",
+    "Seattle, WA",
+    "Denver, CO",
+    "Atlanta, GA"
+  ];
 
   return (
     <div>
@@ -103,26 +117,39 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="location">
             Location <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="location"
+          <Select
             value={formData.location}
-            onChange={(e) => handleInputChange("location", e.target.value)}
-            placeholder="San Francisco, CA"
-            className={`mt-1 ${errors.location ? "border-red-500" : ""}`}
-          />
+            onValueChange={(value) => handleInputChange("location", value)}
+          >
+            <SelectTrigger id="location" className={`mt-1 ${errors.location ? "border-red-500" : ""}`}>
+              <SelectValue placeholder="Select a location" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((location) => (
+                <SelectItem key={location} value={location}>
+                  {location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {errors.location && (
             <p className="text-red-500 text-sm mt-1">{errors.location}</p>
           )}
         </div>
 
         <div>
-          <Label>Attorney Photo (Optional)</Label>
+          <Label>
+            Attorney Photo <span className="text-red-500">*</span>
+          </Label>
           <div className="mt-2">
             <ImageUpload
               onImageUpload={handleImageUpload}
               className="w-full"
             />
           </div>
+          {errors.photoUrl && (
+            <p className="text-red-500 text-sm mt-1">{errors.photoUrl}</p>
+          )}
         </div>
       </div>
     </div>

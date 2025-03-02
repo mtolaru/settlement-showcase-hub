@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -59,7 +58,6 @@ export const useSubmitSettlementForm = () => {
   const { errors, setErrors, validateStep1, validateStep2, unformatNumber } = useSettlementForm();
   const { user, isAuthenticated } = useAuth();
 
-  // Set default date to today
   const today = new Date();
   const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -105,10 +103,8 @@ export const useSubmitSettlementForm = () => {
 
   useEffect(() => {
     checkSubscriptionStatus();
-    // Generate a temporary ID when the component mounts
     setTemporaryId(crypto.randomUUID());
     
-    // Autofill email for authenticated users
     if (isAuthenticated && user?.email) {
       setFormData(prev => ({
         ...prev,
@@ -147,9 +143,8 @@ export const useSubmitSettlementForm = () => {
   };
 
   const verifyEmail = async (email: string) => {
-    // Skip email verification for authenticated users with matching email
     if (isAuthenticated && user?.email === email) {
-      return false; // Return false to indicate email doesn't exist (no conflict)
+      return false;
     }
     
     try {
@@ -177,13 +172,11 @@ export const useSubmitSettlementForm = () => {
       [field]: value
     }));
     
-    // Clear error when field changes
     setErrors(prev => ({
       ...prev,
       [field]: undefined
     }));
 
-    // If changing email, check if it exists (but skip for authenticated users with matching email)
     if (field === 'attorneyEmail' && value && !(isAuthenticated && user?.email === value)) {
       verifyEmail(value).then(emailExists => {
         if (emailExists) {
@@ -198,6 +191,42 @@ export const useSubmitSettlementForm = () => {
 
   const handleImageUpload = (url: string) => {
     handleInputChange("photoUrl", url);
+  };
+
+  const validateStep2 = (data: FormData, skipEmailValidation = false) => {
+    const newErrors: FormErrors = {};
+    let isValid = true;
+
+    if (!data.attorneyName) {
+      newErrors.attorneyName = "Attorney name is required";
+      isValid = false;
+    }
+
+    if (!skipEmailValidation && !data.attorneyEmail) {
+      newErrors.attorneyEmail = "Attorney email is required";
+      isValid = false;
+    } else if (!skipEmailValidation && !/^\S+@\S+\.\S+$/.test(data.attorneyEmail)) {
+      newErrors.attorneyEmail = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    if (!data.firmName) {
+      newErrors.firmName = "Firm name is required";
+      isValid = false;
+    }
+
+    if (!data.location) {
+      newErrors.location = "Location is required";
+      isValid = false;
+    }
+    
+    if (!data.photoUrl) {
+      newErrors.photoUrl = "Attorney photo is required";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   return {
