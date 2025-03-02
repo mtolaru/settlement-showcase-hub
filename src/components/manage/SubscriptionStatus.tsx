@@ -4,15 +4,7 @@ import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-
-interface Subscription {
-  id: string;
-  starts_at: string;
-  ends_at: string | null;
-  is_active: boolean;
-  payment_id?: string | null;
-  temporary_id?: string | null;
-}
+import { Subscription } from "@/hooks/useSubscription";
 
 interface SubscriptionStatusProps {
   subscription: Subscription | null;
@@ -47,7 +39,29 @@ const SubscriptionStatus = ({ subscription, isLoading, onRefresh }: Subscription
     }
   };
 
-  if (!subscription?.is_active) {
+  if (!subscription) {
+    return (
+      <div className="space-y-4">
+        <p className="text-neutral-600">
+          You currently don't have an active subscription. Subscribe to unlock unlimited settlement submissions and more features.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button onClick={() => navigate('/pricing')}>
+            Subscribe Now
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleManualSync}
+          >
+            Sync Subscription Status
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fixed the subscription check to properly detect active status
+  if (!subscription.is_active) {
     return (
       <div className="space-y-4">
         <p className="text-neutral-600">

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
@@ -19,7 +19,7 @@ export const useSubscription = (user: User | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchSubscriptionStatus = async () => {
+  const fetchSubscriptionStatus = useCallback(async () => {
     try {
       if (!user) {
         console.log('No user found, skipping subscription fetch');
@@ -161,6 +161,77 @@ export const useSubscription = (user: User | null) => {
         }
       }
       
+      // Check directly for any settlements with the user's email, regardless of user_id
+      if (user.email) {
+        console.log('Checking for any settlements with matching email:', user.email);
+        
+        const { data: emailSettlements, error: emailSettlementsError } = await supabase
+          .from('settlements')
+          .select('temporary_id, payment_completed')
+          .eq('attorney_email', user.email)
+          .order('created_at', { ascending: false });
+          
+        if (emailSettlementsError) {
+          console.error('Error fetching settlements by email:', emailSettlementsError);
+        } else if (emailSettlements && emailSettlements.length > 0) {
+          console.log('Found settlements with matching email, checking for subscription:', emailSettlements);
+          
+          // If there's at least one paid settlement, we should look for a subscription
+          const paidSettlement = emailSettlements.find(s => s.payment_completed);
+          
+          if (paidSettlement && paidSettlement.temporary_id) {
+            // Check if there's a subscription with this temporary_id
+            const { data: linkedSub, error: linkedSubError } = await supabase
+              .from('subscriptions')
+              .select('*')
+              .eq('temporary_id', paidSettlement.temporary_id)
+              .maybeSingle();
+              
+            if (linkedSubError) {
+              console.error('Error fetching linked subscription:', linkedSubError);
+            } else if (linkedSub) {
+              console.log('Found subscription linked to paid settlement:', linkedSub);
+              
+              // Update the subscription with the user_id if not already set
+              if (!linkedSub.user_id) {
+                const { error: updateSubError } = await supabase
+                  .from('subscriptions')
+                  .update({ user_id: user.id })
+                  .eq('id', linkedSub.id);
+                  
+                if (updateSubError) {
+                  console.error('Error updating subscription with user_id:', updateSubError);
+                } else {
+                  console.log('Updated subscription with user_id');
+                }
+              }
+              
+              // Set the subscription
+              setSubscription({
+                ...linkedSub,
+                user_id: linkedSub.user_id || user.id
+              });
+              
+              // Update any settlements with this temporary_id to have the correct user_id
+              const { error: updateSetError } = await supabase
+                .from('settlements')
+                .update({ user_id: user.id })
+                .eq('temporary_id', paidSettlement.temporary_id)
+                .is('user_id', null);
+                
+              if (updateSetError) {
+                console.error('Error updating settlements with user_id:', updateSetError);
+              } else {
+                console.log('Updated settlements with user_id');
+              }
+              
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+      }
+      
       // If we get here, no subscription was found
       setIsLoading(false);
     } catch (error) {
@@ -172,13 +243,16 @@ export const useSubscription = (user: User | null) => {
       });
       setIsLoading(false);
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
     if (user) {
       fetchSubscriptionStatus();
+    } else {
+      setSubscription(null);
+      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, fetchSubscriptionStatus]);
 
   return {
     subscription,
