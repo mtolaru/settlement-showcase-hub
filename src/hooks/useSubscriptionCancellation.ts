@@ -75,15 +75,13 @@ export const useSubscriptionCancellation = (
       // Check if we have a redirectUrl for Stripe portal
       if (data.redirectUrl) {
         console.log('Received Stripe portal URL:', data.redirectUrl);
+        
+        // Store the portal URL
         setPortalUrl(data.redirectUrl);
         
-        // Immediately open the portal URL in a new tab
-        window.location.href = data.redirectUrl;
-        
-        // We'll still return from this function as normal since the page will navigate away
         toast({
-          title: "Redirecting to Stripe",
-          description: "You'll be redirected to Stripe's portal to manage your subscription."
+          title: "Stripe Portal Available",
+          description: "You can manage your subscription through Stripe's portal."
         });
         
         return;
@@ -118,7 +116,9 @@ export const useSubscriptionCancellation = (
   };
 
   const openStripePortal = (url: string) => {
-    // Simply redirect to the URL directly
+    console.log('Opening Stripe portal URL:', url);
+    
+    // Directly redirect to the portal URL in the current tab
     window.location.href = url;
     
     setShowCancelDialog(false);

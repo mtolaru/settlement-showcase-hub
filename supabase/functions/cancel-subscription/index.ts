@@ -69,8 +69,8 @@ serve(async (req) => {
     console.log('Found subscription in database:', subscriptionData);
 
     // If this is a Stripe subscription, handle through Stripe
-    if (subscriptionData.customer_id && subscriptionData.payment_id) {
-      console.log('Processing Stripe subscription cancellation');
+    if (subscriptionData.customer_id && subscriptionData.customer_id.startsWith('cus_')) {
+      console.log('Processing Stripe subscription cancellation with customer ID:', subscriptionData.customer_id);
       
       try {
         // For Stripe subscriptions, create a customer portal session
