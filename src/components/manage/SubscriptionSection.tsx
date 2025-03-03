@@ -6,14 +6,12 @@ import SubscriptionStatus from "@/components/manage/SubscriptionStatus";
 interface SubscriptionSectionProps {
   subscription: Subscription | null;
   isLoading: boolean;
-  isVerified?: boolean;
   refreshSubscription?: () => void;
 }
 
 const SubscriptionSection = ({ 
   subscription, 
   isLoading,
-  isVerified = false,
   refreshSubscription
 }: SubscriptionSectionProps) => {
   return (
@@ -24,8 +22,7 @@ const SubscriptionSection = ({
       
       <SubscriptionStatus 
         subscription={subscription} 
-        isLoading={isLoading}
-        isVerified={isVerified}
+        isLoading={isLoading} 
         refreshSubscription={refreshSubscription}
       />
     </div>
