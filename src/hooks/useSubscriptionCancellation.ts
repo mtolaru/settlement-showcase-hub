@@ -15,8 +15,14 @@ export const useSubscriptionCancellation = (
   const { toast } = useToast();
 
   const openStripePortal = (url: string) => {
+    // Open the portal URL in a new tab
     window.open(url, '_blank');
+    
+    // Close the dialog
     setShowCancelDialog(false);
+    
+    // Clear any errors
+    setCancelError(null);
   };
 
   const handleCancelSubscription = async () => {
@@ -24,9 +30,10 @@ export const useSubscriptionCancellation = (
 
     setIsCancelling(true);
     setCancelError(null);
+    setPortalUrl(null); // Reset the portal URL
 
     try {
-      // Always use Stripe Customer Portal for subscription management
+      // Request Stripe Customer Portal URL via Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('create-customer-portal', {
         body: { 
           subscription_id: subscription.id,
@@ -39,10 +46,11 @@ export const useSubscriptionCancellation = (
       }
 
       if (data && data.url) {
+        // Set the portal URL - this triggers the button to change
         setPortalUrl(data.url);
-        // Don't automatically redirect, let the user click the button in the dialog
+        console.log("Portal URL generated:", data.url);
       } else {
-        throw new Error('No portal URL returned');
+        throw new Error('No portal URL returned from Stripe');
       }
     } catch (error: any) {
       console.error('Error creating customer portal session:', error);

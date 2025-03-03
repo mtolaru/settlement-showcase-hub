@@ -80,7 +80,7 @@ const CancelSubscriptionDialog = ({
               Go to Stripe Portal <ExternalLink className="h-4 w-4" />
             </Button>
           ) : (
-            <AlertDialogAction 
+            <Button 
               onClick={onConfirm}
               className="bg-primary hover:bg-primary/90 flex items-center gap-2"
               disabled={isCancelling}
@@ -91,9 +91,9 @@ const CancelSubscriptionDialog = ({
                   Processing...
                 </>
               ) : (
-                <>Manage Subscription <ExternalLink className="h-4 w-4" /></>
+                <>Go to Stripe Portal <ExternalLink className="h-4 w-4" /></>
               )}
-            </AlertDialogAction>
+            </Button>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>
