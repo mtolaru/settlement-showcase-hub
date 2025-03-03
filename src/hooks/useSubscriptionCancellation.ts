@@ -50,25 +50,26 @@ export const useSubscriptionCancellation = (
         return;
       }
       
-      // For real subscriptions, proceed with the edge function call
-      const requestBody = { subscriptionId: subscription.id };
-      console.log('Request payload:', requestBody);
+      // For real subscriptions, use the direct fetch approach to ensure proper redirection
+      const requestUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://zxstilrzamzlgswgwlpp.supabase.co'}/functions/v1/cancel-subscription`;
+      console.log('Making direct fetch to:', requestUrl);
       
-      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
-        body: requestBody
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4c3RpbHJ6YW16bGdzd2d3bHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1MDAzOTYsImV4cCI6MjA1NjA3NjM5Nn0.WiqcQcQnxfGhE9BwCorEYdZbV3ece7ITv2OwCUufpwI'}`,
+        },
+        body: JSON.stringify({ subscriptionId: subscription.id }),
       });
       
-      if (error) {
-        console.error('Error calling cancel-subscription function:', error);
-        setCancelError(`Error canceling subscription: ${error.message || 'Unknown error'}. Please try again later or contact support.`);
-        toast({
-          variant: "destructive",
-          title: "Error canceling subscription",
-          description: "Please try again later or contact support."
-        });
-        return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Non-2xx response from cancel-subscription function:', response.status, errorData);
+        throw new Error(errorData.error || `Server returned ${response.status}`);
       }
       
+      const data = await response.json();
       console.log('Subscription cancellation response:', data);
       
       // Check if we have a redirectUrl for Stripe portal
@@ -77,24 +78,13 @@ export const useSubscriptionCancellation = (
         setPortalUrl(data.redirectUrl);
         
         // Immediately open the portal URL in a new tab
-        const newWindow = window.open(data.redirectUrl, '_blank');
+        window.location.href = data.redirectUrl;
         
-        // Check if popup was blocked
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          console.warn('Popup was blocked or failed to open');
-          toast({
-            title: "Popup Blocked",
-            description: "Your browser may have blocked the popup. Please click the button below to open the Stripe portal."
-          });
-          // We'll keep the URL available via button
-        } else {
-          // If the window opened successfully, we can close the dialog
-          setShowCancelDialog(false);
-          toast({
-            title: "Stripe Portal Opened",
-            description: "You can now manage your subscription in the Stripe portal."
-          });
-        }
+        // We'll still return from this function as normal since the page will navigate away
+        toast({
+          title: "Redirecting to Stripe",
+          description: "You'll be redirected to Stripe's portal to manage your subscription."
+        });
         
         return;
       }
@@ -128,25 +118,13 @@ export const useSubscriptionCancellation = (
   };
 
   const openStripePortal = (url: string) => {
-    // Open in a new tab to ensure the portal loads properly
-    const newWindow = window.open(url, '_blank');
-    
-    // Check if popup was blocked
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.warn('Popup was blocked or failed to open');
-      toast({
-        variant: "destructive",
-        title: "Popup Blocked",
-        description: "Your browser blocked the popup. Please allow popups for this site and try again."
-      });
-      // Keep the dialog open so they can try again
-      return;
-    }
+    // Simply redirect to the URL directly
+    window.location.href = url;
     
     setShowCancelDialog(false);
     toast({
-      title: "Stripe Portal Opened",
-      description: "You can now manage your subscription in the Stripe portal."
+      title: "Redirecting to Stripe Portal",
+      description: "You're being redirected to manage your subscription."
     });
   };
 
