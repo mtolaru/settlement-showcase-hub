@@ -20,6 +20,8 @@ export const DollarInputField = ({
   description,
   error,
 }: DollarInputFieldProps) => {
+  const isRequired = label.includes('*');
+  
   return (
     <div className="space-y-2">
       <Label htmlFor={label.replace(/\s+/g, '-').toLowerCase()} className="form-label">
@@ -36,16 +38,23 @@ export const DollarInputField = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            "pl-7",
+            "pl-7 w-full",
             error ? 'border-red-500 focus-visible:ring-red-500' : ''
           )}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${label.replace(/\s+/g, '-').toLowerCase()}-error` : undefined}
         />
       </div>
       {description && !error && (
         <p className="text-sm text-neutral-500 mt-1">{description}</p>
       )}
       {error && (
-        <p className="text-sm font-medium text-red-500 mt-1">{error}</p>
+        <p 
+          id={`${label.replace(/\s+/g, '-').toLowerCase()}-error`}
+          className="text-sm font-medium text-red-500 mt-1"
+        >
+          {error}
+        </p>
       )}
     </div>
   );

@@ -47,9 +47,8 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         
         if (!success) {
           console.log("Validation failed, showing toast");
-          // Toast is now handled in the useSettlementNavigation hook
           
-          // Reset button only if validation failed
+          // Reset button only if validation failed and not in other loading states
           if (!isLoading && !isSubmitting) {
             setButtonText("Next Step");
             button.disabled = false;
@@ -108,7 +107,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
             disabled={isValidating || isLoading || isSubmitting}
             type="button"
           >
-            {isValidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {(isValidating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {buttonText} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
