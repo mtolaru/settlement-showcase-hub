@@ -1,5 +1,5 @@
 
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,23 +75,23 @@ const CancelSubscriptionDialog = ({
           {portalUrl ? (
             <Button 
               onClick={() => onOpenPortal(portalUrl)}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 flex items-center gap-2"
             >
-              Go to Stripe Portal
+              Go to Stripe Portal <ExternalLink className="h-4 w-4" />
             </Button>
           ) : (
             <AlertDialogAction 
               onClick={onConfirm}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 flex items-center gap-2"
               disabled={isCancelling}
             >
               {isCancelling ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Processing...
                 </>
               ) : (
-                "Continue to Stripe"
+                <>Manage Subscription <ExternalLink className="h-4 w-4" /></>
               )}
             </AlertDialogAction>
           )}

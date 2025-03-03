@@ -57,8 +57,8 @@ const SubscriptionStatus = ({
   };
 
   // Check if the subscription is managed by Stripe
-  const isStripeManaged = subscription?.id.startsWith('stripe-') || 
-    (subscription?.customer_id && subscription?.payment_id);
+  const isStripeManaged = !!subscription?.id.startsWith('stripe-') || 
+    !!(subscription?.customer_id && subscription?.payment_id);
 
   return (
     <div className="space-y-6">
