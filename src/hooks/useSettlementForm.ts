@@ -15,6 +15,7 @@ export const useSettlementForm = () => {
 
   // Function to validate step 1 of the settlement form
   const validateStep1 = (formData: any): boolean => {
+    console.log("Running validateStep1 with data:", formData);
     const newErrors: FormErrors = {};
     let isValid = true;
 
@@ -84,6 +85,8 @@ export const useSettlementForm = () => {
       isValid = false;
     }
 
+    console.log("Validation errors:", newErrors, "isValid:", isValid);
+    
     // Set the errors
     setErrors(newErrors);
     return isValid;
@@ -91,6 +94,7 @@ export const useSettlementForm = () => {
 
   // Function to validate step 2 of the settlement form
   const validateStep2 = (formData: any, skipEmailValidation: boolean = false): boolean => {
+    console.log("Running validateStep2 with data:", formData, "skipEmailValidation:", skipEmailValidation);
     const newErrors: FormErrors = {};
     let isValid = true;
 
@@ -135,6 +139,8 @@ export const useSettlementForm = () => {
       isValid = false;
     }
 
+    console.log("Step 2 validation errors:", newErrors, "isValid:", isValid);
+    
     // Set the errors
     setErrors(newErrors);
     return isValid;

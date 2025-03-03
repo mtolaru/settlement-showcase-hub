@@ -8,6 +8,7 @@ import { LoadingState } from "@/components/settlement/LoadingState";
 import { SettlementFormHeader } from "@/components/settlement/SettlementFormHeader";
 import { FormNavigation } from "@/components/settlement/FormNavigation";
 import { useSubmitSettlementContainer } from "@/hooks/useSubmitSettlementContainer";
+import { useEffect } from "react";
 
 const SubmitSettlementPage = () => {
   const {
@@ -26,6 +27,10 @@ const SubmitSettlementPage = () => {
     handleSubmitWithSubscription
   } = useSubmitSettlementContainer();
 
+  useEffect(() => {
+    console.log("SubmitSettlementPage rendering, current step:", step);
+  }, [step]);
+
   if (isCheckingSubscription) {
     return <LoadingState />;
   }
@@ -39,6 +44,7 @@ const SubmitSettlementPage = () => {
           <SubmissionProgress currentStep={step} />
 
           <motion.div
+            key={`step-${step}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-lg shadow-md p-6"

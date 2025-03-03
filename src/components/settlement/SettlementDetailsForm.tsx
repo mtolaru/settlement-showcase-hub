@@ -27,6 +27,8 @@ export const SettlementDetailsForm = ({
 }: SettlementDetailsFormProps) => {
   return (
     <div className="space-y-6">
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Settlement Details</h2>
+      
       <FinancialDetailsSection 
         formData={formData}
         errors={errors}

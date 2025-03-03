@@ -1,11 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { useSubmitSettlementForm } from "@/hooks/useSubmitSettlementForm";
 import { settlementService } from "@/services/settlementService";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
 
 export const useSubmitSettlementContainer = () => {
   const { toast } = useToast();
@@ -137,8 +136,13 @@ export const useSubmitSettlementContainer = () => {
   };
 
   const handleNextStep = async () => {
+    console.log("handleNextStep called for step:", step);
+    
     if (step === 1) {
-      if (!validateStep1(formData)) {
+      const validationResult = validateStep1(formData);
+      console.log("Step 1 validation result:", validationResult, "Form data:", formData);
+      
+      if (!validationResult) {
         toast({
           variant: "destructive",
           title: "Error",
@@ -146,20 +150,18 @@ export const useSubmitSettlementContainer = () => {
         });
         return;
       }
+      
+      console.log("Moving to step 2");
       setStep(2);
       return;
     }
 
     if (step === 2) {
+      let validationPassed = false;
+      
       if (isAuthenticated && user?.email) {
-        if (!validateStep2(formData, true)) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Please fill in all required fields correctly.",
-          });
-          return;
-        }
+        validationPassed = validateStep2(formData, true);
+        console.log("Step 2 validation (authenticated):", validationPassed);
       } else {
         if (formData.attorneyEmail) {
           const emailExists = await verifyEmail(formData.attorneyEmail);
@@ -177,22 +179,28 @@ export const useSubmitSettlementContainer = () => {
           }
         }
         
-        if (!validateStep2(formData, false)) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Please fill in all required fields correctly.",
-          });
-          return;
-        }
+        validationPassed = validateStep2(formData, false);
+        console.log("Step 2 validation (unauthenticated):", validationPassed);
       }
       
-      // Always proceed to step 3 (review) regardless of subscription status
+      if (!validationPassed) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please fill in all required fields correctly.",
+        });
+        return;
+      }
+      
+      console.log("Moving to step 3");
       setStep(3);
     }
   };
 
-  const handleBackStep = () => setStep(step - 1);
+  const handleBackStep = () => {
+    console.log("handleBackStep called, moving from step", step, "to", step - 1);
+    setStep(step - 1);
+  };
 
   return {
     step,
