@@ -14,6 +14,14 @@ const SubscriptionCard = ({ subscription, isCanceled, isVerified }: Subscription
     return format(new Date(dateString), 'MMMM d, yyyy');
   };
 
+  // Debug subscription data
+  console.log("SubscriptionCard rendering with:", { 
+    subscription, 
+    isCanceled, 
+    subscription_status: subscription.status, 
+    cancel_at_period_end: subscription.cancel_at_period_end 
+  });
+
   return (
     <div className={`flex items-start gap-4 p-4 ${isCanceled ? 'bg-amber-50' : 'bg-primary-50'} rounded-lg`}>
       <div className={`rounded-full ${isCanceled ? 'bg-amber-100' : 'bg-primary-100'} p-3`}>

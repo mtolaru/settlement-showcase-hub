@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
@@ -60,6 +59,19 @@ export const useSubscription = (user: User | null) => {
               await linkSubscriptionToUser(stripeData.subscription.id, user.id);
               stripeData.subscription.user_id = user.id;
             }
+            
+            // Ensure cancel_at_period_end flag is properly handled
+            if (stripeData.subscription.cancel_at_period_end === 'true') {
+              stripeData.subscription.cancel_at_period_end = true;
+            } else if (stripeData.subscription.cancel_at_period_end === 'false') {
+              stripeData.subscription.cancel_at_period_end = false;
+            }
+            
+            console.log('Processing Stripe subscription data:', {
+              status: stripeData.subscription.status,
+              cancel_at_period_end: stripeData.subscription.cancel_at_period_end,
+              ends_at: stripeData.subscription.ends_at
+            });
             
             setSubscription(stripeData.subscription);
             setIsVerified(true);

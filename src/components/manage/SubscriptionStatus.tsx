@@ -43,15 +43,28 @@ const SubscriptionStatus = ({
     return <NoActiveSubscription />;
   }
 
+  // Log subscription data for debugging
+  console.log("Subscription status data:", {
+    subscription,
+    explicit_status: subscription?.status,
+    cancel_at_period_end: subscription?.cancel_at_period_end,
+    ends_at: subscription?.ends_at
+  });
+
   // Determine if subscription is canceled but still active (ends_at is in the future)
-  const isCanceled = subscription?.ends_at && new Date(subscription.ends_at) > new Date();
+  const hasEndDate = subscription?.ends_at && new Date(subscription.ends_at) > new Date();
   
   // Check if the subscription explicitly has a canceled status
   const isExplicitlyCanceled = subscription?.status === 'canceled' || 
                                subscription?.cancel_at_period_end === true;
   
   // Use either explicit cancellation or ends_at to determine if subscription is canceled
-  const isSubscriptionCanceled = isCanceled || isExplicitlyCanceled;
+  const isSubscriptionCanceled = hasEndDate || isExplicitlyCanceled;
+
+  console.log("Is subscription canceled:", isSubscriptionCanceled, {
+    hasEndDate,
+    isExplicitlyCanceled
+  });
 
   // Handle dialog close
   const handleDialogOpenChange = (open: boolean) => {
