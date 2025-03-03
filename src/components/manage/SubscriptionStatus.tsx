@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { CreditCard, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -77,12 +76,26 @@ const SubscriptionStatus = ({
         console.log('Received Stripe portal URL:', data.redirectUrl);
         setPortalUrl(data.redirectUrl);
         
-        toast({
-          title: "Stripe Portal Ready",
-          description: "Click the button to manage your subscription in the Stripe Customer Portal."
-        });
+        // Immediately open the portal URL in a new tab
+        const newWindow = window.open(data.redirectUrl, '_blank');
         
-        // Don't close the dialog - we want the user to click the button
+        // Check if popup was blocked
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          console.warn('Popup was blocked or failed to open');
+          toast({
+            title: "Popup Blocked",
+            description: "Your browser may have blocked the popup. Please click the button below to open the Stripe portal."
+          });
+          // We'll keep the URL available via button
+        } else {
+          // If the window opened successfully, we can close the dialog
+          setShowCancelDialog(false);
+          toast({
+            title: "Stripe Portal Opened",
+            description: "You can now manage your subscription in the Stripe portal."
+          });
+        }
+        
         return;
       }
       
@@ -116,8 +129,25 @@ const SubscriptionStatus = ({
 
   const openStripePortal = (url: string) => {
     // Open in a new tab to ensure the portal loads properly
-    window.open(url, '_blank');
+    const newWindow = window.open(url, '_blank');
+    
+    // Check if popup was blocked
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      console.warn('Popup was blocked or failed to open');
+      toast({
+        variant: "destructive",
+        title: "Popup Blocked",
+        description: "Your browser blocked the popup. Please allow popups for this site and try again."
+      });
+      // Keep the dialog open so they can try again
+      return;
+    }
+    
     setShowCancelDialog(false);
+    toast({
+      title: "Stripe Portal Opened",
+      description: "You can now manage your subscription in the Stripe portal."
+    });
   };
 
   if (isLoading) {
@@ -242,13 +272,16 @@ const SubscriptionStatus = ({
               {portalUrl ? (
                 <div className="space-y-4">
                   <p>
-                    Click the button below to access the Stripe Customer Portal where you can:
+                    Click the button below to open the Stripe Customer Portal where you can:
                   </p>
                   <ul className="list-disc pl-5 space-y-1">
                     <li>Update payment methods</li>
                     <li>View billing history</li>
                     <li>Cancel your subscription</li>
                   </ul>
+                  <p className="text-amber-600 text-sm">
+                    If nothing happens when you click the button, please check if your browser blocked the popup.
+                  </p>
                 </div>
               ) : (
                 <div>
