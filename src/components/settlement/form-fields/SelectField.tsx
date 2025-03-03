@@ -35,7 +35,8 @@ export const SelectField = ({
   return (
     <div className="space-y-2">
       <Label htmlFor={fieldId} className="form-label">
-        {label}
+        {label.replace('*', '')}
+        {isRequired && <span className="text-red-500 ml-1">*</span>}
       </Label>
       <select
         id={fieldId}

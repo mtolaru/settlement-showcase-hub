@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
+
+import { useCallback, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FormData, FormErrors } from "@/types/settlementForm";
-import { useAuth } from "@/hooks/useAuth";
 
 interface UseSettlementNavigationProps {
   formData: FormData;
   setStep: (step: number) => void;
   setErrors: (errors: FormErrors) => void;
   validateStep1: (formData: FormData) => boolean;
-  validateStep2: (formData: FormData, skipEmailValidation: boolean) => boolean;
+  validateStep2: (formData: FormData, skipEmailValidation?: boolean) => boolean;
   verifyEmail: (email: string) => Promise<boolean>;
 }
 
@@ -20,111 +20,64 @@ export const useSettlementNavigation = ({
   validateStep2,
   verifyEmail
 }: UseSettlementNavigationProps) => {
-  const { toast } = useToast();
-  const { isAuthenticated, user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
-  
-  const handleNextStep = async (): Promise<boolean> => {
-    console.log("handleNextStep called for step:", currentStep);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Save form state to session storage
+  const saveFormState = useCallback(() => {
+    sessionStorage.setItem('settlementFormData', JSON.stringify(formData));
+  }, [formData]);
+
+  // Update current step based on navigation
+  const updateCurrentStep = useCallback((step: number) => {
+    sessionStorage.setItem('settlementFormStep', step.toString());
+  }, []);
+
+  // Handle moving to next step
+  const handleNextStep = async () => {
+    console.log("handleNextStep called for step:", sessionStorage.getItem('settlementFormStep') || "1");
+    
+    const currentStep = parseInt(sessionStorage.getItem('settlementFormStep') || "1");
     
     if (currentStep === 1) {
-      // For step 1, validate the form data
-      // This will internally set the errors
-      const validationResult = validateStep1(formData);
-      console.log("Step 1 validation result:", validationResult, "Form data:", formData);
+      console.log("Running validateStep1 with data:", formData);
+      const isValid = validateStep1(formData);
+      console.log("Step 1 validation result:", isValid, "Form data:", formData);
       
-      // Don't proceed if validation failed, but keep the errors visible
-      if (!validationResult) {
-        console.log("Validation failed, staying on step 1");
-        
-        // Show a toast with error message
-        toast({
-          variant: "destructive",
-          title: "Please Check Form",
-          description: "Please fill in all required fields correctly.",
-        });
-        
-        return false;
-      }
-      
-      console.log("Moving to step 2");
-      // Clear errors when moving to the next step
-      setErrors({} as FormErrors);
-      setStep(2);
-      setCurrentStep(2);
-      return true;
-    }
-
-    if (currentStep === 2) {
-      let validationPassed = false;
-      
-      if (isAuthenticated && user?.email) {
-        // For authenticated users, we can skip email validation
-        validationPassed = validateStep2(formData, true);
-        console.log("Step 2 validation (authenticated):", validationPassed);
+      if (isValid) {
+        console.log("Moving to step 2");
+        saveFormState();
+        setStep(2);
       } else {
-        // For non-authenticated users, check if the email already exists
-        if (formData.attorneyEmail) {
-          const emailExists = await verifyEmail(formData.attorneyEmail);
-          if (emailExists) {
-            // Create new errors object directly
-            const emailError: FormErrors = {
-              attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
-            };
-            setErrors(emailError);
-            
-            toast({
-              variant: "destructive",
-              title: "Email Already Exists",
-              description: "Please use a different email or log in to submit another case.",
-            });
-            return false;
-          }
-        }
-        
-        // Validate the rest of the form
-        validationPassed = validateStep2(formData, false);
-        console.log("Step 2 validation (unauthenticated):", validationPassed);
+        console.log("Step 1 validation failed");
       }
+    } 
+    else if (currentStep === 2) {
+      const isValid = validateStep2(formData);
       
-      // Don't proceed if validation failed, but keep the errors visible
-      if (!validationPassed) {
-        console.log("Validation failed, staying on step 2");
-        
-        // Show a toast with error message
-        toast({
-          variant: "destructive",
-          title: "Please Check Form",
-          description: "Please fill in all required fields correctly.",
-        });
-        
-        return false;
+      if (isValid) {
+        saveFormState();
+        setStep(3);
       }
-      
-      console.log("Moving to step 3");
-      // Clear errors when moving to the next step
-      setErrors({} as FormErrors);
-      setStep(3);
-      setCurrentStep(3);
-      return true;
     }
-    
-    return true;
   };
 
+  // Handle moving back to previous step
   const handleBackStep = () => {
-    console.log("handleBackStep called, moving from step", currentStep, "to", currentStep - 1);
-    const newStep = currentStep - 1;
-    setStep(newStep);
-    setCurrentStep(newStep);
-    // Clear errors when moving back
-    setErrors({} as FormErrors);
-  };
-
-  // Keep track of external step changes
-  const updateCurrentStep = (step: number) => {
-    if (step !== currentStep) {
-      setCurrentStep(step);
+    console.log("handleBackStep called, moving from step", 
+      sessionStorage.getItem('settlementFormStep') || "unknown", "to", 
+      (parseInt(sessionStorage.getItem('settlementFormStep') || "2") - 1));
+    
+    const currentStep = parseInt(sessionStorage.getItem('settlementFormStep') || "2");
+    
+    if (currentStep > 1) {
+      saveFormState();
+      setStep(currentStep - 1);
+    } else {
+      // If on first step and go back, confirm before navigating away
+      if (window.confirm("Are you sure you want to leave? Your form data will be lost.")) {
+        navigate("/");
+      }
     }
   };
 

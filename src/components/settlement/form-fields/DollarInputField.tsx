@@ -2,7 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface DollarInputFieldProps {
   label: string;
@@ -23,12 +23,50 @@ export const DollarInputField = ({
 }: DollarInputFieldProps) => {
   const isRequired = label.includes('*');
   const fieldId = label.replace(/\s+/g, '-').toLowerCase();
+  const [displayValue, setDisplayValue] = useState(value);
   
-  // Handle numeric input only
+  // Format value with commas when component mounts or value changes
+  useEffect(() => {
+    if (value) {
+      // If it's already formatted, don't reformat
+      if (!/,/.test(value) && !isNaN(parseFloat(value.replace(/,/g, '')))) {
+        const formattedValue = formatNumberWithCommas(value);
+        setDisplayValue(formattedValue);
+      } else {
+        setDisplayValue(value);
+      }
+    } else {
+      setDisplayValue('');
+    }
+  }, [value]);
+  
+  // Format number with commas for thousands
+  const formatNumberWithCommas = (num: string): string => {
+    // Remove any existing commas
+    const plainNumber = num.replace(/,/g, '');
+    
+    // Check if there's a decimal point
+    if (plainNumber.includes('.')) {
+      const parts = plainNumber.split('.');
+      // Format the whole number part with commas
+      return parseInt(parts[0]).toLocaleString() + '.' + parts[1];
+    }
+    
+    // Format the number with commas
+    return plainNumber ? parseInt(plainNumber).toLocaleString() : '';
+  };
+  
+  // Handle numeric input and maintain formatting
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
+    
     // Only allow numbers, commas, and decimal points
     const filtered = inputValue.replace(/[^0-9,.]/g, '');
+    
+    // Update the display value
+    setDisplayValue(filtered);
+    
+    // Send the filtered value to parent component
     onChange(filtered);
   };
   
@@ -42,7 +80,8 @@ export const DollarInputField = ({
   return (
     <div className="space-y-2">
       <Label htmlFor={fieldId} className="form-label">
-        {label}
+        {label.replace('*', '')}
+        {isRequired && <span className="text-red-500 ml-1">*</span>}
       </Label>
       <div className="relative">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -51,7 +90,7 @@ export const DollarInputField = ({
         <Input
           id={fieldId}
           type="text"
-          value={value}
+          value={displayValue}
           onChange={handleChange}
           placeholder={placeholder}
           className={cn(

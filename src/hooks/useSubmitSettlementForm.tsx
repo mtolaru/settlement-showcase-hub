@@ -29,6 +29,11 @@ export const useSubmitSettlementForm = () => {
   const { user, isAuthenticated } = useAuth();
   const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
 
+  // Debug log - always show current errors
+  useEffect(() => {
+    console.log("Current form errors state:", errors);
+  }, [errors]);
+
   // Validate numeric input for dollar fields
   const validateDollarInput = (value: string, field: string) => {
     if (value) {
