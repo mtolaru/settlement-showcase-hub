@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -135,7 +134,7 @@ export const useSubmitSettlementContainer = () => {
     }
   };
 
-  const handleNextStep = async () => {
+  const handleNextStep = async (): Promise<boolean> => {
     console.log("handleNextStep called for step:", step);
     
     if (step === 1) {
@@ -148,12 +147,12 @@ export const useSubmitSettlementContainer = () => {
           title: "Error",
           description: "Please fill in all required fields correctly.",
         });
-        return;
+        return false;
       }
       
       console.log("Moving to step 2");
       setStep(2);
-      return;
+      return true;
     }
 
     if (step === 2) {
@@ -175,7 +174,7 @@ export const useSubmitSettlementContainer = () => {
               title: "Email Already Exists",
               description: "Please use a different email or log in to submit another case.",
             });
-            return;
+            return false;
           }
         }
         
@@ -189,12 +188,15 @@ export const useSubmitSettlementContainer = () => {
           title: "Error",
           description: "Please fill in all required fields correctly.",
         });
-        return;
+        return false;
       }
       
       console.log("Moving to step 3");
       setStep(3);
+      return true;
     }
+    
+    return true;
   };
 
   const handleBackStep = () => {

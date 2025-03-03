@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DateInputField } from "./form-fields/DateInputField";
 import { FinancialDetailsSection } from "./form-sections/FinancialDetailsSection";
 import { CaseDetailsSection } from "./form-sections/CaseDetailsSection";
@@ -25,6 +25,14 @@ export const SettlementDetailsForm = ({
   errors,
   handleInputChange,
 }: SettlementDetailsFormProps) => {
+  
+  // This useEffect helps debug when errors change
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log("SettlementDetailsForm - Errors present:", errors);
+    }
+  }, [errors]);
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold mb-6 text-gray-800">Settlement Details</h2>

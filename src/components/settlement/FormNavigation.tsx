@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface FormNavigationProps {
   step: number;
@@ -18,6 +19,8 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
   isLoading,
   isSubmitting
 }) => {
+  const { toast } = useToast();
+
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault();
     onBack();
@@ -25,7 +28,18 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
 
   const handleNext = (e: React.MouseEvent) => {
     e.preventDefault();
-    onNext();
+    
+    // Call onNext and capture its return value
+    const success = onNext();
+    
+    // If validation failed, show toast message
+    if (success === false) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required fields correctly.",
+      });
+    }
   };
 
   return (
