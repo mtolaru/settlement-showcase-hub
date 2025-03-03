@@ -53,11 +53,11 @@ export const useSettlementNavigation = ({
         if (formData.attorneyEmail) {
           const emailExists = await verifyEmail(formData.attorneyEmail);
           if (emailExists) {
-            // Create a new FormErrors object directly
-            const updatedErrors: FormErrors = {
+            // Create new errors object directly
+            const emailError: FormErrors = {
               attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
             };
-            setErrors(updatedErrors);
+            setErrors(emailError);
             
             toast({
               variant: "destructive",

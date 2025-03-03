@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -22,6 +22,14 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isValidating, setIsValidating] = useState(false);
+  const [buttonText, setButtonText] = useState("Next Step");
+
+  useEffect(() => {
+    // Reset button text when loading/submitting state changes
+    if (!isLoading && !isSubmitting && !isValidating) {
+      setButtonText("Next Step");
+    }
+  }, [isLoading, isSubmitting, isValidating]);
 
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -30,9 +38,10 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
 
   // Create a debounced version of the next handler to prevent multiple clicks
   const debouncedNextHandler = React.useCallback(
-    debounce(async (originalText: string, button: HTMLButtonElement) => {
+    debounce(async (button: HTMLButtonElement) => {
       try {
         setIsValidating(true);
+        setButtonText("Validating...");
         console.log("Calling onNext function");
         const success = await Promise.resolve(onNext());
         
@@ -45,7 +54,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
           });
           // Reset button only if validation failed
           if (!isLoading && !isSubmitting) {
-            button.innerText = originalText;
+            setButtonText("Next Step");
             button.disabled = false;
           }
         }
@@ -56,7 +65,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
           title: "Error",
           description: "An unexpected error occurred. Please try again.",
         });
-        button.innerText = originalText;
+        setButtonText("Next Step");
         button.disabled = false;
       } finally {
         setIsValidating(false);
@@ -75,12 +84,11 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
     
     // Show loading state while validating
     const button = e.currentTarget as HTMLButtonElement;
-    const originalText = button.innerText;
-    button.innerText = "Validating...";
     button.disabled = true;
+    setButtonText("Validating...");
     
     console.log("Next button clicked, calling debounced handler");
-    debouncedNextHandler(originalText, button);
+    debouncedNextHandler(button);
   };
 
   return (
@@ -103,7 +111,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
             disabled={isValidating || isLoading || isSubmitting}
             type="button"
           >
-            {isValidating ? "Validating..." : (isLoading || isSubmitting ? "Processing..." : "Next Step")} <ArrowRight className="ml-2 h-4 w-4" />
+            {buttonText} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       )}

@@ -27,7 +27,7 @@ export const SettlementDetailsForm = ({
   errors,
   handleInputChange,
 }: SettlementDetailsFormProps) => {
-  const hasErrors = Object.values(errors).some(error => error !== undefined);
+  const hasErrors = Object.values(errors).some(error => error !== undefined && error !== "");
   
   // This useEffect helps debug when errors change
   useEffect(() => {

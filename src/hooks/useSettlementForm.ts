@@ -1,9 +1,6 @@
 
 import { useState } from "react";
-
-interface FormErrors {
-  [key: string]: string | undefined;
-}
+import { FormErrors } from "@/types/settlementForm";
 
 export const useSettlementForm = () => {
   const [errors, setErrors] = useState<FormErrors>({});
@@ -87,7 +84,7 @@ export const useSettlementForm = () => {
 
     console.log("Validation errors:", newErrors, "isValid:", isValid);
     
-    // Set the errors
+    // Set the errors - this is the important part
     setErrors(newErrors);
     return isValid;
   };
