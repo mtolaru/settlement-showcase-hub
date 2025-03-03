@@ -1,5 +1,5 @@
 
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,7 +79,7 @@ const CancelSubscriptionDialog = ({
                 Processing...
               </>
             ) : (
-              "Manage Subscription"
+              <>Go to Stripe Portal <ExternalLink className="h-4 w-4" /></>
             )}
           </Button>
         </AlertDialogFooter>

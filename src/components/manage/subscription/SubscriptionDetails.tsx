@@ -2,6 +2,7 @@
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Subscription } from "@/hooks/useSubscription";
+import { ExternalLink } from "lucide-react";
 
 interface SubscriptionDetailsProps {
   subscription: Subscription;
@@ -29,11 +30,13 @@ const SubscriptionDetails = ({
         {!isCanceled && (
           <Button 
             variant="outline" 
-            className="text-red-600 border-red-300 hover:bg-red-50"
+            className="text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-2"
             onClick={onCancelClick}
             disabled={isCancelling}
           >
-            {isCancelling ? "Processing..." : "Manage Subscription"}
+            {isCancelling ? "Processing..." : (
+              <>Manage Subscription <ExternalLink className="h-4 w-4" /></>
+            )}
           </Button>
         )}
       </div>

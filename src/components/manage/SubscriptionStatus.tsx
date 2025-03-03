@@ -58,6 +58,17 @@ const SubscriptionStatus = ({
   const isStripeManaged = !!subscription?.id.startsWith('stripe-') || 
     !!(subscription?.customer_id && subscription?.payment_id);
 
+  // Direct action for SubscriptionDetails "Manage Subscription" button
+  const handleManageSubscriptionClick = () => {
+    if (isStripeManaged) {
+      // If it's a Stripe-managed subscription, show dialog first
+      setShowCancelDialog(true);
+    } else {
+      // For other subscriptions, you might want to handle differently
+      setShowCancelDialog(true);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SubscriptionCard 
@@ -71,7 +82,7 @@ const SubscriptionStatus = ({
         isCanceled={isCanceled}
         isCancelling={isCancelling}
         isStripeManaged={isStripeManaged}
-        onCancelClick={() => setShowCancelDialog(true)}
+        onCancelClick={handleManageSubscriptionClick}
       />
 
       <CancelSubscriptionDialog 
