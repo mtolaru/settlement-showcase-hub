@@ -13,6 +13,23 @@ interface DollarInputFieldProps {
   required?: boolean;
 }
 
+// Convert a number string to a formatted string with commas
+const formatNumberWithCommas = (value: string): string => {
+  // Remove existing commas and any non-numeric characters except decimal points
+  const plainNumber = value.replace(/,/g, '').replace(/[^\d.]/g, '');
+  
+  // Handle numbers with decimal points
+  if (plainNumber.includes('.')) {
+    const parts = plainNumber.split('.');
+    // Format the whole number part with commas
+    const formattedWhole = parts[0] ? Number(parts[0]).toLocaleString() : '';
+    return formattedWhole + '.' + parts[1];
+  }
+  
+  // Format the number with commas
+  return plainNumber ? Number(plainNumber).toLocaleString() : '';
+};
+
 export const DollarInputField: React.FC<DollarInputFieldProps> = ({
   label,
   value,
@@ -38,23 +55,6 @@ export const DollarInputField: React.FC<DollarInputFieldProps> = ({
       setDisplayValue("");
     }
   }, [value]);
-
-  // Convert a number string to a formatted string with commas
-  const formatNumberWithCommas = (value: string): string => {
-    // Remove existing commas and any non-numeric characters except decimal points
-    const plainNumber = value.replace(/,/g, '').replace(/[^\d.]/g, '');
-    
-    // Handle numbers with decimal points
-    if (plainNumber.includes('.')) {
-      const parts = plainNumber.split('.');
-      // Format the whole number part with commas
-      const formattedWhole = parts[0] ? Number(parts[0]).toLocaleString() : '';
-      return formattedWhole + '.' + parts[1];
-    }
-    
-    // Format the number with commas
-    return plainNumber ? Number(plainNumber).toLocaleString() : '';
-  };
   
   // Handle numeric input and maintain formatting
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
