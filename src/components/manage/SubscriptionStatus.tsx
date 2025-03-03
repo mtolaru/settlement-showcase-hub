@@ -1,6 +1,5 @@
-
 import { format } from "date-fns";
-import { CreditCard, Loader2, ExternalLink } from "lucide-react";
+import { CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Subscription } from "@/hooks/useSubscription";
@@ -34,7 +33,7 @@ const SubscriptionStatus = ({
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [cancelResponse, setCancelResponse] = useState<any>(null);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -45,7 +44,7 @@ const SubscriptionStatus = ({
     
     setIsCancelling(true);
     setCancelError(null);
-    setPortalUrl(null);
+    setCancelResponse(null);
     
     try {
       console.log('Attempting to cancel subscription:', subscription.id);
@@ -60,7 +59,7 @@ const SubscriptionStatus = ({
       });
       
       if (error) {
-        console.error('Error calling cancel-subscription function:', error);
+        console.error('Error canceling subscription:', error);
         setCancelError(`Error canceling subscription: ${error.message || 'Unknown error'}. Please try again later or contact support.`);
         toast({
           variant: "destructive",
@@ -71,18 +70,21 @@ const SubscriptionStatus = ({
       }
       
       console.log('Subscription cancellation response:', data);
+      setCancelResponse(data);
       
       // Check if we have a redirectUrl for Stripe portal
       if (data.redirectUrl) {
-        console.log('Received Stripe portal URL:', data.redirectUrl);
-        setPortalUrl(data.redirectUrl);
+        console.log('Redirecting to Stripe portal:', data.redirectUrl);
         
         toast({
-          title: "Stripe Portal Ready",
-          description: "Click the button to manage your subscription in the Stripe Customer Portal."
+          title: "Redirecting to Stripe",
+          description: "We're redirecting you to Stripe to manage your subscription."
         });
         
-        // Don't close the dialog - we want the user to click the button
+        // Open in a new tab to ensure the portal loads properly
+        window.open(data.redirectUrl, '_blank');
+        
+        // Keep the dialog open with info about redirection
         return;
       }
       
@@ -112,12 +114,6 @@ const SubscriptionStatus = ({
     } finally {
       setIsCancelling(false);
     }
-  };
-
-  const openStripePortal = (url: string) => {
-    // Open in a new tab to ensure the portal loads properly
-    window.open(url, '_blank');
-    setShowCancelDialog(false);
   };
 
   if (isLoading) {
@@ -193,7 +189,7 @@ const SubscriptionStatus = ({
               onClick={() => setShowCancelDialog(true)}
               disabled={isCancelling}
             >
-              {isCancelling ? "Processing..." : "Manage Subscription"}
+              {isCancelling ? "Processing..." : "Cancel Subscription"}
             </Button>
           )}
         </div>
@@ -229,37 +225,35 @@ const SubscriptionStatus = ({
           setShowCancelDialog(open);
           if (!open) {
             setCancelError(null);
-            setPortalUrl(null);
+            setCancelResponse(null);
           }
         }}
       >
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {portalUrl ? "Manage Your Subscription" : "Manage or Cancel Subscription"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              {portalUrl ? (
+              {cancelResponse && cancelResponse.redirectUrl ? (
                 <div className="space-y-4">
                   <p>
-                    Click the button below to access the Stripe Customer Portal where you can:
+                    You have been redirected to the Stripe Customer Portal in a new tab.
+                    Please complete the cancellation process there.
                   </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Update payment methods</li>
-                    <li>View billing history</li>
-                    <li>Cancel your subscription</li>
-                  </ul>
+                  <p>
+                    If you don't see the new tab, please click the button below to try again.
+                  </p>
+                  <Button 
+                    onClick={() => window.open(cancelResponse.redirectUrl, '_blank')}
+                    className="w-full"
+                  >
+                    Open Stripe Portal
+                  </Button>
                 </div>
               ) : (
-                <div>
-                  <p>
-                    You'll be redirected to Stripe's secure customer portal where you can manage or cancel your subscription.
-                  </p>
-                  <p className="mt-2">
-                    If you cancel, your subscription will remain active until the end of your current billing period. 
-                    After that, your settlements will be delisted from search results.
-                  </p>
-                </div>
+                <p>
+                  Your subscription will remain active until the end of your current billing period. 
+                  After that, your settlements will be delisted from search results and other lawyers will rank above you in search results.
+                </p>
               )}
               
               {cancelError && (
@@ -271,20 +265,16 @@ const SubscriptionStatus = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>
-              Close
+              {cancelResponse && cancelResponse.redirectUrl 
+                ? "Close" 
+                : "Keep Subscription"
+              }
             </AlertDialogCancel>
             
-            {portalUrl ? (
-              <Button 
-                onClick={() => openStripePortal(portalUrl)}
-                className="gap-2"
-              >
-                Open Stripe Portal <ExternalLink className="h-4 w-4" />
-              </Button>
-            ) : (
+            {!(cancelResponse && cancelResponse.redirectUrl) && (
               <AlertDialogAction 
                 onClick={handleCancelSubscription}
-                className="bg-primary-500 hover:bg-primary-600"
+                className="bg-red-500 hover:bg-red-600"
                 disabled={isCancelling}
               >
                 {isCancelling ? (
@@ -293,7 +283,7 @@ const SubscriptionStatus = ({
                     Processing...
                   </>
                 ) : (
-                  "Continue to Stripe"
+                  "Cancel Subscription"
                 )}
               </AlertDialogAction>
             )}
