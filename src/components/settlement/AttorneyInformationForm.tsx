@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import ImageUpload from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOCATIONS } from "@/lib/locations";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -31,6 +33,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 }) => {
   const { isAuthenticated, user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
+  const hasErrors = Object.values(errors).some(error => error !== undefined);
 
   // Prevent event propagation to avoid step navigation issues
   const handleSelectClick = (e: React.MouseEvent) => {
@@ -41,6 +44,15 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-6 text-gray-800">Attorney Information</h2>
+
+      {hasErrors && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please fill in all required fields correctly to proceed.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="space-y-6">
         <div>

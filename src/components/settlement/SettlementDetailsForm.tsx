@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { DateInputField } from "./form-fields/DateInputField";
 import { FinancialDetailsSection } from "./form-sections/FinancialDetailsSection";
 import { CaseDetailsSection } from "./form-sections/CaseDetailsSection";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface SettlementDetailsFormProps {
   formData: {
@@ -25,6 +27,7 @@ export const SettlementDetailsForm = ({
   errors,
   handleInputChange,
 }: SettlementDetailsFormProps) => {
+  const hasErrors = Object.values(errors).some(error => error !== undefined);
   
   // This useEffect helps debug when errors change
   useEffect(() => {
@@ -36,6 +39,15 @@ export const SettlementDetailsForm = ({
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold mb-6 text-gray-800">Settlement Details</h2>
+      
+      {hasErrors && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please fill in all required fields correctly to proceed.
+          </AlertDescription>
+        </Alert>
+      )}
       
       <FinancialDetailsSection 
         formData={formData}

@@ -1,8 +1,9 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
+import debounce from "lodash.debounce";
 
 interface FormNavigationProps {
   step: number;
@@ -20,35 +21,66 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
   isSubmitting
 }) => {
   const { toast } = useToast();
+  const [isValidating, setIsValidating] = useState(false);
 
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault();
     onBack();
   };
 
-  const handleNext = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Call onNext and capture its return value
-      const success = await Promise.resolve(onNext());
-      
-      // If validation failed, show toast message
-      if (success === false) {
+  // Create a debounced version of the next handler to prevent multiple clicks
+  const debouncedNextHandler = React.useCallback(
+    debounce(async (originalText: string, button: HTMLButtonElement) => {
+      try {
+        setIsValidating(true);
+        console.log("Calling onNext function");
+        const success = await Promise.resolve(onNext());
+        
+        if (!success) {
+          console.log("Validation failed, showing toast");
+          toast({
+            variant: "destructive",
+            title: "Please Check Form",
+            description: "Please fill in all required fields correctly.",
+          });
+          // Reset button only if validation failed
+          if (!isLoading && !isSubmitting) {
+            button.innerText = originalText;
+            button.disabled = false;
+          }
+        }
+      } catch (error) {
+        console.error("Error in form navigation:", error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Please fill in all required fields correctly.",
+          description: "An unexpected error occurred. Please try again.",
         });
+        button.innerText = originalText;
+        button.disabled = false;
+      } finally {
+        setIsValidating(false);
       }
-    } catch (error) {
-      console.error("Error in form navigation:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-      });
+    }, 300),
+    [onNext, toast, isLoading, isSubmitting]
+  );
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (isValidating || isLoading || isSubmitting) {
+      console.log("Already processing, ignoring click");
+      return;
     }
+    
+    // Show loading state while validating
+    const button = e.currentTarget as HTMLButtonElement;
+    const originalText = button.innerText;
+    button.innerText = "Validating...";
+    button.disabled = true;
+    
+    console.log("Next button clicked, calling debounced handler");
+    debouncedNextHandler(originalText, button);
   };
 
   return (
@@ -58,6 +90,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
           variant="ghost" 
           onClick={handleBack}
           type="button"
+          disabled={isValidating || isLoading || isSubmitting}
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
@@ -67,10 +100,10 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
           <Button 
             onClick={handleNext}
             className="bg-primary-500 hover:bg-primary-600"
-            disabled={isLoading || isSubmitting}
+            disabled={isValidating || isLoading || isSubmitting}
             type="button"
           >
-            {isLoading || isSubmitting ? "Processing..." : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
+            {isValidating ? "Validating..." : (isLoading || isSubmitting ? "Processing..." : "Next Step")} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       )}
