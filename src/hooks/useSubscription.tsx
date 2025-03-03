@@ -19,6 +19,8 @@ export interface Subscription {
   customer_id: string | null;
   temporary_id: string | null;
   user_id: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
 }
 
 export const useSubscription = (user: User | null) => {
