@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface FormNavigationProps {
   step: number;
-  onNext: () => boolean | Promise<boolean>; // Updated return type
+  onNext: () => boolean | Promise<boolean>;
   onBack: () => void;
   isLoading: boolean;
   isSubmitting: boolean;
@@ -29,15 +29,24 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
   const handleNext = async (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Call onNext and capture its return value
-    const success = await onNext();
-    
-    // If validation failed, show toast message
-    if (success === false) {
+    try {
+      // Call onNext and capture its return value
+      const success = await Promise.resolve(onNext());
+      
+      // If validation failed, show toast message
+      if (success === false) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please fill in all required fields correctly.",
+        });
+      }
+    } catch (error) {
+      console.error("Error in form navigation:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please fill in all required fields correctly.",
+        description: "An unexpected error occurred. Please try again.",
       });
     }
   };

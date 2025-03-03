@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -29,7 +30,8 @@ export const useSubmitSettlementContainer = () => {
     validateStep1,
     validateStep2,
     verifyEmail,
-    unformatNumber
+    unformatNumber,
+    checkSubscriptionStatus
   } = useSubmitSettlementForm();
 
   useEffect(() => {
@@ -142,11 +144,7 @@ export const useSubmitSettlementContainer = () => {
       console.log("Step 1 validation result:", validationResult, "Form data:", formData);
       
       if (!validationResult) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please fill in all required fields correctly.",
-        });
+        console.log("Validation failed, staying on step 1");
         return false;
       }
       
@@ -183,11 +181,7 @@ export const useSubmitSettlementContainer = () => {
       }
       
       if (!validationPassed) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please fill in all required fields correctly.",
-        });
+        console.log("Validation failed, staying on step 2");
         return false;
       }
       
