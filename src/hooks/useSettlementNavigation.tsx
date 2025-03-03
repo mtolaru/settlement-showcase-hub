@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { FormData, FormErrors } from "@/types/settlementForm";
@@ -52,10 +53,12 @@ export const useSettlementNavigation = ({
         if (formData.attorneyEmail) {
           const emailExists = await verifyEmail(formData.attorneyEmail);
           if (emailExists) {
-            setErrors(prev => ({
-              ...prev,
+            // Fix: Create a new FormErrors object instead of using a function
+            const updatedErrors: FormErrors = {
               attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
-            }));
+            };
+            setErrors(updatedErrors);
+            
             toast({
               variant: "destructive",
               title: "Email Already Exists",
