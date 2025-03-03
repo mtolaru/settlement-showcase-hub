@@ -31,7 +31,7 @@ const SubscriptionDetails = ({
             onClick={onCancelClick}
             disabled={isCancelling}
           >
-            {isCancelling ? "Processing..." : "Cancel Subscription"}
+            {isCancelling ? "Processing..." : "Manage Subscription"}
           </Button>
         )}
       </div>
@@ -44,18 +44,6 @@ const SubscriptionDetails = ({
           <div>
             <dt className="text-neutral-600">{isCanceled ? 'Ends on' : 'Expires on'}</dt>
             <dd className="font-medium">{formatDate(subscription.ends_at)}</dd>
-          </div>
-        )}
-        {subscription.payment_id && (
-          <div>
-            <dt className="text-neutral-600">Payment ID</dt>
-            <dd className="font-medium">{subscription.payment_id}</dd>
-          </div>
-        )}
-        {subscription.customer_id && (
-          <div>
-            <dt className="text-neutral-600">Customer ID</dt>
-            <dd className="font-medium">{subscription.customer_id}</dd>
           </div>
         )}
       </dl>

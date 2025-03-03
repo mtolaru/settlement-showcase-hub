@@ -27,7 +27,7 @@ const SubscriptionCard = ({ subscription, isCanceled }: SubscriptionCardProps) =
             ? `Your subscription will end on ${formatDate(subscription.ends_at!)}`
             : subscription.ends_at 
               ? `Your subscription is active until ${formatDate(subscription.ends_at)}` 
-              : 'Your subscription is active (ongoing)'}
+              : 'Your subscription is active and will renew automatically'}
         </p>
         <ul className="mt-4 space-y-2 text-primary-700">
           <li className="flex items-center gap-2">

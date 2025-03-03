@@ -16,11 +16,11 @@ interface CancelSubscriptionDialogProps {
   isOpen: boolean;
   isCancelling: boolean;
   cancelError: string | null;
-  portalUrl?: string | null;
+  portalUrl: string | null;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
   onOpenChange: (open: boolean) => void;
-  onOpenPortal?: (url: string) => void;
+  onOpenPortal: (url: string) => void;
 }
 
 const CancelSubscriptionDialog = ({
@@ -41,19 +41,23 @@ const CancelSubscriptionDialog = ({
       <AlertDialogContent className="bg-white">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {portalUrl ? "Open Stripe Portal" : "Cancel your subscription?"}
+            Manage Your Subscription
           </AlertDialogTitle>
           <AlertDialogDescription>
             {portalUrl ? (
               <>
-                Please use the Stripe customer portal to manage your subscription. 
-                If your popup blocker prevented the portal from opening automatically, 
-                click the button below.
+                You'll be redirected to the Stripe Customer Portal where you can:
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Update your payment method</li>
+                  <li>View billing history</li>
+                  <li>Cancel your subscription</li>
+                  <li>Change your subscription plan</li>
+                </ul>
               </>
             ) : (
               <>
-                Your subscription will remain active until the end of your current billing period. 
-                After that, your settlements will be delisted from search results and other lawyers will rank above you in search results.
+                You'll be redirected to Stripe's secure portal to manage your subscription settings, 
+                including billing information and cancellation options.
               </>
             )}
             {cancelError && (
@@ -65,20 +69,20 @@ const CancelSubscriptionDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>
-            {portalUrl ? "Close" : "Keep Subscription"}
+            Close
           </AlertDialogCancel>
           
-          {portalUrl && onOpenPortal ? (
+          {portalUrl ? (
             <Button 
               onClick={() => onOpenPortal(portalUrl)}
               className="bg-primary hover:bg-primary/90"
             >
-              Open Stripe Portal
+              Go to Stripe Portal
             </Button>
           ) : (
             <AlertDialogAction 
               onClick={onConfirm}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-primary hover:bg-primary/90"
               disabled={isCancelling}
             >
               {isCancelling ? (
@@ -87,7 +91,7 @@ const CancelSubscriptionDialog = ({
                   Processing...
                 </>
               ) : (
-                "Cancel Subscription"
+                "Continue to Stripe"
               )}
             </AlertDialogAction>
           )}
