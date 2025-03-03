@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface FormNavigationProps {
   step: number;
-  onNext: () => void;
+  onNext: () => boolean | Promise<boolean>; // Updated return type
   onBack: () => void;
   isLoading: boolean;
   isSubmitting: boolean;
@@ -26,11 +26,11 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
     onBack();
   };
 
-  const handleNext = (e: React.MouseEvent) => {
+  const handleNext = async (e: React.MouseEvent) => {
     e.preventDefault();
     
     // Call onNext and capture its return value
-    const success = onNext();
+    const success = await onNext();
     
     // If validation failed, show toast message
     if (success === false) {
