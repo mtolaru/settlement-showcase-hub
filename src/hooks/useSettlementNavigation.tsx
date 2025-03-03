@@ -33,9 +33,7 @@ export const useSettlementNavigation = ({
       const validationResult = validateStep1(formData);
       console.log("Step 1 validation result:", validationResult, "Form data:", formData);
       
-      // Force a re-render to show validation errors immediately
-      setErrors({} as FormErrors);
-      
+      // Don't clear errors, let the validation function handle it
       if (!validationResult) {
         console.log("Validation failed, staying on step 1");
         
@@ -50,6 +48,8 @@ export const useSettlementNavigation = ({
       }
       
       console.log("Moving to step 2");
+      // Clear errors when moving to the next step
+      setErrors({} as FormErrors);
       setStep(2);
       setCurrentStep(2);
       return true;
@@ -87,9 +87,7 @@ export const useSettlementNavigation = ({
         console.log("Step 2 validation (unauthenticated):", validationPassed);
       }
       
-      // Force a re-render to show validation errors immediately
-      setErrors({} as FormErrors);
-      
+      // Don't clear errors if validation failed
       if (!validationPassed) {
         console.log("Validation failed, staying on step 2");
         
@@ -104,6 +102,8 @@ export const useSettlementNavigation = ({
       }
       
       console.log("Moving to step 3");
+      // Clear errors when moving to the next step
+      setErrors({} as FormErrors);
       setStep(3);
       setCurrentStep(3);
       return true;
@@ -117,6 +117,8 @@ export const useSettlementNavigation = ({
     const newStep = currentStep - 1;
     setStep(newStep);
     setCurrentStep(newStep);
+    // Clear errors when moving back
+    setErrors({} as FormErrors);
   };
 
   // Keep track of external step changes

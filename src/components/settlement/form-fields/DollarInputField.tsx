@@ -21,10 +21,11 @@ export const DollarInputField = ({
   error,
 }: DollarInputFieldProps) => {
   const isRequired = label.includes('*');
+  const fieldId = label.replace(/\s+/g, '-').toLowerCase();
   
   return (
     <div className="space-y-2">
-      <Label htmlFor={label.replace(/\s+/g, '-').toLowerCase()} className="form-label">
+      <Label htmlFor={fieldId} className="form-label">
         {label}
       </Label>
       <div className="relative">
@@ -32,7 +33,7 @@ export const DollarInputField = ({
           <span className="text-gray-500">$</span>
         </div>
         <Input
-          id={label.replace(/\s+/g, '-').toLowerCase()}
+          id={fieldId}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -42,7 +43,7 @@ export const DollarInputField = ({
             error ? 'border-red-500 focus-visible:ring-red-500' : ''
           )}
           aria-invalid={!!error}
-          aria-describedby={error ? `${label.replace(/\s+/g, '-').toLowerCase()}-error` : undefined}
+          aria-describedby={error ? `${fieldId}-error` : undefined}
         />
       </div>
       {description && !error && (
@@ -50,7 +51,7 @@ export const DollarInputField = ({
       )}
       {error && (
         <p 
-          id={`${label.replace(/\s+/g, '-').toLowerCase()}-error`}
+          id={`${fieldId}-error`}
           className="text-sm font-medium text-red-500 mt-1"
         >
           {error}
