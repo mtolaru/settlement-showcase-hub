@@ -1,6 +1,7 @@
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
 
 interface SelectFieldProps {
   label: string;
@@ -24,6 +25,13 @@ export const SelectField = ({
   const isRequired = label.includes('*');
   const fieldId = label.replace(/\s+/g, '-').toLowerCase();
   
+  // Debug log when error changes
+  useEffect(() => {
+    if (error) {
+      console.log(`SelectField "${label}" has error:`, error);
+    }
+  }, [error, label]);
+
   return (
     <div className="space-y-2">
       <Label htmlFor={fieldId} className="form-label">

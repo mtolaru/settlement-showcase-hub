@@ -82,7 +82,13 @@ export const useSettlementForm = () => {
       isValid = false;
     }
 
-    console.log("Validation errors:", newErrors, "isValid:", isValid);
+    console.log("Step 1 validation produced errors:", newErrors, "isValid:", isValid);
+    
+    // Check if any field has an error
+    const errorKeys = Object.keys(newErrors);
+    if (errorKeys.length > 0) {
+      console.log("Fields with errors:", errorKeys);
+    }
     
     // Set the errors and return validation result
     setErrors(newErrors);
@@ -136,7 +142,13 @@ export const useSettlementForm = () => {
       isValid = false;
     }
 
-    console.log("Step 2 validation errors:", newErrors, "isValid:", isValid);
+    console.log("Step 2 validation produced errors:", newErrors, "isValid:", isValid);
+    
+    // Check if any field has an error
+    const errorKeys = Object.keys(newErrors);
+    if (errorKeys.length > 0) {
+      console.log("Fields with errors:", errorKeys);
+    }
     
     // Set the errors and return validation result
     setErrors(newErrors);

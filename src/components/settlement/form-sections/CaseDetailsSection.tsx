@@ -1,6 +1,7 @@
 
 import { SelectField } from "../form-fields/SelectField";
 import { TextareaField } from "../form-fields/TextareaField";
+import { useEffect } from "react";
 
 const settlementTypes = [
   "Motor Vehicle Accidents",
@@ -41,6 +42,17 @@ export const CaseDetailsSection = ({
     value: type,
     label: type
   }));
+
+  // Debug log when errors change
+  useEffect(() => {
+    const sectionErrors = Object.entries(errors)
+      .filter(([key]) => ['settlementPhase', 'caseType', 'otherCaseType', 'caseDescription'].includes(key))
+      .filter(([_, value]) => !!value);
+      
+    if (sectionErrors.length > 0) {
+      console.log("CaseDetailsSection has errors:", Object.fromEntries(sectionErrors));
+    }
+  }, [errors]);
 
   return (
     <div className="space-y-6">

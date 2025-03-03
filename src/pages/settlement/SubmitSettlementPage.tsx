@@ -29,7 +29,11 @@ const SubmitSettlementPage = () => {
 
   useEffect(() => {
     console.log("SubmitSettlementPage rendering, current step:", step);
-  }, [step]);
+    // Log errors whenever they change
+    if (Object.keys(errors).length > 0) {
+      console.log("Current form errors:", errors);
+    }
+  }, [step, errors]);
 
   if (isCheckingSubscription) {
     return <LoadingState />;

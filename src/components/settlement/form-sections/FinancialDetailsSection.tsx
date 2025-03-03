@@ -1,5 +1,6 @@
 
 import { DollarInputField } from "../form-fields/DollarInputField";
+import { useEffect } from "react";
 
 interface FinancialDetailsSectionProps {
   formData: {
@@ -17,6 +18,17 @@ export const FinancialDetailsSection = ({
   errors,
   handleInputChange,
 }: FinancialDetailsSectionProps) => {
+  // Debug log when errors change
+  useEffect(() => {
+    const sectionErrors = Object.entries(errors)
+      .filter(([key]) => ['amount', 'initialOffer', 'policyLimit', 'medicalExpenses'].includes(key))
+      .filter(([_, value]) => !!value);
+      
+    if (sectionErrors.length > 0) {
+      console.log("FinancialDetailsSection has errors:", Object.fromEntries(sectionErrors));
+    }
+  }, [errors]);
+
   return (
     <div className="space-y-6">
       <DollarInputField
