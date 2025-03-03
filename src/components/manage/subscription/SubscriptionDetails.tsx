@@ -52,12 +52,23 @@ const SubscriptionDetails = ({
           <dt className="text-neutral-600">Started on</dt>
           <dd className="font-medium">{formatDate(subscription.starts_at)}</dd>
         </div>
+        
+        <div>
+          <dt className="text-neutral-600">Status</dt>
+          <dd className={`font-medium ${isCanceled ? 'text-amber-600' : 'text-primary-600'}`}>
+            {isCanceled ? 'Canceled' : 'Active'}
+          </dd>
+        </div>
+        
         {subscription.ends_at && (
           <div>
-            <dt className="text-neutral-600">{isCanceled ? 'Access ends on' : 'Expires on'}</dt>
-            <dd className={`font-medium ${isCanceled ? 'text-amber-600' : ''}`}>{formatDate(subscription.ends_at)}</dd>
+            <dt className="text-neutral-600">{isCanceled ? 'Access ends on' : 'Current period ends'}</dt>
+            <dd className={`font-medium ${isCanceled ? 'text-amber-600' : ''}`}>
+              {formatDate(subscription.ends_at)}
+            </dd>
           </div>
         )}
+        
         {isCanceled && (
           <div className="col-span-2 mt-2 bg-amber-50 p-3 rounded-md border border-amber-200">
             <p className="text-amber-800">

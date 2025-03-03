@@ -54,7 +54,7 @@ const SubscriptionStatus = ({
   // Determine if subscription is canceled but still active (ends_at is in the future)
   const hasEndDate = subscription?.ends_at && new Date(subscription.ends_at) > new Date();
   
-  // Check if the subscription explicitly has a canceled status
+  // Check if the subscription explicitly has a canceled status or is set to cancel at period end
   const isExplicitlyCanceled = subscription?.status === 'canceled' || 
                                subscription?.cancel_at_period_end === true;
   
