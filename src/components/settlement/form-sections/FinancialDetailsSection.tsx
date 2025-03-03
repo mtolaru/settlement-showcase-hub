@@ -20,8 +20,9 @@ export const FinancialDetailsSection = ({
 }: FinancialDetailsSectionProps) => {
   // Debug log when errors change
   useEffect(() => {
+    const financialFields = ['amount', 'initialOffer', 'policyLimit', 'medicalExpenses'];
     const sectionErrors = Object.entries(errors)
-      .filter(([key]) => ['amount', 'initialOffer', 'policyLimit', 'medicalExpenses'].includes(key))
+      .filter(([key]) => financialFields.includes(key))
       .filter(([_, value]) => !!value);
       
     if (sectionErrors.length > 0) {

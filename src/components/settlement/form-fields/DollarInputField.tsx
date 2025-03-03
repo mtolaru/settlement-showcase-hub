@@ -29,7 +29,7 @@ export const DollarInputField = ({
   useEffect(() => {
     if (value) {
       // If it's already formatted, don't reformat
-      if (!/,/.test(value) && !isNaN(parseFloat(value.replace(/,/g, '')))) {
+      if (!isNaN(parseFloat(value.replace(/,/g, '')))) {
         const formattedValue = formatNumberWithCommas(value);
         setDisplayValue(formattedValue);
       } else {
@@ -49,11 +49,11 @@ export const DollarInputField = ({
     if (plainNumber.includes('.')) {
       const parts = plainNumber.split('.');
       // Format the whole number part with commas
-      return parseInt(parts[0]).toLocaleString() + '.' + parts[1];
+      return parts[0] ? Number(parts[0]).toLocaleString() + '.' + parts[1] : '' + '.' + parts[1];
     }
     
     // Format the number with commas
-    return plainNumber ? parseInt(plainNumber).toLocaleString() : '';
+    return plainNumber ? Number(plainNumber).toLocaleString() : '';
   };
   
   // Handle numeric input and maintain formatting
@@ -69,13 +69,6 @@ export const DollarInputField = ({
     // Send the filtered value to parent component
     onChange(filtered);
   };
-  
-  // Debug log when error changes
-  useEffect(() => {
-    if (error) {
-      console.log(`DollarInputField "${label}" has error:`, error);
-    }
-  }, [error, label]);
   
   return (
     <div className="space-y-2">

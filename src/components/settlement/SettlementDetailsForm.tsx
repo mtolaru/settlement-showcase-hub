@@ -31,8 +31,15 @@ export const SettlementDetailsForm = ({
   
   // This useEffect helps debug when errors change
   useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      console.log("SettlementDetailsForm - Errors present:", errors);
+    console.log("SettlementDetailsForm - Current errors:", errors);
+    
+    // Check for specific error fields
+    const errorFields = Object.entries(errors)
+      .filter(([_, value]) => !!value)
+      .map(([key]) => key);
+      
+    if (errorFields.length > 0) {
+      console.log("Fields with errors:", errorFields);
     }
   }, [errors]);
 

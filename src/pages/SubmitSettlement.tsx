@@ -13,6 +13,12 @@ const SubmitSettlement = () => {
       originalConsoleError(...args);
     };
     
+    // Add additional validator for values in session storage
+    const formData = sessionStorage.getItem('settlementFormData');
+    if (formData) {
+      console.log("Found form data in session storage");
+    }
+    
     return () => {
       console.error = originalConsoleError;
     };

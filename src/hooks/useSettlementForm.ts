@@ -90,7 +90,7 @@ export const useSettlementForm = () => {
       console.log("Fields with errors:", errorKeys);
     }
     
-    // Set the errors and return validation result
+    // Always set the errors, even if validation passes
     setErrors(newErrors);
     return isValid;
   };
@@ -153,7 +153,7 @@ export const useSettlementForm = () => {
       console.log("Fields with errors:", errorKeys);
     }
     
-    // Set the errors and return validation result
+    // Always set the errors, even if validation passes
     setErrors(newErrors);
     return isValid;
   };
