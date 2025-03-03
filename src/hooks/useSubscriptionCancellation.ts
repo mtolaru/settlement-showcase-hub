@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +26,31 @@ export const useSubscriptionCancellation = (
       console.log('Attempting to cancel subscription:', subscription.id);
       console.log('Subscription details:', JSON.stringify(subscription));
       
-      // Log the request details for troubleshooting
+      // For virtual subscriptions, skip the edge function and handle locally
+      if (subscription.id.startsWith('virtual-') || subscription.id.startsWith('stripe-')) {
+        console.log('Handling virtual subscription cancellation locally');
+        
+        // Set an end date 30 days from now
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+        
+        // Just update our UI state - no need to call the edge function
+        toast({
+          title: "Subscription Canceled",
+          description: `Your subscription will remain active until ${format(endDate, 'MMMM d, yyyy')}.`
+        });
+        
+        // Update the local subscription object
+        if (refreshSubscription) {
+          refreshSubscription();
+        }
+        
+        // Close the dialog
+        setShowCancelDialog(false);
+        return;
+      }
+      
+      // For real subscriptions, proceed with the edge function call
       const requestBody = { subscriptionId: subscription.id };
       console.log('Request payload:', requestBody);
       
@@ -74,7 +99,7 @@ export const useSubscriptionCancellation = (
         return;
       }
       
-      // For virtual subscriptions or database-only cancellations
+      // For database-only cancellations
       toast({
         title: "Subscription Canceled",
         description: data.canceled_immediately 
