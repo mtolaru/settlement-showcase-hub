@@ -39,32 +39,37 @@ const CancelSubscriptionDialog = ({
       <AlertDialogContent className="bg-white">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Warning: Subscription Management
+            Subscription Management
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-4">
-            <p className="font-medium text-red-600">
-              Cancelling your subscription will result in losing access to your settlements data.
+            <p className="font-medium text-black">
+              You'll be redirected to the Stripe Customer Portal where you can manage your subscription.
             </p>
             
             <p>
-              You'll be redirected to the Stripe Customer Portal where you can:
+              In the Stripe portal, you can:
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>Update your payment method</li>
               <li>View billing history</li>
               <li>Change your subscription plan</li>
-              <li>Cancel your subscription (not recommended)</li>
+              <li>Cancel your subscription</li>
             </ul>
+            
+            <p className="font-medium text-red-600 mt-4">
+              Note: Cancelling your subscription will result in losing access to your settlements data after the current billing period.
+            </p>
             
             {cancelError && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
+                <p className="font-medium mb-1">Error:</p>
                 {cancelError}
               </div>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>
+          <AlertDialogCancel onClick={onCancel} className="border-gray-300">
             Close
           </AlertDialogCancel>
           
