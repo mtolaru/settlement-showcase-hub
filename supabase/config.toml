@@ -1,11 +1,50 @@
 
+# A string used to distinguish different Supabase projects on the same host. Defaults to the working
+# directory name when running `supabase init`.
 project_id = "zxstilrzamzlgswgwlpp"
 
-[functions.create-checkout-session]
-verify_jwt = false
+[api]
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
+# endpoints. public and storage are always included.
+schemas = ["public", "storage", "graphql_public"]
+# Extra schemas to add to the search_path of every request. public is always included.
+extra_search_path = ["public", "extensions"]
+# Maximum rows returns in a single REST request.
+max_rows = 1000
 
-[functions.stripe-webhook]
-verify_jwt = false
+[db]
+# Port to use for the local database URL.
+port = 54322
+# The database major version to use. This has to be the same as your remote database's. Run `SHOW
+# server_version;` on the remote database to check.
+major_version = 15
 
-[functions.cancel-subscription]
-verify_jwt = false
+[studio]
+# Port to use for Supabase Studio.
+port = 54323
+
+[inbucket]
+# Port to use for the email testing server's API.
+port = 54324
+# Port to use for the email testing server's SMTP port.
+smtp_port = 54325
+# Port to use for the email testing server's POP3 port.
+pop3_port = 54326
+
+[functions]
+port = 54321
+
+[realtime]
+enabled = false
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "https://example.com"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true

@@ -98,24 +98,23 @@ export const useSubscription = (user: User | null) => {
       }
       
       // Special case: Check for known Stripe customer ID
-      // This is a fallback for the specific user mentioned
       if (user.email === 'mtolaru+3@gmail.com') {
-        console.log('Checking special case for known Stripe customer');
+        console.log('Found special case for known Stripe customer');
         const stripeCustomerId = 'cus_RqvYeFDtIHz2hO';
         
-        // Create a virtual subscription based on the Stripe customer ID
-        const virtualSubscription: Subscription = {
+        // Create a virtual Stripe subscription based on the known customer ID
+        const stripeSubscription: Subscription = {
           id: `stripe-${stripeCustomerId}`,
           starts_at: new Date().toISOString(),
           ends_at: null, // Ongoing subscription
           is_active: true,
-          payment_id: stripeCustomerId,
+          payment_id: null,
           customer_id: stripeCustomerId,
           temporary_id: null,
           user_id: user.id
         };
         
-        setSubscription(virtualSubscription);
+        setSubscription(stripeSubscription);
         setIsLoading(false);
         return;
       }
