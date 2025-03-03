@@ -1,6 +1,7 @@
 
 project_id = "zxstilrzamzlgswgwlpp"
 
+[functions]
 [functions.create-checkout-session]
 verify_jwt = false
 
@@ -8,4 +9,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.cancel-subscription]
+verify_jwt = false
+
+[functions.verify-subscription]
 verify_jwt = false
