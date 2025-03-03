@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { stripe } from '../_shared/stripe.ts'
 
@@ -214,7 +215,7 @@ export const handler = async (req: Request) => {
         
         // Create a virtual subscription based on the paid settlement
         const virtualSubscription = {
-          id: userId ? `virtual-${userId}` : null,
+          id: userId ? `virtual-${userId}` : `virtual-${paidSettlements[0].temporary_id}`,
           starts_at: new Date().toISOString(),
           ends_at: null,
           is_active: true,
