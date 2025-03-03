@@ -1,4 +1,6 @@
 
+import { Label } from "@/components/ui/label";
+
 interface SelectFieldProps {
   label: string;
   value: string;
@@ -19,10 +21,13 @@ export const SelectField = ({
   error,
 }: SelectFieldProps) => {
   return (
-    <div>
-      <label className="form-label">{label}</label>
+    <div className="space-y-2">
+      <Label htmlFor={label.replace(/\s+/g, '-').toLowerCase()} className="form-label">
+        {label}
+      </Label>
       <select
-        className="form-input w-full rounded-md border border-neutral-200 p-2"
+        id={label.replace(/\s+/g, '-').toLowerCase()}
+        className={`form-input w-full rounded-md border ${error ? 'border-red-500' : 'border-neutral-200'} p-2`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -33,11 +38,11 @@ export const SelectField = ({
           </option>
         ))}
       </select>
-      {description && (
+      {description && !error && (
         <p className="text-sm text-neutral-500 mt-1">{description}</p>
       )}
       {error && (
-        <p className="text-red-500 text-sm mt-1">{error}</p>
+        <p className="text-sm font-medium text-red-500 mt-1">{error}</p>
       )}
     </div>
   );

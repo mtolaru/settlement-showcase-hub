@@ -1,5 +1,7 @@
 
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 interface DollarInputFieldProps {
   label: string;
@@ -14,50 +16,33 @@ export const DollarInputField = ({
   label,
   value,
   onChange,
-  placeholder = "$0",
+  placeholder,
   description,
   error,
 }: DollarInputFieldProps) => {
-  const formatDollarInput = (value: string) => {
-    // Remove dollar sign and commas
-    let numericValue = value.replace(/[$,]/g, '');
-    
-    // If empty, return empty string
-    if (!numericValue) return '';
-    
-    // Format with dollar sign and commas
-    return `$${numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
-  };
-
-  const handleDollarInput = (inputValue: string) => {
-    // First remove any non-numeric characters (except decimal point)
-    const sanitizedValue = inputValue.replace(/[^\d.]/g, '');
-    
-    // Ensure only one decimal point
-    const parts = sanitizedValue.split('.');
-    const processedValue = parts.length > 2 
-      ? `${parts[0]}.${parts.slice(1).join('')}`
-      : sanitizedValue;
-    
-    onChange(processedValue);
-  };
-
   return (
-    <div>
-      <label className="form-label">{label}</label>
-      <Input
-        type="text"
-        value={formatDollarInput(value)}
-        onChange={(e) => handleDollarInput(e.target.value)}
-        placeholder={placeholder}
-        className="no-spinner"
-        inputMode="decimal"
-      />
-      {description && (
-        <p className="text-sm text-neutral-500 mt-1">{description}</p>
+    <div className="space-y-2">
+      <Label htmlFor={label.replace(/\s+/g, '-').toLowerCase()} className="form-label">
+        {label}
+      </Label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <span className="text-gray-500">$</span>
+        </div>
+        <Input
+          id={label.replace(/\s+/g, '-').toLowerCase()}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`pl-7 ${error ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+        />
+      </div>
+      {description && !error && (
+        <p className="text-sm text-neutral-500">{description}</p>
       )}
       {error && (
-        <p className="text-red-500 text-sm mt-1">{error}</p>
+        <p className="text-sm font-medium text-red-500 mt-1">{error}</p>
       )}
     </div>
   );

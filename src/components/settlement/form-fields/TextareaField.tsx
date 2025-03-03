@@ -1,5 +1,6 @@
 
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface TextareaFieldProps {
   label: string;
@@ -21,20 +22,23 @@ export const TextareaField = ({
   rows = 4
 }: TextareaFieldProps) => {
   return (
-    <div>
-      <label className="form-label">{label}</label>
+    <div className="space-y-2">
+      <Label htmlFor={label.replace(/\s+/g, '-').toLowerCase()} className="form-label">
+        {label}
+      </Label>
       <Textarea
+        id={label.replace(/\s+/g, '-').toLowerCase()}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="resize-y min-h-[100px]"
+        className={`resize-y min-h-[100px] ${error ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
       />
-      {description && (
+      {description && !error && (
         <p className="text-sm text-neutral-500 mt-1">{description}</p>
       )}
       {error && (
-        <p className="text-red-500 text-sm mt-1">{error}</p>
+        <p className="text-sm font-medium text-red-500 mt-1">{error}</p>
       )}
     </div>
   );
