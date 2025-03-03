@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import type { Settlement } from "@/types/settlement";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export const useSettlements = (user: User | null) => {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { subscription } = useSubscription(user);
 
   const fetchSettlements = async () => {
     try {
@@ -20,32 +22,22 @@ export const useSettlements = (user: User | null) => {
 
       console.log('Fetching settlements for user:', user.id);
       
-      // Check if the user has an active subscription first
-      const { data: subscriptionData, error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle();
-        
-      if (subscriptionError) {
-        console.error('Error checking subscription:', subscriptionError);
-      }
-      
-      const hasActiveSubscription = !!subscriptionData;
+      // Check if the user has an active subscription
+      const hasActiveSubscription = !!subscription?.is_active;
       console.log('User has active subscription:', hasActiveSubscription);
       
+      if (!hasActiveSubscription) {
+        console.log('User does not have an active subscription, showing no settlements');
+        setSettlements([]);
+        setIsLoading(false);
+        return;
+      }
+      
       // If user has an active subscription, get all their settlements
-      // If not, only get settlements marked as payment_completed
       let query = supabase
         .from('settlements')
         .select('*')
         .eq('user_id', user.id);
-        
-      if (!hasActiveSubscription) {
-        // Only get settlements that have been individually paid for
-        query = query.eq('payment_completed', true);
-      }
       
       const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -160,8 +152,11 @@ export const useSettlements = (user: User | null) => {
   useEffect(() => {
     if (user) {
       fetchSettlements();
+    } else {
+      setSettlements([]);
+      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, subscription]);
 
   return {
     settlements,

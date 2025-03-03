@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
@@ -15,7 +14,6 @@ const Leaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Get initial filters from URL params
   const initialFilters = {
     amount: searchParams.get("amount") || "all",
     caseType: searchParams.get("case_type") || "all",
@@ -25,13 +23,11 @@ const Leaderboard = () => {
   
   const [filters, setFilters] = useState(initialFilters);
 
-  // Fetch settlements from Supabase
   useEffect(() => {
     const fetchSettlements = async () => {
       try {
         setIsLoading(true);
         
-        // First, get all users with active subscriptions
         const { data: subscribedUsers, error: subscriptionError } = await supabase
           .from('subscriptions')
           .select('user_id, temporary_id')
@@ -41,7 +37,6 @@ const Leaderboard = () => {
           throw subscriptionError;
         }
         
-        // Collect all user IDs and temporary IDs from active subscriptions
         const userIds = subscribedUsers
           ?.filter(sub => sub.user_id)
           .map(sub => sub.user_id) || [];
@@ -50,17 +45,34 @@ const Leaderboard = () => {
           ?.filter(sub => sub.temporary_id)
           .map(sub => sub.temporary_id) || [];
         
-        // Fetch settlements from subscribed users or with payment_completed=true
+        if (userIds.length === 0 && temporaryIds.length === 0) {
+          console.log('No active subscriptions found');
+          setSettlements([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        let queryParts = [];
+        
+        if (userIds.length > 0) {
+          queryParts.push(`user_id.in.(${userIds.join(',')})`);
+        }
+        
+        if (temporaryIds.length > 0) {
+          queryParts.push(`temporary_id.in.(${temporaryIds.join(',')})`);
+        }
+        
+        queryParts.push('payment_completed.eq.true');
+        
         const { data, error } = await supabase
           .from('settlements')
           .select('*')
-          .or(`user_id.in.(${userIds.join(',')}),temporary_id.in.(${temporaryIds.join(',')}),payment_completed.eq.true`);
+          .or(queryParts.join(','));
 
         if (error) {
           throw error;
         }
 
-        // Process the data to conform to the Settlement type
         const processedData: Settlement[] = data?.map(settlement => {
           return {
             id: settlement.id,
@@ -101,12 +113,10 @@ const Leaderboard = () => {
     fetchSettlements();
   }, [toast]);
   
-  // Apply filters when settlements or filters change
   useEffect(() => {
     const applyFilters = () => {
       let result = [...settlements];
       
-      // Filter by amount
       if (filters.amount !== "all") {
         const [min, max] = filters.amount.split("-").map(Number);
         if (max) {
@@ -116,17 +126,14 @@ const Leaderboard = () => {
         }
       }
       
-      // Filter by case type
       if (filters.caseType !== "all") {
         result = result.filter(s => s.type === filters.caseType);
       }
       
-      // Filter by location
       if (filters.location !== "all") {
         result = result.filter(s => s.location === filters.location);
       }
       
-      // Sort the results
       if (filters.sort === "highest") {
         result.sort((a, b) => b.amount - a.amount);
       } else if (filters.sort === "lowest") {
@@ -137,7 +144,6 @@ const Leaderboard = () => {
       
       setFilteredSettlements(result);
       
-      // Update URL params
       setSearchParams({
         amount: filters.amount,
         case_type: filters.caseType,
@@ -149,7 +155,6 @@ const Leaderboard = () => {
     applyFilters();
   }, [settlements, filters, setSearchParams]);
 
-  // Get unique options for filters from available data
   const getFilterOptions = () => {
     const caseTypes = ["all", ...new Set(settlements.map(s => s.type))];
     const locations = ["all", ...new Set(settlements.map(s => s.location))];

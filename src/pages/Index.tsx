@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
@@ -45,11 +44,32 @@ const Index = () => {
           ?.filter(sub => sub.temporary_id)
           .map(sub => sub.temporary_id) || [];
         
-        // Fetch settlements from subscribed users or with payment_completed=true
+        if (userIds.length === 0 && temporaryIds.length === 0) {
+          console.log('No active subscriptions found');
+          setSettlements([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Build the query parts
+        let queryParts = [];
+        
+        if (userIds.length > 0) {
+          queryParts.push(`user_id.in.(${userIds.join(',')})`);
+        }
+        
+        if (temporaryIds.length > 0) {
+          queryParts.push(`temporary_id.in.(${temporaryIds.join(',')})`);
+        }
+        
+        // Add individually paid settlements
+        queryParts.push('payment_completed.eq.true');
+        
+        // Fetch settlements
         const { data, error } = await supabase
           .from('settlements')
           .select('*')
-          .or(`user_id.in.(${userIds.join(',')}),temporary_id.in.(${temporaryIds.join(',')}),payment_completed.eq.true`);
+          .or(queryParts.join(','));
 
         if (error) {
           throw error;
