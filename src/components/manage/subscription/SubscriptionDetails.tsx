@@ -7,6 +7,7 @@ interface SubscriptionDetailsProps {
   subscription: Subscription;
   isCanceled: boolean;
   isCancelling: boolean;
+  isStripeManaged?: boolean;
   onCancelClick: () => void;
 }
 
@@ -14,6 +15,7 @@ const SubscriptionDetails = ({
   subscription, 
   isCanceled, 
   isCancelling, 
+  isStripeManaged,
   onCancelClick 
 }: SubscriptionDetailsProps) => {
   const formatDate = (dateString: string) => {

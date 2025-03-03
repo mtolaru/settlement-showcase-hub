@@ -17,6 +17,7 @@ interface CancelSubscriptionDialogProps {
   isCancelling: boolean;
   cancelError: string | null;
   portalUrl: string | null;
+  isStripeManaged?: boolean;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
   onOpenChange: (open: boolean) => void;
@@ -28,6 +29,7 @@ const CancelSubscriptionDialog = ({
   isCancelling,
   cancelError,
   portalUrl,
+  isStripeManaged,
   onCancel,
   onConfirm,
   onOpenChange,

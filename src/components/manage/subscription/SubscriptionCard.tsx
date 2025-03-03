@@ -6,9 +6,10 @@ import { Subscription } from "@/hooks/useSubscription";
 interface SubscriptionCardProps {
   subscription: Subscription;
   isCanceled: boolean;
+  isVerified?: boolean;
 }
 
-const SubscriptionCard = ({ subscription, isCanceled }: SubscriptionCardProps) => {
+const SubscriptionCard = ({ subscription, isCanceled, isVerified }: SubscriptionCardProps) => {
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
   };
