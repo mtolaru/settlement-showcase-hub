@@ -24,6 +24,7 @@ export interface Subscription {
 export const useSubscription = (user: User | null) => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isVerified, setIsVerified] = useState(false);
   const { toast } = useToast();
 
   const fetchSubscriptionStatus = useCallback(async () => {
@@ -57,6 +58,7 @@ export const useSubscription = (user: User | null) => {
             }
             
             setSubscription(stripeData.subscription);
+            setIsVerified(true);
             setIsLoading(false);
             return;
           } else {
@@ -72,6 +74,7 @@ export const useSubscription = (user: User | null) => {
       if (userSubscription) {
         console.log('Found subscription by user_id:', userSubscription);
         setSubscription(userSubscription);
+        setIsVerified(true);
         setIsLoading(false);
         return;
       }
@@ -101,6 +104,7 @@ export const useSubscription = (user: User | null) => {
                   user_id: tempSubscription.user_id || user.id
                 });
                 
+                setIsVerified(true);
                 setIsLoading(false);
                 return;
               }
@@ -123,6 +127,7 @@ export const useSubscription = (user: User | null) => {
           };
           
           setSubscription(virtualSubscription);
+          setIsVerified(true);
           setIsLoading(false);
           return;
         }
@@ -146,6 +151,7 @@ export const useSubscription = (user: User | null) => {
         };
         
         setSubscription(virtualSubscription);
+        setIsVerified(true);
         setIsLoading(false);
         return;
       }
@@ -153,6 +159,7 @@ export const useSubscription = (user: User | null) => {
       // If we've tried all paths and still don't have a subscription
       console.log('No active subscription found after all checks');
       setSubscription(null);
+      setIsVerified(false);
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
@@ -161,6 +168,7 @@ export const useSubscription = (user: User | null) => {
         title: "Error",
         description: "Failed to fetch subscription status. Please try again.",
       });
+      setIsVerified(false);
       setIsLoading(false);
     }
   }, [user, toast]);
@@ -170,6 +178,7 @@ export const useSubscription = (user: User | null) => {
       fetchSubscriptionStatus();
     } else {
       setSubscription(null);
+      setIsVerified(false);
       setIsLoading(false);
     }
   }, [user, fetchSubscriptionStatus]);
@@ -177,6 +186,7 @@ export const useSubscription = (user: User | null) => {
   return {
     subscription,
     isLoading,
+    isVerified,
     refreshSubscription: fetchSubscriptionStatus
   };
 };
