@@ -34,7 +34,8 @@ smtp_port = 54325
 pop3_port = 54326
 
 [functions]
-port = 54321
+# Instead of just a port value, we need a map with configuration settings
+serve_port = 54321
 
 [realtime]
 enabled = false
