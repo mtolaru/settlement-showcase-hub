@@ -33,6 +33,15 @@ const SubmitSettlementPage = () => {
     if (Object.keys(errors).length > 0) {
       console.log("Current form errors:", errors);
     }
+    
+    // Log which fields have errors for debugging
+    const errorFields = Object.entries(errors)
+      .filter(([_, value]) => !!value)
+      .map(([key]) => key);
+    
+    if (errorFields.length > 0) {
+      console.log("Fields with validation errors:", errorFields);
+    }
   }, [step, errors]);
 
   if (isCheckingSubscription) {

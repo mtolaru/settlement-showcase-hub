@@ -90,7 +90,7 @@ export const useSettlementForm = () => {
       console.log("Fields with errors:", errorKeys);
     }
     
-    // Always set the errors, even if validation passes
+    // CRITICAL: Always set errors, even if validation passes (with an empty object)
     setErrors(newErrors);
     return isValid;
   };
@@ -153,7 +153,7 @@ export const useSettlementForm = () => {
       console.log("Fields with errors:", errorKeys);
     }
     
-    // Always set the errors, even if validation passes
+    // CRITICAL: Always set errors, even if validation passes (with an empty object)
     setErrors(newErrors);
     return isValid;
   };

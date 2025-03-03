@@ -41,8 +41,8 @@ export const useSettlementNavigation = ({
     
     if (currentStep === 1) {
       console.log("Running validateStep1 with data:", formData);
-      // This is the key change - always run validation and show errors
-      // even if validation fails
+      
+      // Always run validation - this will set errors via setErrors inside validateStep1
       const isValid = validateStep1(formData);
       console.log("Step 1 validation result:", isValid, "Form data:", formData);
       
@@ -52,11 +52,13 @@ export const useSettlementNavigation = ({
         setStep(2);
         return true;
       } else {
-        console.log("Step 1 validation failed - showing error states");
+        console.log("Step 1 validation failed - errors should be displayed");
+        // Explicitly ensure any error states in the UI are shown
         return false;
       }
     } 
     else if (currentStep === 2) {
+      // Always run validation - this will set errors via setErrors inside validateStep2
       const isValid = validateStep2(formData);
       
       if (isValid) {
@@ -64,6 +66,7 @@ export const useSettlementNavigation = ({
         setStep(3);
         return true;
       }
+      console.log("Step 2 validation failed - errors should be displayed");
       return false;
     }
     

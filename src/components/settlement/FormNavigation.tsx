@@ -43,10 +43,11 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         setIsValidating(true);
         setButtonText("Validating...");
         console.log("Calling onNext function");
+        
         const success = await Promise.resolve(onNext());
         
         if (!success) {
-          console.log("Validation failed");
+          console.log("Validation failed - showing toast notification");
           
           // Show toast notification when validation fails
           toast({
@@ -54,12 +55,6 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
             title: "Missing Information",
             description: "Mandatory information is missing. Please review the form and try again.",
           });
-          
-          // Reset button only if validation failed and not in other loading states
-          if (!isLoading && !isSubmitting) {
-            setButtonText("Next Step");
-            button.disabled = false;
-          }
         }
       } catch (error) {
         console.error("Error in form navigation:", error);
@@ -68,13 +63,13 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
           title: "Error",
           description: "An unexpected error occurred. Please try again.",
         });
-        setButtonText("Next Step");
-        button.disabled = false;
       } finally {
         setIsValidating(false);
+        setButtonText("Next Step");
+        button.disabled = false;
       }
     }, 300),
-    [onNext, toast, isLoading, isSubmitting]
+    [onNext, toast]
   );
 
   const handleNext = (e: React.MouseEvent) => {
