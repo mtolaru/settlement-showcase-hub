@@ -15,27 +15,66 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    // Log the request
+    console.log('Received cancel subscription request');
     
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2023-10-16',
-    })
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body:', JSON.stringify(requestBody));
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
 
-    const { subscriptionId } = await req.json()
-    console.log('Received request to cancel subscription:', subscriptionId)
+    const { subscriptionId } = requestBody;
+    if (!subscriptionId) {
+      console.error('Missing subscriptionId in request');
+      return new Response(
+        JSON.stringify({ error: 'Missing subscriptionId in request' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
 
-    // First, get the subscription details from our database
+    console.log('Canceling subscription:', subscriptionId);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase credentials');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      );
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Get the subscription details from our database
+    console.log('Fetching subscription details from database');
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('id', subscriptionId)
-      .single()
+      .single();
 
-    if (subscriptionError || !subscriptionData) {
-      console.error('Error fetching subscription:', subscriptionError)
+    if (subscriptionError) {
+      console.error('Error fetching subscription:', subscriptionError);
       return new Response(
         JSON.stringify({ 
           error: 'Subscription not found',
@@ -45,25 +84,36 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 404 
         }
-      )
+      );
     }
 
-    console.log('Found subscription data:', JSON.stringify(subscriptionData))
+    if (!subscriptionData) {
+      console.error('Subscription not found:', subscriptionId);
+      return new Response(
+        JSON.stringify({ error: 'Subscription not found' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404 
+        }
+      );
+    }
 
-    // Check if this is a "virtual" subscription that we've created for certain cases
+    console.log('Found subscription data:', JSON.stringify(subscriptionData));
+
+    // Check if this is a "virtual" subscription
     const isVirtualSubscription = 
       subscriptionId.startsWith('virtual-') || 
       subscriptionId.startsWith('stripe-') ||
-      (!subscriptionData.payment_id && !subscriptionData.customer_id)
+      (!subscriptionData.payment_id && !subscriptionData.customer_id);
 
-    console.log('Subscription type:', isVirtualSubscription ? 'Virtual' : 'Stripe')
+    console.log('Subscription type:', isVirtualSubscription ? 'Virtual' : 'Stripe');
 
     if (isVirtualSubscription) {
       // For virtual subscriptions, we just update our database
-      console.log('Handling virtual subscription cancellation')
-      const now = new Date()
-      const endDate = new Date()
-      endDate.setDate(now.getDate() + 30) // Give them 30 more days
+      console.log('Handling virtual subscription cancellation');
+      const now = new Date();
+      const endDate = new Date();
+      endDate.setDate(now.getDate() + 30); // Give them 30 more days
       
       const { data, error } = await supabase
         .from('subscriptions')
@@ -71,20 +121,20 @@ serve(async (req) => {
           is_active: true,  // Still active until end date
           ends_at: endDate.toISOString() 
         })
-        .eq('id', subscriptionId)
-        .select()
+        .eq('id', subscriptionId);
         
       if (error) {
-        console.error('Error updating virtual subscription:', error)
+        console.error('Error updating virtual subscription:', error);
         return new Response(
           JSON.stringify({ error: 'Failed to cancel subscription', details: error }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500 
           }
-        )
+        );
       }
       
+      console.log('Successfully updated virtual subscription end date');
       return new Response(
         JSON.stringify({
           id: subscriptionId,
@@ -95,83 +145,140 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200
         }
-      )
+      );
     } else {
-      // For real Stripe subscriptions, we need to redirect to Stripe's cancellation page
+      // For Stripe subscriptions, we need to interact with Stripe
+      // Initialize Stripe client
+      const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+      
+      if (!stripeSecretKey) {
+        console.error('Missing Stripe secret key');
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        );
+      }
+      
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: '2023-10-16',
+      });
+      
+      console.log('Stripe initialized');
+      
       // We need either customer_id or payment_id to create a portal session
-      let customerId = subscriptionData.customer_id || null
+      let customerId = subscriptionData.customer_id || null;
       
       // If we don't have a customer ID but have a payment ID, try to find the customer from Stripe
       if (!customerId && subscriptionData.payment_id) {
         try {
-          console.log('Trying to retrieve customer from payment ID:', subscriptionData.payment_id)
+          console.log('Trying to retrieve customer from payment ID:', subscriptionData.payment_id);
           
           // First, try to interpret payment_id as a PaymentIntent ID
           try {
-            const paymentIntent = await stripe.paymentIntents.retrieve(subscriptionData.payment_id)
+            console.log('Attempting to retrieve payment intent:', subscriptionData.payment_id);
+            const paymentIntent = await stripe.paymentIntents.retrieve(subscriptionData.payment_id);
             if (paymentIntent && paymentIntent.customer) {
-              customerId = paymentIntent.customer as string
-              console.log('Found customer ID from payment intent:', customerId)
+              customerId = paymentIntent.customer as string;
+              console.log('Found customer ID from payment intent:', customerId);
             }
           } catch (e) {
-            console.log('Not a payment intent ID, trying as a subscription ID')
+            console.log('Not a payment intent ID or error retrieving:', e.message);
           }
           
           // If we still don't have a customer ID, try as a Subscription ID
           if (!customerId) {
             try {
-              const subscription = await stripe.subscriptions.retrieve(subscriptionData.payment_id)
+              console.log('Attempting to retrieve subscription:', subscriptionData.payment_id);
+              const subscription = await stripe.subscriptions.retrieve(subscriptionData.payment_id);
               if (subscription && subscription.customer) {
-                customerId = subscription.customer as string
-                console.log('Found customer ID from subscription:', customerId)
+                customerId = subscription.customer as string;
+                console.log('Found customer ID from subscription:', customerId);
               }
             } catch (e) {
-              console.log('Not a subscription ID either')
+              console.log('Not a subscription ID or error retrieving:', e.message);
             }
           }
           
           // If we found a customer ID, update it in our database for future use
           if (customerId) {
+            console.log('Updating subscription with found customer ID:', customerId);
             const { error: updateError } = await supabase
               .from('subscriptions')
               .update({ customer_id: customerId })
-              .eq('id', subscriptionId)
+              .eq('id', subscriptionId);
               
             if (updateError) {
-              console.error('Error updating customer ID:', updateError)
+              console.error('Error updating customer ID:', updateError);
             } else {
-              console.log('Updated subscription with customer ID')
+              console.log('Updated subscription with customer ID');
             }
           }
         } catch (lookupError) {
-          console.error('Error looking up customer from payment ID:', lookupError)
+          console.error('Error looking up customer from payment ID:', lookupError);
         }
       }
       
       if (!customerId && !subscriptionData.payment_id) {
-        console.error('No customer ID or payment ID found for subscription')
+        console.error('No customer ID or payment ID found for subscription');
+        
+        // Still try to handle it gracefully by falling back to database update
+        console.log('Falling back to database update for subscription without customer ID');
+        const now = new Date();
+        const endDate = new Date();
+        endDate.setDate(now.getDate() + 30); // Give them 30 more days
+        
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({ 
+            is_active: true,  // Still active until end date
+            ends_at: endDate.toISOString() 
+          })
+          .eq('id', subscriptionId);
+          
+        if (updateError) {
+          console.error('Error updating subscription:', updateError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to cancel subscription', details: updateError }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 500 
+            }
+          );
+        }
+        
         return new Response(
-          JSON.stringify({ error: 'No customer ID associated with this subscription' }),
-          { 
+          JSON.stringify({
+            id: subscriptionId,
+            canceled_immediately: false,
+            active_until: endDate.toISOString(),
+            warning: 'No customer ID found, updated database only'
+          }),
+          {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400 
+            status: 200
           }
-        )
+        );
       }
       
       try {
         // Always fall back to payment_id if we couldn't find a customer ID
-        const customerIdToUse = customerId || subscriptionData.payment_id
+        const customerIdToUse = customerId || subscriptionData.payment_id;
         
-        console.log('Creating Stripe portal session with customer ID:', customerIdToUse)
+        console.log('Creating Stripe portal session with customer ID:', customerIdToUse);
         
         // Create a customer portal session for cancellation
+        const returnUrl = `${req.headers.get('origin') || 'https://settlementwins.com'}/manage`;
+        console.log('Return URL for portal session:', returnUrl);
+        
         const session = await stripe.billingPortal.sessions.create({
           customer: customerIdToUse,
-          return_url: `${req.headers.get('origin') || 'https://settlementwins.com'}/manage`,
-        })
+          return_url: returnUrl,
+        });
         
-        console.log('Created Stripe portal session:', session.url)
+        console.log('Created Stripe portal session:', session.url);
         
         // Return the session URL so the frontend can redirect to it
         return new Response(
@@ -182,34 +289,33 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200 
           }
-        )
+        );
       } catch (stripeError) {
-        console.error('Stripe error:', stripeError)
+        console.error('Stripe error creating portal session:', stripeError);
         
         // If we can't create a portal session, fall back to our database update
-        console.log('Falling back to database-only cancellation')
-        const now = new Date()
-        const endDate = new Date()
-        endDate.setDate(now.getDate() + 30) // Give them 30 more days
+        console.log('Falling back to database-only cancellation due to Stripe error');
+        const now = new Date();
+        const endDate = new Date();
+        endDate.setDate(now.getDate() + 30); // Give them 30 more days
         
-        const { data, error } = await supabase
+        const { error: updateError } = await supabase
           .from('subscriptions')
           .update({ 
             is_active: true,  // Still active until end date
             ends_at: endDate.toISOString() 
           })
-          .eq('id', subscriptionId)
-          .select()
+          .eq('id', subscriptionId);
           
-        if (error) {
-          console.error('Error updating subscription:', error)
+        if (updateError) {
+          console.error('Error updating subscription:', updateError);
           return new Response(
-            JSON.stringify({ error: 'Failed to cancel subscription', details: error }),
+            JSON.stringify({ error: 'Failed to cancel subscription', details: updateError }),
             { 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               status: 500 
             }
-          )
+          );
         }
         
         return new Response(
@@ -223,17 +329,17 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200
           }
-        )
+        );
       }
     }
   } catch (error) {
-    console.error('Unhandled error:', error)
+    console.error('Unhandled error in cancel-subscription function:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
       }
-    )
+    );
   }
-})
+});

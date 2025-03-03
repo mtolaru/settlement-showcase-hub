@@ -86,7 +86,7 @@ export const useSubscription = (user: User | null) => {
             ends_at: null, // Ongoing subscription
             is_active: true,
             payment_id: null,
-            customer_id: null, // Add this property
+            customer_id: null,
             temporary_id: emailSettlements[0].temporary_id,
             user_id: user.id
           };
@@ -110,7 +110,7 @@ export const useSubscription = (user: User | null) => {
           ends_at: null, // Ongoing subscription
           is_active: true,
           payment_id: stripeCustomerId,
-          customer_id: stripeCustomerId, // Add the customer ID here
+          customer_id: stripeCustomerId,
           temporary_id: null,
           user_id: user.id
         };
