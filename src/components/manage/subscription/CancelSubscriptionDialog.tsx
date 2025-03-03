@@ -43,25 +43,23 @@ const CancelSubscriptionDialog = ({
       <AlertDialogContent className="bg-white">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Manage Your Subscription
+            Warning: Subscription Management
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            {portalUrl ? (
-              <>
-                You'll be redirected to the Stripe Customer Portal where you can:
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Update your payment method</li>
-                  <li>View billing history</li>
-                  <li>Cancel your subscription</li>
-                  <li>Change your subscription plan</li>
-                </ul>
-              </>
-            ) : (
-              <>
-                You'll be redirected to Stripe's secure portal to manage your subscription settings, 
-                including billing information and cancellation options.
-              </>
-            )}
+          <AlertDialogDescription className="space-y-4">
+            <p className="font-medium text-red-600">
+              Cancelling your subscription will result in losing access to your settlements data.
+            </p>
+            
+            <p>
+              You'll be redirected to the Stripe Customer Portal where you can:
+            </p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>Update your payment method</li>
+              <li>View billing history</li>
+              <li>Change your subscription plan</li>
+              <li>Cancel your subscription (not recommended)</li>
+            </ul>
+            
             {cancelError && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
                 {cancelError}

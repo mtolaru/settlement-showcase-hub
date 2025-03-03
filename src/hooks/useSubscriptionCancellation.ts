@@ -14,7 +14,7 @@ export const useSubscriptionCancellation = (
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const openStripePortal = async (url: string) => {
+  const openStripePortal = (url: string) => {
     window.open(url, '_blank');
     setShowCancelDialog(false);
   };

@@ -10,12 +10,14 @@ import CancelSubscriptionDialog from "./subscription/CancelSubscriptionDialog";
 interface SubscriptionStatusProps {
   subscription: Subscription | null;
   isLoading: boolean;
+  isVerified?: boolean;
   refreshSubscription?: () => void;
 }
 
 const SubscriptionStatus = ({ 
   subscription, 
   isLoading,
+  isVerified,
   refreshSubscription 
 }: SubscriptionStatusProps) => {
   const {
@@ -54,17 +56,23 @@ const SubscriptionStatus = ({
     }
   };
 
+  // Check if the subscription is managed by Stripe
+  const isStripeManaged = subscription?.id.startsWith('stripe-') || 
+    (subscription?.stripe_customer_id && subscription?.stripe_subscription_id);
+
   return (
     <div className="space-y-6">
       <SubscriptionCard 
         subscription={subscription} 
-        isCanceled={isCanceled} 
+        isCanceled={isCanceled}
+        isVerified={!!isVerified}
       />
 
       <SubscriptionDetails 
         subscription={subscription}
         isCanceled={isCanceled}
         isCancelling={isCancelling}
+        isStripeManaged={isStripeManaged}
         onCancelClick={() => setShowCancelDialog(true)}
       />
 
@@ -73,6 +81,7 @@ const SubscriptionStatus = ({
         isCancelling={isCancelling}
         cancelError={cancelError}
         portalUrl={portalUrl}
+        isStripeManaged={isStripeManaged}
         onCancel={() => setShowCancelDialog(false)}
         onConfirm={handleCancelSubscription}
         onOpenChange={handleDialogOpenChange}
