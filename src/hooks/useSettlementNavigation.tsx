@@ -34,7 +34,7 @@ export const useSettlementNavigation = ({
   }, []);
 
   // Handle moving to next step
-  const handleNextStep = async () => {
+  const handleNextStep = async (): Promise<boolean> => {
     console.log("handleNextStep called for step:", sessionStorage.getItem('settlementFormStep') || "1");
     
     const currentStep = parseInt(sessionStorage.getItem('settlementFormStep') || "1");
@@ -48,8 +48,10 @@ export const useSettlementNavigation = ({
         console.log("Moving to step 2");
         saveFormState();
         setStep(2);
+        return true;
       } else {
         console.log("Step 1 validation failed");
+        return false;
       }
     } 
     else if (currentStep === 2) {
@@ -58,8 +60,13 @@ export const useSettlementNavigation = ({
       if (isValid) {
         saveFormState();
         setStep(3);
+        return true;
       }
+      return false;
     }
+    
+    // Default case
+    return false;
   };
 
   // Handle moving back to previous step
