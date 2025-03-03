@@ -70,7 +70,7 @@ const CancelSubscriptionDialog = ({
           
           <Button 
             onClick={onConfirm}
-            className="bg-primary hover:bg-primary/90 flex items-center gap-2"
+            className="bg-primary-600 hover:bg-primary-700 text-white font-medium flex items-center gap-2"
             disabled={isCancelling}
           >
             {isCancelling ? (
