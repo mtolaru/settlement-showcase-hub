@@ -52,25 +52,7 @@ export const useSubscriptionCancellation = (
         setPortalUrl(data.redirectUrl);
         
         // Immediately open the portal URL in a new tab
-        const newWindow = window.open(data.redirectUrl, '_blank');
-        
-        // Check if popup was blocked
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          console.warn('Popup was blocked or failed to open');
-          toast({
-            title: "Popup Blocked",
-            description: "Your browser may have blocked the popup. Please click the button below to open the Stripe portal."
-          });
-          // We'll keep the URL available via button
-        } else {
-          // If the window opened successfully, we can close the dialog
-          setShowCancelDialog(false);
-          toast({
-            title: "Stripe Portal Opened",
-            description: "You can now manage your subscription in the Stripe portal."
-          });
-        }
-        
+        openStripePortal(data.redirectUrl);
         return;
       }
       
@@ -104,6 +86,7 @@ export const useSubscriptionCancellation = (
 
   const openStripePortal = (url: string) => {
     // Open in a new tab to ensure the portal loads properly
+    console.log('Opening Stripe portal URL:', url);
     const newWindow = window.open(url, '_blank');
     
     // Check if popup was blocked
@@ -132,7 +115,6 @@ export const useSubscriptionCancellation = (
     portalUrl,
     setShowCancelDialog,
     setCancelError,
-    setPortalUrl,
     handleCancelSubscription,
     openStripePortal
   };

@@ -33,6 +33,8 @@ const CancelSubscriptionDialog = ({
   onOpenChange,
   onOpenPortal
 }: CancelSubscriptionDialogProps) => {
+  console.log('CancelSubscriptionDialog rendering with portalUrl:', portalUrl);
+  
   return (
     <AlertDialog 
       open={isOpen} 
