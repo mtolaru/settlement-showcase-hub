@@ -33,36 +33,40 @@ export const FinancialDetailsSection = ({
   return (
     <div className="space-y-6">
       <DollarInputField
-        label="Settlement Amount*"
+        label="Settlement Amount"
         value={formData.amount}
         onChange={(value) => handleInputChange("amount", value)}
         placeholder="$1,000,000"
         error={errors.amount}
+        required={true}
       />
 
       <DollarInputField
-        label="Initial Settlement Offer*"
+        label="Initial Settlement Offer"
         value={formData.initialOffer}
         onChange={(value) => handleInputChange("initialOffer", value)}
         placeholder="$0"
         description="Enter the initial offer received, if any. Enter $0 if none."
         error={errors.initialOffer}
+        required={true}
       />
 
       <DollarInputField
-        label="Insurance Policy Limit*"
+        label="Insurance Policy Limit"
         value={formData.policyLimit}
         onChange={(value) => handleInputChange("policyLimit", value)}
         placeholder="$0"
         error={errors.policyLimit}
+        required={true}
       />
 
       <DollarInputField
-        label="Medical Expenses*"
+        label="Medical Expenses"
         value={formData.medicalExpenses}
         onChange={(value) => handleInputChange("medicalExpenses", value)}
         placeholder="$0"
         error={errors.medicalExpenses}
+        required={true}
       />
     </div>
   );

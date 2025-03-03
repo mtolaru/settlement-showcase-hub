@@ -1,8 +1,7 @@
 
-import { Input } from "@/components/ui/input";
+import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
 
 interface DollarInputFieldProps {
   label: string;
@@ -11,24 +10,24 @@ interface DollarInputFieldProps {
   placeholder?: string;
   description?: string;
   error?: string;
+  required?: boolean;
 }
 
-export const DollarInputField = ({
+export const DollarInputField: React.FC<DollarInputFieldProps> = ({
   label,
   value,
   onChange,
-  placeholder,
+  placeholder = "",
   description,
   error,
-}: DollarInputFieldProps) => {
-  const isRequired = label.includes('*');
-  const fieldId = label.replace(/\s+/g, '-').toLowerCase();
-  const [displayValue, setDisplayValue] = useState(value);
-  
-  // Format value with commas when component mounts or value changes
+  required = false
+}) => {
+  const [displayValue, setDisplayValue] = useState(value ? formatNumberWithCommas(value) : "");
+
+  // When the parent component updates the value, update the display value
   useEffect(() => {
     if (value) {
-      // If it's already formatted, don't reformat
+      // Format value with commas regardless of current formatting
       if (!isNaN(parseFloat(value.replace(/,/g, '')))) {
         const formattedValue = formatNumberWithCommas(value);
         setDisplayValue(formattedValue);
@@ -36,20 +35,21 @@ export const DollarInputField = ({
         setDisplayValue(value);
       }
     } else {
-      setDisplayValue('');
+      setDisplayValue("");
     }
   }, [value]);
-  
-  // Format number with commas for thousands
-  const formatNumberWithCommas = (num: string): string => {
-    // Remove any existing commas
-    const plainNumber = num.replace(/,/g, '');
+
+  // Convert a number string to a formatted string with commas
+  const formatNumberWithCommas = (value: string): string => {
+    // Remove existing commas and any non-numeric characters except decimal points
+    const plainNumber = value.replace(/,/g, '').replace(/[^\d.]/g, '');
     
-    // Check if there's a decimal point
+    // Handle numbers with decimal points
     if (plainNumber.includes('.')) {
       const parts = plainNumber.split('.');
       // Format the whole number part with commas
-      return parts[0] ? Number(parts[0]).toLocaleString() + '.' + parts[1] : '' + '.' + parts[1];
+      const formattedWhole = parts[0] ? Number(parts[0]).toLocaleString() : '';
+      return formattedWhole + '.' + parts[1];
     }
     
     // Format the number with commas
@@ -57,14 +57,17 @@ export const DollarInputField = ({
   };
   
   // Handle numeric input and maintain formatting
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
     
-    // Only allow numbers, commas, and decimal points
-    const filtered = inputValue.replace(/[^0-9,.]/g, '');
+    // Remove dollar signs if present
+    const withoutDollarSign = rawValue.replace('$', '');
     
-    // Update the display value
-    setDisplayValue(filtered);
+    // Set the display value to what the user typed
+    setDisplayValue(withoutDollarSign);
+    
+    // Remove commas for the actual value stored
+    const filtered = withoutDollarSign.replace(/,/g, '');
     
     // Send the filtered value to parent component
     onChange(filtered);
@@ -72,38 +75,27 @@ export const DollarInputField = ({
   
   return (
     <div className="space-y-2">
-      <Label htmlFor={fieldId} className="form-label">
-        {label.replace('*', '')}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
+      <Label htmlFor={`${label}-input`}>
+        {label} {required && <span className="text-red-500">*</span>}
       </Label>
       <div className="relative">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
           <span className="text-gray-500">$</span>
         </div>
         <Input
-          id={fieldId}
+          id={`${label}-input`}
           type="text"
           value={displayValue}
-          onChange={handleChange}
+          onChange={handleInputChange}
           placeholder={placeholder}
-          className={cn(
-            "pl-7 w-full",
-            error ? 'border-red-500 focus-visible:ring-red-500' : ''
-          )}
-          aria-invalid={!!error}
-          aria-describedby={error ? `${fieldId}-error` : undefined}
+          className={`pl-7 ${error ? "border-red-500" : ""}`}
         />
       </div>
-      {description && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{description}</p>
+      {description && (
+        <p className="text-sm text-gray-500">{description}</p>
       )}
       {error && (
-        <p 
-          id={`${fieldId}-error`}
-          className="text-sm font-medium text-red-500 mt-1"
-        >
-          {error}
-        </p>
+        <p className="text-sm text-red-500">{error}</p>
       )}
     </div>
   );

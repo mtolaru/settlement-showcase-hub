@@ -1,72 +1,59 @@
 
+import React from "react";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Option {
+  value: string;
+  label: string;
+}
 
 interface SelectFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: { value: string; label: string }[];
+  options: Option[];
   placeholder?: string;
-  description?: string;
   error?: string;
+  required?: boolean;
 }
 
-export const SelectField = ({
+export const SelectField: React.FC<SelectFieldProps> = ({
   label,
   value,
   onChange,
   options,
   placeholder = "Select an option",
-  description,
   error,
-}: SelectFieldProps) => {
-  const isRequired = label.includes('*');
-  const fieldId = label.replace(/\s+/g, '-').toLowerCase();
-  
-  // Debug log when error changes
-  useEffect(() => {
-    if (error) {
-      console.log(`SelectField "${label}" has error:`, error);
-    }
-  }, [error, label]);
-
+  required = false
+}) => {
   return (
     <div className="space-y-2">
-      <Label htmlFor={fieldId} className="form-label">
-        {label.replace('*', '')}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
+      <Label htmlFor={`${label.toLowerCase().replace(/\s+/g, "-")}-select`}>
+        {label} {required && <span className="text-red-500">*</span>}
       </Label>
-      <select
-        id={fieldId}
-        className={cn(
-          "form-input w-full rounded-md border px-3 py-2 text-sm",
-          error ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500' : 'border-neutral-200'
-        )}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${fieldId}-error` : undefined}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {description && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{description}</p>
-      )}
-      {error && (
-        <p 
-          id={`${fieldId}-error`}
-          className="text-sm font-medium text-red-500 mt-1"
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger 
+          id={`${label.toLowerCase().replace(/\s+/g, "-")}-select`}
+          className={error ? "border-red-500" : ""}
         >
-          {error}
-        </p>
-      )}
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   );
 };

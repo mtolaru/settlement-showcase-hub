@@ -48,6 +48,13 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         if (!success) {
           console.log("Validation failed");
           
+          // Show toast notification when validation fails
+          toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Mandatory information is missing. Please review the form and try again.",
+          });
+          
           // Reset button only if validation failed and not in other loading states
           if (!isLoading && !isSubmitting) {
             setButtonText("Next Step");

@@ -1,60 +1,46 @@
 
-import { Textarea } from "@/components/ui/textarea";
+import React from "react";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TextareaFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  description?: string;
   error?: string;
-  rows?: number;
+  maxLength?: number;
+  required?: boolean;
 }
 
-export const TextareaField = ({
+export const TextareaField: React.FC<TextareaFieldProps> = ({
   label,
   value,
   onChange,
-  placeholder,
-  description,
+  placeholder = "",
   error,
-  rows = 4
-}: TextareaFieldProps) => {
-  const isRequired = label.includes('*');
-  const fieldId = label.replace(/\s+/g, '-').toLowerCase();
-  
+  maxLength,
+  required = false
+}) => {
   return (
     <div className="space-y-2">
-      <Label htmlFor={fieldId} className="form-label">
-        {label.replace('*', '')}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
+      <Label htmlFor={`${label.toLowerCase().replace(/\s+/g, "-")}-textarea`}>
+        {label} {required && <span className="text-red-500">*</span>}
       </Label>
       <Textarea
-        id={fieldId}
+        id={`${label.toLowerCase().replace(/\s+/g, "-")}-textarea`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        rows={rows}
-        className={cn(
-          "resize-y min-h-[100px] w-full",
-          error ? 'border-red-500 focus-visible:ring-red-500' : ''
-        )}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${fieldId}-error` : undefined}
+        className={error ? "border-red-500" : ""}
+        maxLength={maxLength}
       />
-      {description && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{description}</p>
+      {maxLength && (
+        <div className="text-xs text-gray-500 text-right">
+          {value.length}/{maxLength}
+        </div>
       )}
-      {error && (
-        <p 
-          id={`${fieldId}-error`}
-          className="text-sm font-medium text-red-500 mt-1"
-        >
-          {error}
-        </p>
-      )}
+      {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   );
 };
