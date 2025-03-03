@@ -59,6 +59,13 @@ const SubscriptionStatus = ({
     (subscription?.customer_id && subscription.id.startsWith('stripe-'))
   );
 
+  // This function matches the expected type signature in the CancelSubscriptionDialog component
+  const handleOpenPortal = () => {
+    if (portalUrl) {
+      openStripePortal(portalUrl);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SubscriptionCard 
@@ -84,7 +91,7 @@ const SubscriptionStatus = ({
         onCancel={() => setShowCancelDialog(false)}
         onConfirm={handleCancelSubscription}
         onOpenChange={handleDialogOpenChange}
-        onOpenPortal={openStripePortal}
+        onOpenPortal={handleOpenPortal}
       />
     </div>
   );

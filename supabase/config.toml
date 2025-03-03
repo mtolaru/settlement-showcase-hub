@@ -34,8 +34,10 @@ smtp_port = 54325
 pop3_port = 54326
 
 [functions]
-# Instead of just a port value, we need a map with configuration settings
-serve_port = 54321
+# Instead of using just a port value, we need a proper configuration object
+# The format should be a map not just an integer
+[functions.serve]
+port = 54321
 
 [realtime]
 enabled = false
