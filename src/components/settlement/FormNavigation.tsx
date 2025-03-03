@@ -46,7 +46,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         const success = await Promise.resolve(onNext());
         
         if (!success) {
-          console.log("Validation failed, showing toast");
+          console.log("Validation failed");
           
           // Reset button only if validation failed and not in other loading states
           if (!isLoading && !isSubmitting) {

@@ -128,6 +128,9 @@ export const useSettlementForm = () => {
     if (!formData.firmWebsite) {
       newErrors.firmWebsite = "Firm website is required";
       isValid = false;
+    } else if (!isValidUrl(formData.firmWebsite)) {
+      newErrors.firmWebsite = "Valid website URL is required";
+      isValid = false;
     }
 
     // Validate location
@@ -161,11 +164,23 @@ export const useSettlementForm = () => {
     return emailRegex.test(email);
   };
 
+  // Helper function to validate URL format
+  const isValidUrl = (url: string): boolean => {
+    try {
+      const parsedUrl = new URL(url);
+      return ['http:', 'https:'].includes(parsedUrl.protocol);
+    } catch (e) {
+      return false;
+    }
+  };
+
   return {
     errors,
     setErrors,
     validateStep1,
     validateStep2,
-    unformatNumber
+    unformatNumber,
+    isValidEmail,
+    isValidUrl
   };
 };

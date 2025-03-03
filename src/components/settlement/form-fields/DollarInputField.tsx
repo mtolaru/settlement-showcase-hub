@@ -2,6 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
 
 interface DollarInputFieldProps {
   label: string;
@@ -23,6 +24,21 @@ export const DollarInputField = ({
   const isRequired = label.includes('*');
   const fieldId = label.replace(/\s+/g, '-').toLowerCase();
   
+  // Handle numeric input only
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    // Only allow numbers, commas, and decimal points
+    const filtered = inputValue.replace(/[^0-9,.]/g, '');
+    onChange(filtered);
+  };
+  
+  // Debug log when error changes
+  useEffect(() => {
+    if (error) {
+      console.log(`DollarInputField "${label}" has error:`, error);
+    }
+  }, [error, label]);
+  
   return (
     <div className="space-y-2">
       <Label htmlFor={fieldId} className="form-label">
@@ -36,7 +52,7 @@ export const DollarInputField = ({
           id={fieldId}
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleChange}
           placeholder={placeholder}
           className={cn(
             "pl-7 w-full",

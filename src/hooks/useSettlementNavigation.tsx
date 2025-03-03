@@ -33,7 +33,7 @@ export const useSettlementNavigation = ({
       const validationResult = validateStep1(formData);
       console.log("Step 1 validation result:", validationResult, "Form data:", formData);
       
-      // Don't clear errors, let the validation function handle it
+      // Don't proceed if validation failed, but keep the errors visible
       if (!validationResult) {
         console.log("Validation failed, staying on step 1");
         
@@ -87,7 +87,7 @@ export const useSettlementNavigation = ({
         console.log("Step 2 validation (unauthenticated):", validationPassed);
       }
       
-      // Don't clear errors if validation failed
+      // Don't proceed if validation failed, but keep the errors visible
       if (!validationPassed) {
         console.log("Validation failed, staying on step 2");
         

@@ -25,9 +25,45 @@ export const useSubmitSettlementForm = () => {
     handleInputChange, handleImageUpload
   } = useSettlementFormState();
   
-  const { validateStep1, validateStep2, unformatNumber } = useSettlementForm();
+  const { validateStep1, validateStep2, unformatNumber, isValidEmail } = useSettlementForm();
   const { user, isAuthenticated } = useAuth();
   const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
+
+  // Validate numeric input for dollar fields
+  const validateDollarInput = (value: string, field: string) => {
+    if (value) {
+      const numericValue = value.replace(/[^0-9,.]/g, '');
+      if (numericValue !== value) {
+        handleInputChange(field, numericValue);
+      }
+    }
+  };
+
+  // Add real-time validation for dollar fields
+  useEffect(() => {
+    validateDollarInput(formData.amount, 'amount');
+    validateDollarInput(formData.initialOffer, 'initialOffer');
+    validateDollarInput(formData.policyLimit, 'policyLimit');
+    validateDollarInput(formData.medicalExpenses, 'medicalExpenses');
+  }, [formData.amount, formData.initialOffer, formData.policyLimit, formData.medicalExpenses]);
+
+  // Add real-time validation for email
+  useEffect(() => {
+    if (formData.attorneyEmail && !isValidEmail(formData.attorneyEmail)) {
+      setErrors(prev => ({
+        ...prev,
+        attorneyEmail: "Please enter a valid email address"
+      }));
+    } else if (formData.attorneyEmail) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        if (newErrors.attorneyEmail === "Please enter a valid email address") {
+          delete newErrors.attorneyEmail;
+        }
+        return newErrors;
+      });
+    }
+  }, [formData.attorneyEmail]);
 
   useEffect(() => {
     setTemporaryId(crypto.randomUUID());
@@ -108,6 +144,15 @@ export const useSubmitSettlementForm = () => {
 
   const handleEmailChange = async (email: string) => {
     if (email && !(isAuthenticated && user?.email === email)) {
+      // First validate email format before checking if it exists
+      if (!isValidEmail(email)) {
+        setErrors(prev => ({
+          ...prev,
+          attorneyEmail: "Please enter a valid email address"
+        }));
+        return;
+      }
+
       const emailExists = await verifyEmail(email, user?.email);
       if (emailExists) {
         setErrors(prev => ({
