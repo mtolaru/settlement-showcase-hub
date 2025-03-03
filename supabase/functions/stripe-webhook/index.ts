@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.3.0?target=deno";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -108,6 +107,27 @@ serve(async (req) => {
 
         const supabase = createClient(supabaseUrl, supabaseKey);
         
+        // Get the current period end date
+        const currentPeriodEnd = subscription.current_period_end 
+          ? new Date(subscription.current_period_end * 1000).toISOString() 
+          : null;
+
+        // Determine the correct status and end date based on cancellation state
+        let updateData = {
+          is_active: subscription.status === 'active',
+          ends_at: currentPeriodEnd
+        };
+
+        // Handle subscription that's marked to cancel at period end
+        if (subscription.cancel_at_period_end && subscription.status === 'active') {
+          console.log('Subscription is set to cancel at period end:', subscription.id);
+          // Keep is_active true but set the ends_at field
+          updateData = {
+            is_active: true,
+            ends_at: currentPeriodEnd
+          };
+        }
+        
         // Try to find any subscription record with this customer
         const { data: subscriptions, error: findError } = await supabase
           .from('subscriptions')
@@ -122,12 +142,7 @@ serve(async (req) => {
           // Found a subscription with this customer ID, update it
           const { error: updateError } = await supabase
             .from('subscriptions')
-            .update({
-              is_active: subscription.status === 'active',
-              ends_at: subscription.current_period_end 
-                ? new Date(subscription.current_period_end * 1000).toISOString() 
-                : null
-            })
+            .update(updateData)
             .eq('id', subscriptions[0].id);
             
           if (updateError) {
@@ -142,10 +157,7 @@ serve(async (req) => {
           const { error: updateError } = await supabase
             .from('subscriptions')
             .update({
-              is_active: subscription.status === 'active',
-              ends_at: subscription.current_period_end 
-                ? new Date(subscription.current_period_end * 1000).toISOString() 
-                : null,
+              ...updateData,
               // Also update the customer ID for future reference
               customer_id: subscription.customer
             })
