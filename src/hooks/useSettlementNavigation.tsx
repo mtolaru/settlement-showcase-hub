@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { FormData, FormErrors } from "@/types/settlementForm";
@@ -35,7 +34,7 @@ export const useSettlementNavigation = ({
       console.log("Step 1 validation result:", validationResult, "Form data:", formData);
       
       // Force a re-render to show validation errors immediately
-      setErrors(prev => ({...prev}));
+      setErrors({} as FormErrors);
       
       if (!validationResult) {
         console.log("Validation failed, staying on step 1");
@@ -89,7 +88,7 @@ export const useSettlementNavigation = ({
       }
       
       // Force a re-render to show validation errors immediately
-      setErrors(prev => ({...prev}));
+      setErrors({} as FormErrors);
       
       if (!validationPassed) {
         console.log("Validation failed, staying on step 2");
