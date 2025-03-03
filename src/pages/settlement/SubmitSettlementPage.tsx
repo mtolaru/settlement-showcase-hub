@@ -9,6 +9,7 @@ import { SettlementFormHeader } from "@/components/settlement/SettlementFormHead
 import { FormNavigation } from "@/components/settlement/FormNavigation";
 import { useSubmitSettlementContainer } from "@/hooks/useSubmitSettlementContainer";
 import { useEffect } from "react";
+import { Toaster } from "@/components/ui/toaster";
 
 const SubmitSettlementPage = () => {
   const {
@@ -98,6 +99,7 @@ const SubmitSettlementPage = () => {
           </motion.div>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 };

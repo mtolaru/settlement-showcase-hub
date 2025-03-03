@@ -1,6 +1,7 @@
 
 import SubmitSettlementPage from "./settlement/SubmitSettlementPage";
 import { useEffect } from "react";
+import { Toaster } from "@/components/ui/toaster";
 
 const SubmitSettlement = () => {
   useEffect(() => {
@@ -24,7 +25,12 @@ const SubmitSettlement = () => {
     };
   }, []);
   
-  return <SubmitSettlementPage />;
+  return (
+    <>
+      <SubmitSettlementPage />
+      <Toaster />
+    </>
+  );
 };
 
 export default SubmitSettlement;

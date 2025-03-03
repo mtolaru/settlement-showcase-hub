@@ -49,7 +49,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         if (!success) {
           console.log("Validation failed - showing toast notification");
           
-          // Show toast notification when validation fails
+          // Show toast notification when validation fails - using the direct toast() function
           toast({
             variant: "destructive",
             title: "Missing Information",
