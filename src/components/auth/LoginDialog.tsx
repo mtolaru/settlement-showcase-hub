@@ -70,6 +70,7 @@ export function LoginDialog() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Login form submitted", { email, password, isRegisterMode, isForgotPasswordMode });
 
     try {
       if (isForgotPasswordMode) {
@@ -100,10 +101,14 @@ export function LoginDialog() {
         });
         handleDialogClose();
       } else {
+        console.log("Attempting to sign in with:", { email, password });
         const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        
+        console.log("Sign in response:", { error, data });
+        
         if (error) throw error;
         
         toast({
@@ -118,10 +123,11 @@ export function LoginDialog() {
         handleDialogClose();
       }
     } catch (error: any) {
+      console.error('Authentication error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
       });
     } finally {
       setIsLoading(false);

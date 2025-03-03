@@ -1,261 +1,357 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { stripe } from '../_shared/stripe.ts'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.32.0";
+import Stripe from "https://esm.sh/stripe@13.2.0";
 
-// Define CORS headers
+// CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Types for our subscription data
+interface Subscription {
+  id: string;
+  starts_at: string;
+  ends_at: string | null;
+  is_active: boolean;
+  payment_id: string | null; 
+  customer_id: string | null;
+  temporary_id: string | null;
+  user_id: string | null;
 }
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-const supabase = createClient(supabaseUrl, supabaseKey)
-
-export const handler = async (req: Request) => {
-  // Handle CORS preflight request
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Parse the request body
-    const { userId, email } = await req.json()
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
+
+    // Create Supabase client with service role key (admin access)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    console.log(`Verifying subscription for user: ${userId || 'none'}, email: ${email || 'none'}`)
+    // Initialize Stripe
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: "2023-10-16",
+    });
+
+    // Get user data from the request
+    const { userId, email } = await req.json();
     
     if (!userId && !email) {
       return new Response(
-        JSON.stringify({ error: 'User ID or email is required' }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+        JSON.stringify({ error: "userId or email is required" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Step 1: Check if we already have a subscription record with this user_id
+    console.log(`Verifying subscription for user ID: ${userId}, email: ${email}`);
+
+    // First, check for a subscription in our database
+    let subscription: Subscription | null = null;
+
     if (userId) {
-      const { data: existingSubscription, error: subscriptionError } = await supabase
+      const { data: dbSubscriptions, error: dbError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', userId)
         .eq('is_active', true)
-        .maybeSingle()
+        .order('starts_at', { ascending: false })
+        .limit(1);
 
-      if (subscriptionError) {
-        console.error('Error fetching existing subscription:', subscriptionError)
-      } else if (existingSubscription) {
-        console.log('Found existing subscription in database:', existingSubscription)
-        
-        // If we have customer_id, verify with Stripe to make sure it's still active
-        if (existingSubscription.customer_id) {
-          try {
-            const stripeSubscriptions = await stripe.subscriptions.list({
-              customer: existingSubscription.customer_id,
-              status: 'active',
-            })
-            
-            if (stripeSubscriptions.data.length > 0) {
-              console.log('Verified active Stripe subscription:', stripeSubscriptions.data[0].id)
-              
-              // Update subscription record if needed with latest Stripe data
-              const stripeData = stripeSubscriptions.data[0]
-              
-              await supabase
-                .from('subscriptions')
-                .update({
-                  payment_id: stripeData.id,
-                  ends_at: stripeData.cancel_at ? new Date(stripeData.cancel_at * 1000).toISOString() : null
-                })
-                .eq('id', existingSubscription.id)
-                
-              return new Response(
-                JSON.stringify({ 
-                  subscription: {
-                    ...existingSubscription,
-                    payment_id: stripeData.id,
-                    ends_at: stripeData.cancel_at ? new Date(stripeData.cancel_at * 1000).toISOString() : null
-                  },
-                  verified: true 
-                }),
-                { 
-                  status: 200,
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                }
-              )
-            }
-          } catch (stripeError) {
-            console.error('Error verifying with Stripe:', stripeError)
-          }
-        } else {
-          // Return the existing subscription without Stripe verification
-          return new Response(
-            JSON.stringify({ subscription: existingSubscription }),
-            { 
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          )
-        }
+      if (dbError) {
+        console.error('Database query error:', dbError);
+        throw dbError;
+      }
+
+      if (dbSubscriptions && dbSubscriptions.length > 0) {
+        subscription = dbSubscriptions[0] as Subscription;
+        console.log(`Found subscription in database:`, subscription);
       }
     }
 
-    // Step 2: If no subscription found by user_id, try to find by email
-    if (email) {
+    // Check if we have a valid subscription already
+    let verified = false;
+    
+    // If we have a subscription with a customer_id, verify it with Stripe
+    if (subscription?.customer_id) {
       try {
-        // Search for a Stripe customer by email
-        const customers = await stripe.customers.list({ email: email, limit: 1 })
+        console.log(`Verifying subscription with Stripe customer ID: ${subscription.customer_id}`);
         
-        if (customers.data.length > 0) {
-          const customer = customers.data[0]
-          console.log('Found Stripe customer:', customer.id)
+        // Retrieve all active Stripe subscriptions for the customer
+        const stripeSubscriptions = await stripe.subscriptions.list({
+          customer: subscription.customer_id,
+          status: 'active',
+          limit: 1,
+        });
+
+        if (stripeSubscriptions.data.length > 0) {
+          console.log("Found active Stripe subscription");
+          verified = true;
           
-          // Check for active subscriptions for this customer
-          const subscriptions = await stripe.subscriptions.list({
-            customer: customer.id,
-            status: 'active',
-            limit: 1
-          })
+          // Update the subscription data from Stripe if necessary
+          const stripeSub = stripeSubscriptions.data[0];
           
-          if (subscriptions.data.length > 0) {
-            const stripeSubscription = subscriptions.data[0]
-            console.log('Found active Stripe subscription:', stripeSubscription.id)
+          // Only update if there are differences
+          if (stripeSub.id !== subscription.payment_id || 
+              new Date(stripeSub.current_period_end * 1000).toISOString() !== subscription.ends_at) {
             
-            // Create or update subscription record in our database
-            const subscriptionData = {
-              customer_id: customer.id,
-              payment_id: stripeSubscription.id,
-              starts_at: new Date(stripeSubscription.start_date * 1000).toISOString(),
-              ends_at: stripeSubscription.cancel_at ? new Date(stripeSubscription.cancel_at * 1000).toISOString() : null,
-              is_active: true,
-              user_id: userId || null
-            }
+            console.log("Updating subscription information from Stripe");
             
-            // Check if we already have a subscription with this customer_id
-            const { data: existingCustomerSub, error: customerSubError } = await supabase
+            // Update our subscription record with the latest Stripe data
+            const { error: updateError } = await supabase
               .from('subscriptions')
-              .select('*')
-              .eq('customer_id', customer.id)
-              .maybeSingle()
-              
-            if (customerSubError) {
-              console.error('Error checking for existing customer subscription:', customerSubError)
-            }
+              .update({
+                payment_id: stripeSub.id,
+                starts_at: new Date(stripeSub.current_period_start * 1000).toISOString(),
+                ends_at: new Date(stripeSub.current_period_end * 1000).toISOString()
+              })
+              .eq('id', subscription.id);
             
-            let newSubscription
-            
-            if (existingCustomerSub) {
-              // Update existing subscription
-              const { data, error } = await supabase
-                .from('subscriptions')
-                .update({
-                  ...subscriptionData,
-                  // Keep original user_id if exists and new one is null
-                  user_id: userId || existingCustomerSub.user_id
-                })
-                .eq('id', existingCustomerSub.id)
-                .select()
-                .single()
-                
-              if (error) {
-                console.error('Error updating subscription:', error)
-              } else {
-                newSubscription = data
-              }
+            if (updateError) {
+              console.error('Error updating subscription:', updateError);
             } else {
-              // Create new subscription
-              const { data, error } = await supabase
-                .from('subscriptions')
-                .insert(subscriptionData)
-                .select()
-                .single()
-                
-              if (error) {
-                console.error('Error creating subscription:', error)
-              } else {
-                newSubscription = data
-              }
+              // Update local subscription object with new data
+              subscription.payment_id = stripeSub.id;
+              subscription.starts_at = new Date(stripeSub.current_period_start * 1000).toISOString();
+              subscription.ends_at = new Date(stripeSub.current_period_end * 1000).toISOString();
             }
+          }
+        } else {
+          console.log("No active Stripe subscription found for customer");
+          
+          // If the subscription is marked as active but Stripe says it's not, update our database
+          if (subscription.is_active) {
+            console.log("Updating subscription to inactive");
             
-            return new Response(
-              JSON.stringify({ 
-                subscription: newSubscription,
-                verified: true,
-                stripeCustomerId: customer.id 
-              }),
-              { 
-                status: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              }
-            )
+            const { error: updateError } = await supabase
+              .from('subscriptions')
+              .update({
+                is_active: false,
+                ends_at: new Date().toISOString()
+              })
+              .eq('id', subscription.id);
+            
+            if (updateError) {
+              console.error('Error updating subscription status:', updateError);
+            } else {
+              // Update local subscription object
+              subscription.is_active = false;
+              subscription.ends_at = new Date().toISOString();
+            }
           }
         }
       } catch (stripeError) {
-        console.error('Error checking Stripe by email:', stripeError)
+        console.error('Stripe verification error:', stripeError);
+        // Don't throw, just log the error and continue
       }
-      
-      // If we get here, no active Stripe subscription was found for the email
-      console.log('No active Stripe subscription found for email:', email)
     }
-    
-    // Step 3: Check for paid settlements as a fallback (keeping the "virtual subscription" logic)
-    if (email) {
-      const { data: paidSettlements, error: settlementsError } = await supabase
-        .from('settlements')
-        .select('temporary_id')
-        .eq('attorney_email', email)
-        .eq('payment_completed', true)
-        .order('created_at', { ascending: false })
+
+    // If we don't have a subscription from the database or it's not verified with Stripe,
+    // check if we can find a Stripe subscription by email
+    if ((!subscription || !verified) && email) {
+      try {
+        console.log(`Searching for Stripe customer by email: ${email}`);
         
-      if (settlementsError) {
-        console.error('Error checking for paid settlements:', settlementsError)
-      } else if (paidSettlements && paidSettlements.length > 0) {
-        console.log('Found paid settlements for email, creating virtual subscription')
-        
-        // Create a virtual subscription based on the paid settlement
-        const virtualSubscription = {
-          id: userId ? `virtual-${userId}` : `virtual-${paidSettlements[0].temporary_id}`,
-          starts_at: new Date().toISOString(),
-          ends_at: null,
-          is_active: true,
-          payment_id: null,
-          customer_id: null,
-          temporary_id: paidSettlements[0].temporary_id,
-          user_id: userId
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            subscription: virtualSubscription,
-            virtual: true
-          }),
-          { 
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        // Find Stripe customer by email
+        const customers = await stripe.customers.list({
+          email: email,
+          limit: 1,
+        });
+
+        if (customers.data.length > 0) {
+          const customer = customers.data[0];
+          console.log(`Found Stripe customer: ${customer.id}`);
+          
+          // Check for active subscriptions
+          const stripeSubscriptions = await stripe.subscriptions.list({
+            customer: customer.id,
+            status: 'active',
+            limit: 1,
+          });
+
+          if (stripeSubscriptions.data.length > 0) {
+            const stripeSub = stripeSubscriptions.data[0];
+            console.log(`Found active Stripe subscription: ${stripeSub.id}`);
+            
+            // Check if we already have this subscription in our database by customer_id
+            const { data: existingSubs, error: existingError } = await supabase
+              .from('subscriptions')
+              .select('*')
+              .eq('customer_id', customer.id)
+              .limit(1);
+            
+            if (existingError) {
+              console.error('Error checking for existing subscription:', existingError);
+            }
+            
+            // If we already have it, update it
+            if (existingSubs && existingSubs.length > 0) {
+              const existingSub = existingSubs[0];
+              console.log(`Updating existing subscription in database: ${existingSub.id}`);
+              
+              const { error: updateError } = await supabase
+                .from('subscriptions')
+                .update({
+                  user_id: userId || existingSub.user_id,
+                  payment_id: stripeSub.id,
+                  starts_at: new Date(stripeSub.current_period_start * 1000).toISOString(),
+                  ends_at: new Date(stripeSub.current_period_end * 1000).toISOString(),
+                  is_active: true
+                })
+                .eq('id', existingSub.id);
+              
+              if (updateError) {
+                console.error('Error updating subscription:', updateError);
+              } else {
+                subscription = {
+                  ...existingSub,
+                  user_id: userId || existingSub.user_id,
+                  payment_id: stripeSub.id,
+                  starts_at: new Date(stripeSub.current_period_start * 1000).toISOString(),
+                  ends_at: new Date(stripeSub.current_period_end * 1000).toISOString(),
+                  is_active: true
+                };
+                verified = true;
+              }
+            } else {
+              // Create a new subscription record
+              console.log(`Creating new subscription record for Stripe subscription: ${stripeSub.id}`);
+              
+              const { data: newSub, error: insertError } = await supabase
+                .from('subscriptions')
+                .insert({
+                  user_id: userId,
+                  customer_id: customer.id,
+                  payment_id: stripeSub.id,
+                  starts_at: new Date(stripeSub.current_period_start * 1000).toISOString(),
+                  ends_at: new Date(stripeSub.current_period_end * 1000).toISOString(),
+                  is_active: true
+                })
+                .select()
+                .single();
+              
+              if (insertError) {
+                console.error('Error creating subscription:', insertError);
+              } else {
+                subscription = newSub as Subscription;
+                verified = true;
+              }
+            }
           }
-        )
+        }
+      } catch (stripeError) {
+        console.error('Error looking up customer in Stripe:', stripeError);
+        // Don't throw, just log the error and continue
       }
     }
-    
-    // Step 4: No subscription found
-    return new Response(
-      JSON.stringify({ subscription: null }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+
+    // If we still don't have a verified subscription, check if the user has paid settlements
+    // and create a virtual subscription if they have
+    if ((!subscription || !verified) && userId) {
+      try {
+        console.log(`Checking for paid settlements for user: ${userId}`);
+        
+        // Check if the user has any paid settlements
+        const { data: paidSettlements, error: settlementsError } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('payment_completed', true)
+          .limit(1);
+        
+        if (settlementsError) {
+          console.error('Error checking for paid settlements:', settlementsError);
+        } else if (paidSettlements && paidSettlements.length > 0) {
+          console.log(`User has paid settlements, creating a virtual subscription`);
+          
+          // Create a "virtual" subscription based on paid settlements
+          const startDate = new Date();
+          
+          // Set an end date 1 year from now for the virtual subscription
+          const endDate = new Date();
+          endDate.setFullYear(endDate.getFullYear() + 1);
+          
+          // Check if we already have a virtual subscription
+          const { data: virtualSubs, error: virtualError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .is('customer_id', null)
+            .is('payment_id', null)
+            .limit(1);
+          
+          if (virtualError) {
+            console.error('Error checking for virtual subscription:', virtualError);
+          } else if (virtualSubs && virtualSubs.length > 0) {
+            // Update the existing virtual subscription
+            const virtualSub = virtualSubs[0];
+            console.log(`Updating existing virtual subscription: ${virtualSub.id}`);
+            
+            const { error: updateError } = await supabase
+              .from('subscriptions')
+              .update({
+                is_active: true,
+                ends_at: endDate.toISOString()
+              })
+              .eq('id', virtualSub.id);
+            
+            if (updateError) {
+              console.error('Error updating virtual subscription:', updateError);
+            } else {
+              subscription = {
+                ...virtualSub,
+                is_active: true,
+                ends_at: endDate.toISOString()
+              };
+            }
+          } else {
+            // Create a new virtual subscription
+            console.log(`Creating new virtual subscription`);
+            
+            const { data: newSub, error: insertError } = await supabase
+              .from('subscriptions')
+              .insert({
+                user_id: userId,
+                starts_at: startDate.toISOString(),
+                ends_at: endDate.toISOString(),
+                is_active: true
+              })
+              .select()
+              .single();
+            
+            if (insertError) {
+              console.error('Error creating virtual subscription:', insertError);
+            } else {
+              subscription = newSub as Subscription;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for paid settlements:', error);
       }
-    )
-    
+    }
+
+    return new Response(
+      JSON.stringify({
+        subscription,
+        verified,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error('Verification error:', error)
+    console.error('Error in verify-subscription function:', error);
     
     return new Response(
-      JSON.stringify({ error: 'Failed to verify subscription status' }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
+      JSON.stringify({
+        error: error.message || 'An unexpected error occurred',
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
-}
+});

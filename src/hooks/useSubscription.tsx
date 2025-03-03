@@ -31,7 +31,43 @@ export const useSubscription = (user: User | null) => {
 
       console.log('Fetching subscription for user:', user.id);
       
+      // First check the database for a local subscription
+      const { data: localSubscriptions, error: localError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('starts_at', { ascending: false })
+        .limit(1);
+      
+      if (localError) {
+        console.error('Error fetching local subscription:', localError);
+        throw localError;
+      }
+      
+      console.log('Local subscriptions:', localSubscriptions);
+      
+      // If we have a local subscription, use it without verification
+      if (localSubscriptions && localSubscriptions.length > 0) {
+        const localSub = localSubscriptions[0];
+        console.log('Using local subscription:', localSub);
+        
+        setSubscription({
+          id: localSub.id,
+          starts_at: localSub.starts_at,
+          ends_at: localSub.ends_at,
+          is_active: localSub.is_active,
+          payment_id: localSub.payment_id,
+          customer_id: localSub.customer_id,
+          temporary_id: localSub.temporary_id,
+          user_id: localSub.user_id
+        });
+        
+        // But still check with Stripe as a fallback
+      }
+      
       // Call the verify-subscription edge function
+      console.log('Calling verify-subscription function');
       const response = await supabase.functions.invoke('verify-subscription', {
         body: {
           userId: user.id,
@@ -60,7 +96,8 @@ export const useSubscription = (user: User | null) => {
             .update({ user_id: user.id })
             .eq('customer_id', data.subscription.customer_id);
         }
-      } else {
+      } else if (!subscription) {
+        // Only set to null if we don't already have a local subscription
         setSubscription(null);
       }
       
@@ -74,7 +111,7 @@ export const useSubscription = (user: User | null) => {
       });
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, subscription]);
 
   useEffect(() => {
     if (user) {

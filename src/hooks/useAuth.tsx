@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,25 +19,37 @@ export const useAuth = (): AuthReturn => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get initial session and set up auth state listener
   useEffect(() => {
-    // Get initial session
-    const initSession = async () => {
+    const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Initializing auth state");
+        setIsLoading(true);
+        
+        // Get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          throw sessionError;
+        }
+        
+        console.log("Current session:", session ? "Active" : "None");
         setUser(session?.user ?? null);
       } catch (error) {
-        console.error('Error getting session:', error);
+        console.error('Error initializing auth:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    initSession();
+    initAuth();
 
-    // Listen for auth changes
+    // Set up auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
@@ -45,8 +57,14 @@ export const useAuth = (): AuthReturn => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+  const checkAuth = useCallback(async () => {
+    console.log("Checking auth status");
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("Error checking auth:", error);
+    }
+    
     if (!session) {
       navigate('/');
       toast({
@@ -56,17 +74,33 @@ export const useAuth = (): AuthReturn => {
       });
     }
     return session;
-  };
+  }, [navigate, toast]);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    navigate('/');
-    toast({
-      title: "Signed out successfully",
-      description: "You have been logged out of your account.",
-    });
-  };
+  const signOut = useCallback(async () => {
+    try {
+      console.log("Signing out");
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Error during sign out:", error);
+        throw error;
+      }
+      
+      setUser(null);
+      navigate('/');
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of your account.",
+      });
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to sign out. Please try again."
+      });
+    }
+  }, [navigate, toast]);
 
   return { 
     user, 
