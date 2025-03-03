@@ -24,11 +24,9 @@ const SubscriptionStatus = ({
     isCancelling,
     showCancelDialog,
     cancelError,
-    portalUrl,
     setShowCancelDialog,
     setCancelError,
-    handleCancelSubscription,
-    openStripePortal
+    handleCancelSubscription
   } = useSubscriptionCancellation(subscription, refreshSubscription);
 
   if (isLoading) {
@@ -80,12 +78,10 @@ const SubscriptionStatus = ({
         isOpen={showCancelDialog}
         isCancelling={isCancelling}
         cancelError={cancelError}
-        portalUrl={portalUrl}
         isStripeManaged={isStripeManaged}
         onCancel={() => setShowCancelDialog(false)}
         onConfirm={handleCancelSubscription}
         onOpenChange={handleDialogOpenChange}
-        onOpenPortal={openStripePortal}
       />
     </div>
   );

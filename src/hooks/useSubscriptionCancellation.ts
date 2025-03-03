@@ -11,26 +11,13 @@ export const useSubscriptionCancellation = (
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const openStripePortal = (url: string) => {
-    // Open the portal URL in a new tab
-    window.open(url, '_blank');
-    
-    // Close the dialog
-    setShowCancelDialog(false);
-    
-    // Clear any errors
-    setCancelError(null);
-  };
 
   const handleCancelSubscription = async () => {
     if (!subscription || isCancelling) return;
 
     setIsCancelling(true);
     setCancelError(null);
-    setPortalUrl(null); // Reset the portal URL
 
     try {
       // Request Stripe Customer Portal URL via Supabase Edge Function
@@ -46,9 +33,11 @@ export const useSubscriptionCancellation = (
       }
 
       if (data && data.url) {
-        // Set the portal URL - this triggers the button to change
-        setPortalUrl(data.url);
-        console.log("Portal URL generated:", data.url);
+        console.log("Portal URL generated, redirecting:", data.url);
+        // Redirect to Stripe portal
+        window.location.href = data.url;
+        // Close the dialog
+        setShowCancelDialog(false);
       } else {
         throw new Error('No portal URL returned from Stripe');
       }
@@ -69,10 +58,8 @@ export const useSubscriptionCancellation = (
     isCancelling,
     showCancelDialog,
     cancelError,
-    portalUrl,
     setShowCancelDialog,
     setCancelError,
-    handleCancelSubscription,
-    openStripePortal
+    handleCancelSubscription
   };
 };

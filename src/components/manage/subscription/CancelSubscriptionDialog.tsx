@@ -1,5 +1,5 @@
 
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,24 +16,20 @@ interface CancelSubscriptionDialogProps {
   isOpen: boolean;
   isCancelling: boolean;
   cancelError: string | null;
-  portalUrl: string | null;
   isStripeManaged?: boolean;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
   onOpenChange: (open: boolean) => void;
-  onOpenPortal: (url: string) => void;
 }
 
 const CancelSubscriptionDialog = ({
   isOpen,
   isCancelling,
   cancelError,
-  portalUrl,
   isStripeManaged,
   onCancel,
   onConfirm,
-  onOpenChange,
-  onOpenPortal
+  onOpenChange
 }: CancelSubscriptionDialogProps) => {
   return (
     <AlertDialog 
@@ -72,29 +68,20 @@ const CancelSubscriptionDialog = ({
             Close
           </AlertDialogCancel>
           
-          {portalUrl ? (
-            <Button 
-              onClick={() => onOpenPortal(portalUrl)}
-              className="bg-primary hover:bg-primary/90 flex items-center gap-2"
-            >
-              Go to Stripe Portal <ExternalLink className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button 
-              onClick={onConfirm}
-              className="bg-primary hover:bg-primary/90 flex items-center gap-2"
-              disabled={isCancelling}
-            >
-              {isCancelling ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>Go to Stripe Portal <ExternalLink className="h-4 w-4" /></>
-              )}
-            </Button>
-          )}
+          <Button 
+            onClick={onConfirm}
+            className="bg-primary hover:bg-primary/90 flex items-center gap-2"
+            disabled={isCancelling}
+          >
+            {isCancelling ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Manage Subscription"
+            )}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
