@@ -36,7 +36,17 @@ export const useSubscriptionCancellation = (
 
         if (error) {
           console.error("Error invoking edge function:", error);
-          throw new Error(error.message);
+          throw new Error(error.message || 'Error invoking edge function');
+        }
+
+        if (!data) {
+          console.error("No data returned from edge function");
+          throw new Error('No data returned from edge function');
+        }
+
+        if (data.error) {
+          console.error("Error returned from edge function:", data.error);
+          throw new Error(data.error || 'Error from edge function');
         }
 
         if (data && data.url) {
