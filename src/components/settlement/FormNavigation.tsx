@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import debounce from "lodash.debounce";
 
@@ -47,11 +47,8 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         
         if (!success) {
           console.log("Validation failed, showing toast");
-          toast({
-            variant: "destructive",
-            title: "Please Check Form",
-            description: "Please fill in all required fields correctly.",
-          });
+          // Toast is now handled in the useSettlementNavigation hook
+          
           // Reset button only if validation failed
           if (!isLoading && !isSubmitting) {
             setButtonText("Next Step");
@@ -111,6 +108,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
             disabled={isValidating || isLoading || isSubmitting}
             type="button"
           >
+            {isValidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {buttonText} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>

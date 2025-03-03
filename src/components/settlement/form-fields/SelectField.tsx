@@ -1,5 +1,6 @@
 
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface SelectFieldProps {
   label: string;
@@ -27,7 +28,10 @@ export const SelectField = ({
       </Label>
       <select
         id={label.replace(/\s+/g, '-').toLowerCase()}
-        className={`form-input w-full rounded-md border ${error ? 'border-red-500' : 'border-neutral-200'} p-2`}
+        className={cn(
+          "form-input w-full rounded-md border px-3 py-2 text-sm",
+          error ? 'border-red-500 focus:ring-red-500' : 'border-neutral-200'
+        )}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >

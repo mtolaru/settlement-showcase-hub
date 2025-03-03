@@ -1,7 +1,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface DollarInputFieldProps {
   label: string;
@@ -35,11 +35,14 @@ export const DollarInputField = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`pl-7 ${error ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+          className={cn(
+            "pl-7",
+            error ? 'border-red-500 focus-visible:ring-red-500' : ''
+          )}
         />
       </div>
       {description && !error && (
-        <p className="text-sm text-neutral-500">{description}</p>
+        <p className="text-sm text-neutral-500 mt-1">{description}</p>
       )}
       {error && (
         <p className="text-sm font-medium text-red-500 mt-1">{error}</p>

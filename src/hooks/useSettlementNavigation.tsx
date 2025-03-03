@@ -29,11 +29,21 @@ export const useSettlementNavigation = ({
     console.log("handleNextStep called for step:", currentStep);
     
     if (currentStep === 1) {
+      // For step 1, validate the form data
+      // This will internally set the errors
       const validationResult = validateStep1(formData);
       console.log("Step 1 validation result:", validationResult, "Form data:", formData);
       
       if (!validationResult) {
         console.log("Validation failed, staying on step 1");
+        
+        // Show a toast with error message
+        toast({
+          variant: "destructive",
+          title: "Please Check Form",
+          description: "Please fill in all required fields correctly.",
+        });
+        
         return false;
       }
       
@@ -47,9 +57,11 @@ export const useSettlementNavigation = ({
       let validationPassed = false;
       
       if (isAuthenticated && user?.email) {
+        // For authenticated users, we can skip email validation
         validationPassed = validateStep2(formData, true);
         console.log("Step 2 validation (authenticated):", validationPassed);
       } else {
+        // For non-authenticated users, check if the email already exists
         if (formData.attorneyEmail) {
           const emailExists = await verifyEmail(formData.attorneyEmail);
           if (emailExists) {
@@ -68,12 +80,21 @@ export const useSettlementNavigation = ({
           }
         }
         
+        // Validate the rest of the form
         validationPassed = validateStep2(formData, false);
         console.log("Step 2 validation (unauthenticated):", validationPassed);
       }
       
       if (!validationPassed) {
         console.log("Validation failed, staying on step 2");
+        
+        // Show a toast with error message
+        toast({
+          variant: "destructive",
+          title: "Please Check Form",
+          description: "Please fill in all required fields correctly.",
+        });
+        
         return false;
       }
       

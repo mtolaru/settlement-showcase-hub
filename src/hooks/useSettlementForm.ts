@@ -84,7 +84,7 @@ export const useSettlementForm = () => {
 
     console.log("Validation errors:", newErrors, "isValid:", isValid);
     
-    // Set the errors - this is the important part
+    // Set the errors and return validation result
     setErrors(newErrors);
     return isValid;
   };
@@ -138,7 +138,7 @@ export const useSettlementForm = () => {
 
     console.log("Step 2 validation errors:", newErrors, "isValid:", isValid);
     
-    // Set the errors
+    // Set the errors and return validation result
     setErrors(newErrors);
     return isValid;
   };
