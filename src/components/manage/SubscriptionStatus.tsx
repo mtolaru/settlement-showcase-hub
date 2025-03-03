@@ -43,8 +43,15 @@ const SubscriptionStatus = ({
     return <NoActiveSubscription />;
   }
 
-  // Check if subscription is already canceled but still active
+  // Determine if subscription is canceled but still active (ends_at is in the future)
   const isCanceled = subscription?.ends_at && new Date(subscription.ends_at) > new Date();
+  
+  // Check if the subscription explicitly has a canceled status
+  const isExplicitlyCanceled = subscription?.status === 'canceled' || 
+                               subscription?.cancel_at_period_end === true;
+  
+  // Use either explicit cancellation or ends_at to determine if subscription is canceled
+  const isSubscriptionCanceled = isCanceled || isExplicitlyCanceled;
 
   // Handle dialog close
   const handleDialogOpenChange = (open: boolean) => {
@@ -73,13 +80,13 @@ const SubscriptionStatus = ({
     <div className="space-y-6">
       <SubscriptionCard 
         subscription={subscription} 
-        isCanceled={isCanceled}
+        isCanceled={isSubscriptionCanceled}
         isVerified={!!isVerified}
       />
 
       <SubscriptionDetails 
         subscription={subscription}
-        isCanceled={isCanceled}
+        isCanceled={isSubscriptionCanceled}
         isCancelling={isCancelling}
         isStripeManaged={isStripeManaged}
         onCancelClick={handleManageSubscriptionClick}
@@ -90,6 +97,7 @@ const SubscriptionStatus = ({
         isCancelling={isCancelling}
         cancelError={cancelError}
         isStripeManaged={isStripeManaged}
+        isCanceled={isSubscriptionCanceled}
         onCancel={() => setShowCancelDialog(false)}
         onConfirm={handleCancelSubscription}
         onOpenChange={handleDialogOpenChange}

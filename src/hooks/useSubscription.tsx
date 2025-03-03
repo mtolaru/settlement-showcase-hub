@@ -21,6 +21,8 @@ export interface Subscription {
   user_id: string | null;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
+  status?: string; // Added status field
+  cancel_at_period_end?: boolean; // Added cancellation indicator
 }
 
 export const useSubscription = (user: User | null) => {
@@ -44,7 +46,7 @@ export const useSubscription = (user: User | null) => {
         console.log('Checking Stripe for subscription via edge function');
         try {
           const { data: stripeData, error: stripeError } = await supabase.functions.invoke('verify-subscription', {
-            body: { userId: user.id, email: user.email }
+            body: { userId: user.id, email: user.email, includeDetails: true }
           });
           
           if (stripeError) {

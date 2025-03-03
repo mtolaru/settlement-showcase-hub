@@ -15,22 +15,27 @@ const SubscriptionCard = ({ subscription, isCanceled, isVerified }: Subscription
   };
 
   return (
-    <div className="flex items-start gap-4 p-4 bg-primary-50 rounded-lg">
-      <div className="rounded-full bg-primary-100 p-3">
-        <CreditCard className="h-6 w-6 text-primary-600" />
+    <div className={`flex items-start gap-4 p-4 ${isCanceled ? 'bg-amber-50' : 'bg-primary-50'} rounded-lg`}>
+      <div className={`rounded-full ${isCanceled ? 'bg-amber-100' : 'bg-primary-100'} p-3`}>
+        <CreditCard className={`h-6 w-6 ${isCanceled ? 'text-amber-600' : 'text-primary-600'}`} />
       </div>
       <div className="flex-1">
-        <h3 className="font-semibold text-primary-900">
-          {isCanceled ? 'Subscription Ending Soon' : 'Active Subscription'}
+        <h3 className={`font-semibold ${isCanceled ? 'text-amber-900' : 'text-primary-900'}`}>
+          {isCanceled ? 'Subscription Canceled' : 'Active Subscription'}
         </h3>
-        <p className="text-primary-700 mt-1">
+        <p className={`${isCanceled ? 'text-amber-700' : 'text-primary-700'} mt-1`}>
           {isCanceled 
-            ? `Your subscription will end on ${formatDate(subscription.ends_at!)}`
+            ? `Your subscription will end on ${formatDate(subscription.ends_at!)}. After this date, your settlements will be delisted.`
             : subscription.ends_at 
               ? `Your subscription is active until ${formatDate(subscription.ends_at)}` 
               : 'Your subscription is active and will renew automatically'}
         </p>
-        <ul className="mt-4 space-y-2 text-primary-700">
+        {isCanceled && (
+          <div className="mt-2 text-amber-800 font-medium">
+            You can reactivate your subscription before the end date to maintain access to your settlements.
+          </div>
+        )}
+        <ul className={`mt-4 space-y-2 ${isCanceled ? 'text-amber-700' : 'text-primary-700'}`}>
           <li className="flex items-center gap-2">
             ✓ Unlimited settlement submissions
           </li>
