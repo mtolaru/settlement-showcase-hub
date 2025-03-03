@@ -17,23 +17,15 @@ port = 54324
 
 [auth]
 enabled = true
-port = 54325
 
 [storage]
 enabled = true
-port = 54326
 
 [realtime]
 enabled = true
-port = 54327
 
 [analytics]
 enabled = true
-port = 54328
-
-[vector]
-enabled = true
-port = 54329
 
 [functions.cancel-subscription]
 verify_jwt = false
