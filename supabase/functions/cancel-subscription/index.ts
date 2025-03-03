@@ -1,160 +1,195 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import Stripe from 'https://esm.sh/stripe@12.4.0?target=deno';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { stripe } from '../_shared/stripe.ts'
 
-// Supabase client setup
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Stripe setup
-const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2023-10-16',
-});
-
-// CORS headers for browser requests
+// Define CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+}
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+export const handler = async (req: Request) => {
+  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { subscriptionId } = await req.json();
-    console.log(`Received request to cancel subscription: ${subscriptionId}`);
+    const { subscriptionId, userId } = await req.json()
+    
+    console.log(`Cancellation request received for subscription: ${subscriptionId}`)
+    
+    if (!subscriptionId) {
+      throw new Error('Subscription ID is required')
+    }
 
-    // Check if this is a virtual subscription (starts with 'virtual-')
+    // Check if this is a virtual subscription (they start with "virtual-")
     if (subscriptionId.startsWith('virtual-')) {
-      console.log('Handling virtual subscription cancellation');
-      const userId = subscriptionId.replace('virtual-', '');
+      console.log('Cancelling virtual subscription')
       
-      // For virtual subscriptions, set end date to now
-      const endDate = new Date();
-      const { data, error } = await supabase
+      // For virtual subscriptions, we just need to update our database
+      const { error } = await supabase
         .from('subscriptions')
         .update({ 
           is_active: false,
-          ends_at: endDate.toISOString()
+          ends_at: new Date().toISOString()
         })
-        .eq('user_id', userId);
-      
+        .eq('user_id', userId)
+        
       if (error) {
-        console.error('Error updating virtual subscription:', error);
-        return new Response(
-          JSON.stringify({ error: 'Failed to cancel virtual subscription' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
+        throw new Error(`Failed to cancel virtual subscription: ${error.message}`)
       }
-
+      
+      return new Response(
+        JSON.stringify({ success: true, canceled: true }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+    
+    // Check if this is a Stripe subscription ID (directly in Stripe)
+    if (subscriptionId.startsWith('sub_')) {
+      console.log('Cancelling Stripe subscription:', subscriptionId)
+      
+      // For Stripe subscriptions, we need to cancel in Stripe
+      const canceled = await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      })
+      
+      if (canceled) {
+        // Also update our database
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({ 
+            ends_at: new Date(canceled.cancel_at * 1000).toISOString()
+          })
+          .eq('payment_id', subscriptionId)
+          
+        if (error) {
+          console.error('Error updating subscription in database:', error)
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
-          message: 'Virtual subscription canceled',
-          canceled_immediately: true,
-          active_until: endDate.toISOString()
+          success: true, 
+          canceled: true,
+          cancelAt: canceled.cancel_at ? new Date(canceled.cancel_at * 1000).toISOString() : null
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
-
-    // Check if this is a Stripe customer ID (starts with 'stripe-')
-    if (subscriptionId.startsWith('stripe-')) {
-      console.log('Handling direct Stripe customer redirection');
-      const customerId = subscriptionId.replace('stripe-', '');
+    
+    // If it's a UUID from our database
+    if (subscriptionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      // Fetch the subscription to get details
+      const { data: subscription, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('id', subscriptionId)
+        .single()
+        
+      if (error || !subscription) {
+        throw new Error(`Subscription not found: ${error?.message || 'No data'}`)
+      }
       
-      // Create Stripe customer portal session
+      // If it has a Stripe payment_id, cancel in Stripe
+      if (subscription.payment_id && subscription.payment_id.startsWith('sub_')) {
+        console.log('Cancelling Stripe subscription from database record:', subscription.payment_id)
+        
+        const canceled = await stripe.subscriptions.update(subscription.payment_id, {
+          cancel_at_period_end: true,
+        })
+        
+        // Update our database
+        if (canceled) {
+          const { error: updateError } = await supabase
+            .from('subscriptions')
+            .update({ 
+              ends_at: new Date(canceled.cancel_at * 1000).toISOString()
+            })
+            .eq('id', subscriptionId)
+            
+          if (updateError) {
+            console.error('Error updating subscription in database:', updateError)
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            canceled: true,
+            cancelAt: canceled.cancel_at ? new Date(canceled.cancel_at * 1000).toISOString() : null
+          }),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      } else {
+        // No Stripe ID, just update our database
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({ 
+            is_active: false,
+            ends_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId)
+          
+        if (updateError) {
+          throw new Error(`Failed to cancel subscription: ${updateError.message}`)
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true, canceled: true }),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+    }
+    
+    // If it's a stripe-XXX formatted ID (stripe customer portal)
+    if (subscriptionId.startsWith('stripe-')) {
+      const customerId = subscriptionId.replace('stripe-', '')
+      
+      // For Stripe Customer IDs, create a portal session
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${new URL(req.url).origin}/manage`,
-      });
-
-      console.log('Created Stripe portal session:', session.url);
-      
-      return new Response(
-        JSON.stringify({ 
-          redirectUrl: session.url
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    // Handle regular subscription cancellation (if it's a UUID format subscription ID)
-    // First check if it exists in our database
-    const { data: subscription, error: fetchError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('id', subscriptionId)
-      .single();
-
-    if (fetchError || !subscription) {
-      console.error('Error fetching subscription:', fetchError);
-      return new Response(
-        JSON.stringify({ error: 'Subscription not found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-      );
-    }
-
-    console.log('Found subscription:', subscription);
-
-    // If there's a Stripe customer ID, redirect to Stripe portal
-    if (subscription.customer_id) {
-      console.log('Redirecting to Stripe portal for customer:', subscription.customer_id);
-      
-      const session = await stripe.billingPortal.sessions.create({
-        customer: subscription.customer_id,
-        return_url: `${new URL(req.url).origin}/manage`,
-      });
-
-      console.log('Created Stripe portal session:', session.url);
-      
-      return new Response(
-        JSON.stringify({ 
-          redirectUrl: session.url
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    // For database-only subscriptions without Stripe info
-    // Set end date to current date (immediate cancellation)
-    const endDate = new Date();
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({ 
-        is_active: false,
-        ends_at: endDate.toISOString() 
+        return_url: `${req.headers.get('origin')}/settlements`,
       })
-      .eq('id', subscriptionId);
-
-    if (updateError) {
-      console.error('Error updating subscription:', updateError);
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to cancel subscription' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+        JSON.stringify({ success: true, portalUrl: session.url }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
-
-    return new Response(
-      JSON.stringify({ 
-        message: 'Subscription canceled',
-        canceled_immediately: true,
-        active_until: endDate.toISOString()
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-
+    
+    // If we get here, we don't know how to handle this ID format
+    throw new Error(`Unknown subscription ID format: ${subscriptionId}`)
+    
   } catch (error) {
-    console.error('Error in cancel-subscription function:', error);
+    console.error('Cancellation error:', error)
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'An unknown error occurred' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+      JSON.stringify({ error: error.message || 'Failed to cancel subscription' }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
   }
-});
+}

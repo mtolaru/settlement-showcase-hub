@@ -9,7 +9,7 @@ import SettlementsSection from "@/components/manage/SettlementsSection";
 
 const ManageSettlements = () => {
   const { checkAuth, signOut, user } = useAuth();
-  const { subscription, isLoading: isLoadingSubscription, refreshSubscription } = useSubscription(user);
+  const { subscription, isLoading: isLoadingSubscription, isVerified, refreshSubscription } = useSubscription(user);
   const { settlements, isLoading: isLoadingSettlements, refreshSettlements } = useSettlements(user);
 
   useEffect(() => {
@@ -24,6 +24,7 @@ const ManageSettlements = () => {
         <SubscriptionSection 
           subscription={subscription} 
           isLoading={isLoadingSubscription}
+          isVerified={isVerified}
           refreshSubscription={refreshSubscription}
         />
 

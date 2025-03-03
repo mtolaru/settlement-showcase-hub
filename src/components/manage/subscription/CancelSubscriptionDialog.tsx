@@ -1,5 +1,5 @@
 
-import { Loader2 } from "lucide-react";
+import React from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,17 +10,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 
 interface CancelSubscriptionDialogProps {
   isOpen: boolean;
   isCancelling: boolean;
   cancelError: string | null;
-  portalUrl?: string | null;
+  portalUrl: string | null;
+  isStripeManaged?: boolean;
   onCancel: () => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
-  onOpenPortal?: (url: string) => void;
+  onOpenPortal: () => void;
 }
 
 const CancelSubscriptionDialog = ({
@@ -28,71 +28,49 @@ const CancelSubscriptionDialog = ({
   isCancelling,
   cancelError,
   portalUrl,
+  isStripeManaged = false,
   onCancel,
   onConfirm,
   onOpenChange,
   onOpenPortal
 }: CancelSubscriptionDialogProps) => {
-  console.log('CancelSubscriptionDialog rendering with portalUrl:', portalUrl);
-  
   return (
-    <AlertDialog 
-      open={isOpen} 
-      onOpenChange={onOpenChange}
-    >
-      <AlertDialogContent className="bg-white">
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {portalUrl ? "Open Stripe Portal" : "Cancel your subscription?"}
+            {isStripeManaged ? "Manage Your Subscription" : "Cancel Subscription"}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {portalUrl ? (
-              <>
-                Please use the Stripe customer portal to manage your subscription. 
-                If your popup blocker prevented the portal from opening automatically, 
-                click the button below.
-              </>
+            {isStripeManaged ? (
+              "You'll be redirected to the Stripe Customer Portal where you can manage your subscription settings, including cancellation."
             ) : (
-              <>
-                Your subscription will remain active until the end of your current billing period. 
-                After that, your settlements will be delisted from search results and other lawyers will rank above you in search results.
-              </>
+              "Are you sure you want to cancel your subscription? You'll lose access to premium features at the end of your current billing period."
             )}
             {cancelError && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
-                {cancelError}
+              <div className="mt-2 text-red-600 text-sm font-medium">
+                Error: {cancelError}
               </div>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>
-            {portalUrl ? "Close" : "Keep Subscription"}
+          <AlertDialogCancel onClick={onCancel} disabled={isCancelling}>
+            Close
           </AlertDialogCancel>
-          
-          {portalUrl && onOpenPortal ? (
-            <Button 
-              onClick={() => onOpenPortal(portalUrl)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              Open Stripe Portal
-            </Button>
-          ) : (
-            <AlertDialogAction 
-              onClick={onConfirm}
-              className="bg-red-500 hover:bg-red-600"
-              disabled={isCancelling}
-            >
-              {isCancelling ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Cancel Subscription"
-              )}
-            </AlertDialogAction>
-          )}
+          <AlertDialogAction
+            onClick={isStripeManaged ? onOpenPortal : onConfirm}
+            disabled={isCancelling}
+            className={isStripeManaged ? "bg-primary-600" : "bg-red-600"}
+          >
+            {isCancelling ? (
+              "Processing..."
+            ) : isStripeManaged ? (
+              "Go to Customer Portal"
+            ) : (
+              "Yes, Cancel Subscription"
+            )}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

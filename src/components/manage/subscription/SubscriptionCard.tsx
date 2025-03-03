@@ -1,14 +1,15 @@
 
 import { format } from "date-fns";
-import { CreditCard } from "lucide-react";
+import { CreditCard, CheckCircle } from "lucide-react";
 import { Subscription } from "@/hooks/useSubscription";
 
 interface SubscriptionCardProps {
   subscription: Subscription;
   isCanceled: boolean;
+  isVerified?: boolean;
 }
 
-const SubscriptionCard = ({ subscription, isCanceled }: SubscriptionCardProps) => {
+const SubscriptionCard = ({ subscription, isCanceled, isVerified = false }: SubscriptionCardProps) => {
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
   };
@@ -19,9 +20,17 @@ const SubscriptionCard = ({ subscription, isCanceled }: SubscriptionCardProps) =
         <CreditCard className="h-6 w-6 text-primary-600" />
       </div>
       <div className="flex-1">
-        <h3 className="font-semibold text-primary-900">
-          {isCanceled ? 'Subscription Ending Soon' : 'Active Subscription'}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-primary-900">
+            {isCanceled ? 'Subscription Ending Soon' : 'Active Subscription'}
+          </h3>
+          {isVerified && (
+            <span className="flex items-center text-green-600 text-xs">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Verified
+            </span>
+          )}
+        </div>
         <p className="text-primary-700 mt-1">
           {isCanceled 
             ? `Your subscription will end on ${formatDate(subscription.ends_at!)}`

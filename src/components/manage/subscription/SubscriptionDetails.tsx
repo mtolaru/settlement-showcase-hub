@@ -7,6 +7,7 @@ interface SubscriptionDetailsProps {
   subscription: Subscription;
   isCanceled: boolean;
   isCancelling: boolean;
+  isStripeManaged?: boolean;
   onCancelClick: () => void;
 }
 
@@ -14,6 +15,7 @@ const SubscriptionDetails = ({
   subscription, 
   isCanceled, 
   isCancelling, 
+  isStripeManaged = false,
   onCancelClick 
 }: SubscriptionDetailsProps) => {
   const formatDate = (dateString: string) => {
@@ -31,7 +33,7 @@ const SubscriptionDetails = ({
             onClick={onCancelClick}
             disabled={isCancelling}
           >
-            {isCancelling ? "Processing..." : "Cancel Subscription"}
+            {isCancelling ? "Processing..." : isStripeManaged ? "Manage Subscription" : "Cancel Subscription"}
           </Button>
         )}
       </div>
@@ -56,6 +58,13 @@ const SubscriptionDetails = ({
           <div>
             <dt className="text-neutral-600">Customer ID</dt>
             <dd className="font-medium">{subscription.customer_id}</dd>
+          </div>
+        )}
+        {isStripeManaged && (
+          <div className="col-span-2 mt-2">
+            <p className="text-sm text-primary-700">
+              This subscription is managed through Stripe. You'll be redirected to the Stripe portal to manage your subscription.
+            </p>
           </div>
         )}
       </dl>
