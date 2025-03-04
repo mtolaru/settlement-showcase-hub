@@ -5,8 +5,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-
-// Import the AdminImport component
 import AdminImport from "./pages/AdminImport";
 
 function App() {
