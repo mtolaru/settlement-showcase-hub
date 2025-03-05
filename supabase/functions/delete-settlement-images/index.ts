@@ -19,9 +19,23 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // First, list all files in the bucket
+    // First, list all files in the processed_images bucket
+    const bucketName = 'processed_images';
+    
+    // Check if bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    
+    if (!buckets?.find(b => b.name === bucketName)) {
+      console.log(`Bucket '${bucketName}' doesn't exist yet, nothing to delete`);
+      return new Response(
+        JSON.stringify({ message: 'No bucket found to delete images from' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+    
+    // List all files in the bucket (no folder specified to get everything)
     const { data: files, error: listError } = await supabase.storage
-      .from('attorney-photos')
+      .from(bucketName)
       .list()
 
     if (listError) {
@@ -44,7 +58,7 @@ serve(async (req) => {
 
     // Delete the files
     const { error: deleteError } = await supabase.storage
-      .from('attorney-photos')
+      .from(bucketName)
       .remove(filePaths)
 
     if (deleteError) {
@@ -56,7 +70,7 @@ serve(async (req) => {
 
     // Now list the processed_images directory if it exists
     const { data: processedFiles, error: processedListError } = await supabase.storage
-      .from('attorney-photos')
+      .from(bucketName)
       .list('processed_images')
 
     if (!processedListError && processedFiles && processedFiles.length > 0) {
@@ -66,7 +80,7 @@ serve(async (req) => {
 
       // Delete the processed files
       const { error: processedDeleteError } = await supabase.storage
-        .from('attorney-photos')
+        .from(bucketName)
         .remove(processedFilePaths)
 
       if (processedDeleteError) {
