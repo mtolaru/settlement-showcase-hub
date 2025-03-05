@@ -22,41 +22,55 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
       return photoUrl;
     }
     
-    // Compare path patterns between created and imported settlements
+    // Handle special case: if the path starts with processed_images/
+    // The correct structure should be processed_images/filename.ext
+    // But sometimes we might have processed_images/processed_images/filename.ext
+    // Let's normalize this
+    let normalizedPath = photoUrl;
     
-    // First try: Get just the filename (handles both cases with or without processed_images prefix)
-    let filename = photoUrl;
-    
-    // Remove any path prefix (processed_images/, etc)
-    if (photoUrl.includes('/')) {
-      const parts = photoUrl.split('/');
-      filename = parts[parts.length - 1];
-      console.log(`Extracted filename from path: ${filename}`);
+    // Check if path has duplicate "processed_images/" prefix
+    if (photoUrl.startsWith('processed_images/processed_images/')) {
+      normalizedPath = photoUrl.replace('processed_images/processed_images/', 'processed_images/');
+      console.log(`Normalized duplicated path: ${normalizedPath}`);
     }
     
-    // Check if the filename has a proper extension, if not, add .jpg
-    if (!filename.includes('.')) {
-      filename = `${filename}.jpg`;
-      console.log(`Added extension to filename: ${filename}`);
+    // Get the bucket and path parts
+    let bucket = 'processed_images';
+    let path = normalizedPath;
+    
+    // If the path starts with the bucket name, extract just the path part
+    if (normalizedPath.startsWith(`${bucket}/`)) {
+      path = normalizedPath.substring(bucket.length + 1);
+      console.log(`Extracted path from bucket prefix: ${path}`);
     }
     
-    // Try getting URL with the filename directly from processed_images bucket
+    // Use Supabase's getPublicUrl to get the full URL for the file
     const { data } = supabase.storage
-      .from('processed_images')
-      .getPublicUrl(filename);
+      .from(bucket)
+      .getPublicUrl(path);
     
     if (data?.publicUrl) {
-      console.log(`Generated public URL using filename: ${data.publicUrl}`);
+      console.log(`Generated public URL: ${data.publicUrl}`);
       return data.publicUrl;
     }
     
-    // Second try: If that doesn't work and we have a settlement ID, try a pattern with settlement ID
+    // If that doesn't work, try with the original path
+    const originalData = supabase.storage
+      .from(bucket)
+      .getPublicUrl(normalizedPath);
+      
+    if (originalData.data?.publicUrl) {
+      console.log(`Generated public URL using original path: ${originalData.data.publicUrl}`);
+      return originalData.data.publicUrl;
+    }
+    
+    // If we still can't get a URL and we have a settlement ID, try a pattern with settlement ID
     if (settlementId) {
       const alternativeFilename = `settlement_${settlementId}.jpg`;
       console.log(`Trying alternative filename pattern: ${alternativeFilename}`);
       
       const altData = supabase.storage
-        .from('processed_images')
+        .from(bucket)
         .getPublicUrl(alternativeFilename);
         
       if (altData.data?.publicUrl) {
@@ -64,33 +78,6 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
         return altData.data.publicUrl;
       }
     }
-    
-    // Third try: Try with full 'processed_images/' prefix
-    let prefixedPath = photoUrl;
-    if (!prefixedPath.startsWith('processed_images/')) {
-      prefixedPath = `processed_images/${prefixedPath}`;
-    }
-    
-    console.log(`Trying with prefixed path: ${prefixedPath}`);
-    const prefixedData = supabase.storage
-      .from('processed_images')
-      .getPublicUrl(prefixedPath);
-      
-    if (prefixedData.data?.publicUrl) {
-      console.log(`Generated public URL using prefixed path: ${prefixedData.data.publicUrl}`);
-      return prefixedData.data.publicUrl;
-    }
-    
-    // Last attempt: Try the original path as provided
-    console.log(`Falling back to original path: ${photoUrl}`);
-    const originalData = supabase.storage
-      .from('processed_images')
-      .getPublicUrl(photoUrl);
-      
-    if (originalData.data?.publicUrl) {
-      console.log(`Generated public URL using original path: ${originalData.data.publicUrl}`);
-      return originalData.data.publicUrl;
-    } 
     
     console.log(`Could not generate a valid URL, using placeholder`);
     return "/placeholder.svg";
