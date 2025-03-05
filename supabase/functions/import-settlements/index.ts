@@ -32,9 +32,11 @@ serve(async (req) => {
     const requiredFields = [
       'amount', 'attorney', 'firm', 'location', 'type',
       'initial_offer', 'policy_limit', 'medical_expenses',
-      'settlement_phase', 'settlement_date', 'case_description',
-      'firm_website', 'photo_url'
+      'settlement_phase', 'settlement_date', 'case_description'
     ];
+    const optionalFields = ['firm_website', 'photo_url', 'attorney_email'];
+
+    console.log("Sample settlement to import:", settlements[0]);
 
     // Process photo URLs to make sure they have the right path
     const processedSettlements = settlements.map((settlement: any) => {
@@ -51,6 +53,20 @@ serve(async (req) => {
           );
         }
       }
+      
+      // Ensure settlement_date is in the correct format
+      if (settlement.settlement_date && typeof settlement.settlement_date === 'string') {
+        // Try to parse the date to ensure it's valid
+        try {
+          const date = new Date(settlement.settlement_date);
+          if (!isNaN(date.getTime())) {
+            settlement.settlement_date = date.toISOString();
+          }
+        } catch (e) {
+          console.error(`Invalid date format for settlement: ${settlement.settlement_date}`);
+        }
+      }
+      
       return settlement;
     });
 

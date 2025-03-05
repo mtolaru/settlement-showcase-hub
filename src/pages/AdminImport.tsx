@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Trash2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const AdminImport = () => {
   const { toast } = useToast();
@@ -16,6 +18,7 @@ const AdminImport = () => {
   const [uploadPhase, setUploadPhase] = useState<string>('');
   const [imagesUploaded, setImagesUploaded] = useState<{name: string, url: string}[]>([]);
   const [tab, setTab] = useState('data');
+  const [isDeletingImages, setIsDeletingImages] = useState(false);
 
   // Handle JSON file upload
   const onDropJson = useCallback(async (acceptedFiles: File[]) => {
@@ -122,6 +125,35 @@ const AdminImport = () => {
     }
   }, [toast]);
 
+  // Handle deleting all images
+  const handleDeleteAllImages = async () => {
+    if (isDeletingImages) return;
+    
+    try {
+      setIsDeletingImages(true);
+      setUploadPhase('Deleting all images');
+      
+      const { data, error } = await supabase.functions.invoke('delete-settlement-images');
+      
+      if (error) throw error;
+      
+      setImagesUploaded([]);
+      toast({
+        title: "Images Deleted",
+        description: data.message || "All images have been deleted successfully",
+      });
+    } catch (error: any) {
+      console.error('Error deleting images:', error);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete images",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingImages(false);
+    }
+  };
+
   const { getRootProps: getJsonRootProps, getInputProps: getJsonInputProps } = useDropzone({
     onDrop: onDropJson,
     accept: {
@@ -199,9 +231,28 @@ const AdminImport = () => {
         <TabsContent value="images">
           <Card>
             <CardHeader>
-              <CardTitle>Upload Attorney Images</CardTitle>
+              <CardTitle className="flex justify-between items-center">
+                <span>Upload Attorney Images</span>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleDeleteAllImages} 
+                  disabled={isDeletingImages}
+                  className="flex items-center gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeletingImages ? 'Deleting...' : 'Delete All Images'}
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent>
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Images will be stored in the <strong>processed_images</strong> folder automatically.
+                </AlertDescription>
+              </Alert>
+              
               <div
                 {...getImagesRootProps()}
                 className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50"
