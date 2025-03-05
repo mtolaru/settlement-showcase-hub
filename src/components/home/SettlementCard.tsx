@@ -1,9 +1,10 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ShareButton } from "@/components/sharing/ShareButton";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 
 interface Settlement {
   id: number;
@@ -24,6 +25,28 @@ interface SettlementCardProps {
 
 const SettlementCard = ({ settlement }: SettlementCardProps) => {
   const navigate = useNavigate();
+  const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
+
+  useEffect(() => {
+    // Get the proper image URL
+    if (settlement.photo_url) {
+      // If it's already a full URL, use it directly
+      if (settlement.photo_url.startsWith('http')) {
+        setImageUrl(settlement.photo_url);
+      } else {
+        // Otherwise, get the public URL from Supabase
+        const path = settlement.photo_url.replace('processed_images/', '');
+        const { data } = supabase.storage
+          .from('processed_images')
+          .getPublicUrl(path);
+        
+        if (data?.publicUrl) {
+          console.log(`Generated public URL for ${settlement.id}:`, data.publicUrl);
+          setImageUrl(data.publicUrl);
+        }
+      }
+    }
+  }, [settlement.photo_url]);
 
   const handleSettlementClick = (id: number) => {
     navigate(`/settlements/${id}`);
@@ -38,9 +61,13 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
     >
       <div className="relative h-48 bg-neutral-100">
         <img
-          src={settlement.photo_url || "/placeholder.svg"}
+          src={imageUrl}
           alt={`${settlement.type} case`}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            console.error(`Error loading image for settlement ${settlement.id}:`, e);
+            (e.target as HTMLImageElement).src = "/placeholder.svg";
+          }}
         />
         <div className="absolute top-4 left-4">
           <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">

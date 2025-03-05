@@ -1,10 +1,10 @@
-
 import { motion } from "framer-motion";
 import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Settlement } from "@/types/settlement";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SettlementGridProps {
   settlements: Settlement[];
@@ -49,24 +49,41 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
     }
   };
 
+  const getPublicImageUrl = (path: string | undefined) => {
+    if (!path) return "/placeholder.svg";
+    
+    if (path.startsWith('http')) return path;
+    
+    const { data } = supabase.storage
+      .from('processed_images')
+      .getPublicUrl(path.replace('processed_images/', ''));
+    
+    return data?.publicUrl || "/placeholder.svg";
+  };
+
   const handleCardClick = (id: number) => {
     window.location.href = `/settlements/${id}`;
   };
 
-  // Add debug logging to inspect settlement data
   console.log('Settlement grid items:', settlements);
+  settlements.forEach((settlement, index) => {
+    console.log(`Settlement ${index} photo_url:`, settlement.photo_url);
+  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {settlements.map((settlement, index) => {
-        // Log individual settlement for debugging
         console.log(`Settlement ${index} details:`, {
           id: settlement.id,
           amount: settlement.amount,
           initial_offer: settlement.initial_offer,
           policy_limit: settlement.policy_limit,
-          medical_expenses: settlement.medical_expenses
+          medical_expenses: settlement.medical_expenses,
+          photo_url: settlement.photo_url
         });
+        
+        const imageUrl = getPublicImageUrl(settlement.photo_url);
+        console.log(`Generated image URL for settlement ${settlement.id}:`, imageUrl);
         
         return (
           <motion.div
@@ -78,12 +95,15 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
             onClick={() => handleCardClick(settlement.id)}
           >
             <div className="relative">
-              {/* Photo and type banner */}
               <div className="relative h-48 bg-neutral-100">
                 <img
-                  src={settlement.photo_url || "/placeholder.svg"}
+                  src={imageUrl}
                   alt={`${settlement.type} case`}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error(`Error loading image for settlement ${settlement.id}:`, e);
+                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                  }}
                 />
                 <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
                   <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
@@ -97,9 +117,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                 </div>
               </div>
               
-              {/* Card content */}
               <div className="p-6">
-                {/* Amount and share button row */}
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <span className="text-3xl font-bold text-primary-500">
@@ -110,7 +128,6 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                     </p>
                   </div>
                   
-                  {/* Share button - stop propagation to prevent card click */}
                   <div onClick={(e) => e.stopPropagation()}>
                     <ShareButton
                       url={`${window.location.origin}/settlements/${settlement.id}`}
@@ -122,7 +139,6 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                   </div>
                 </div>
                 
-                {/* Settlement details */}
                 <div className="space-y-2">
                   <h3 className="font-bold text-lg text-neutral-900">
                     {settlement.attorney}

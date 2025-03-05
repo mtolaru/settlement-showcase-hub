@@ -10,6 +10,7 @@ import type { Settlement } from "@/types/settlement";
 const SettlementDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [settlement, setSettlement] = useState<Settlement | null>(null);
+  const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -65,6 +66,22 @@ const SettlementDetail = () => {
 
         console.log('Processed settlement data:', processedData);
         setSettlement(processedData);
+        
+        if (processedData.photo_url) {
+          if (processedData.photo_url.startsWith('http')) {
+            setImageUrl(processedData.photo_url);
+          } else {
+            const path = processedData.photo_url.replace('processed_images/', '');
+            const { data: urlData } = supabase.storage
+              .from('processed_images')
+              .getPublicUrl(path);
+            
+            if (urlData?.publicUrl) {
+              console.log(`Generated public URL for detail page:`, urlData.publicUrl);
+              setImageUrl(urlData.publicUrl);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error:', error);
         toast({
@@ -184,9 +201,13 @@ const SettlementDetail = () => {
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="aspect-w-16 aspect-h-9 bg-neutral-100 relative" style={{ height: "400px" }}>
                 <img
-                  src={settlement.photo_url || "/placeholder.svg"}
+                  src={imageUrl}
                   alt={`${settlement.type} case`}
                   className="w-full h-full object-cover absolute inset-0"
+                  onError={(e) => {
+                    console.error(`Error loading image for detail page:`, e);
+                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                  }}
                 />
               </div>
               <div className="p-6">

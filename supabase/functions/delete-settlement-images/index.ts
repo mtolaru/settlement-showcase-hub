@@ -19,13 +19,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // First, list all files in the processed_images bucket
-    const bucketName = 'processed_images';
+    console.log("Starting to delete settlement images");
     
-    // Check if bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
+    // First, list all buckets to ensure the one we need exists
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    
+    if (bucketsError) {
+      console.error("Error listing buckets:", bucketsError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to list buckets', details: bucketsError }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+    
     console.log("Available buckets:", buckets?.map(b => b.name));
     
+    const bucketName = 'processed_images';
     if (!buckets?.find(b => b.name === bucketName)) {
       console.log(`Bucket '${bucketName}' doesn't exist yet, nothing to delete`);
       return new Response(
@@ -34,95 +43,130 @@ serve(async (req) => {
       )
     }
     
-    // List all files in the bucket (no folder specified to get everything)
-    const { data: files, error: listError } = await supabase.storage
+    // Get all files in the root directory of the bucket
+    const { data: rootFiles, error: rootListError } = await supabase.storage
       .from(bucketName)
-      .list()
+      .list();
 
-    console.log("Files in root:", files);
-
-    if (listError) {
-      console.error("Error listing files:", listError);
+    if (rootListError) {
+      console.error("Error listing files in root:", rootListError);
       return new Response(
-        JSON.stringify({ error: 'Failed to list files', details: listError }),
+        JSON.stringify({ error: 'Failed to list files in root', details: rootListError }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
 
-    let deletedFiles = [];
+    console.log(`Found ${rootFiles?.length || 0} files in the root directory:`, rootFiles);
     
-    // First try to delete files in the root of the bucket
-    if (files && files.length > 0) {
-      // Get file paths
-      const filePaths = files.map(file => file.name);
-      console.log("Files to delete from root:", filePaths);
-
-      // Delete the files
-      const { error: deleteError } = await supabase.storage
+    // Track all deleted files
+    let allDeletedFiles = [];
+    
+    // Delete files in the root directory if there are any
+    if (rootFiles && rootFiles.length > 0) {
+      const rootFilePaths = rootFiles.map(file => file.name);
+      console.log("Attempting to delete files from root:", rootFilePaths);
+      
+      const { data: deleteData, error: deleteError } = await supabase.storage
         .from(bucketName)
-        .remove(filePaths);
-
+        .remove(rootFilePaths);
+      
       if (deleteError) {
-        console.error("Error deleting root files:", deleteError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to delete files', details: deleteError }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        )
+        console.error("Error deleting files from root:", deleteError);
+      } else {
+        console.log("Successfully deleted files from root:", deleteData);
+        allDeletedFiles = [...rootFilePaths];
       }
-      
-      deletedFiles = [...filePaths];
     }
-
-    // Try to list files in subdirectories (if any)
-    const subfolders = ['processed_images', 'settlement_images'];
-    let subfoldersFiles = [];
     
-    for (const folder of subfolders) {
-      const { data: folderFiles, error: folderListError } = await supabase.storage
-        .from(bucketName)
-        .list(folder);
-      
-      if (!folderListError && folderFiles && folderFiles.length > 0) {
-        console.log(`Files in ${folder}:`, folderFiles);
+    // List of possible subdirectories to check
+    const possibleSubdirs = ['', 'processed_images', 'settlement_images'];
+    
+    // Check each subdirectory
+    for (const subdir of possibleSubdirs) {
+      try {
+        console.log(`Checking for files in subdirectory: '${subdir || 'root'}'`);
         
-        // Get file paths with the folder prefix
-        const folderFilePaths = folderFiles.map(file => `${folder}/${file.name}`);
-        console.log(`Files to delete from ${folder}:`, folderFilePaths);
-        
-        // Delete the files in this folder
-        const { error: folderDeleteError } = await supabase.storage
+        const { data: subdirFiles, error: subdirListError } = await supabase.storage
           .from(bucketName)
-          .remove(folderFilePaths);
+          .list(subdir);
         
-        if (folderDeleteError) {
-          console.error(`Error deleting files in ${folder}:`, folderDeleteError);
-          // Continue with other folders even if this one fails
-        } else {
-          subfoldersFiles = [...subfoldersFiles, ...folderFilePaths];
+        if (subdirListError) {
+          console.error(`Error listing files in '${subdir}':`, subdirListError);
+          continue;
         }
+        
+        console.log(`Found ${subdirFiles?.length || 0} files in '${subdir || 'root'}':`, subdirFiles);
+        
+        // If there are files, delete them
+        if (subdirFiles && subdirFiles.length > 0) {
+          // Generate full paths including the subdirectory
+          const subdirFilePaths = subdirFiles.map(file => 
+            subdir ? `${subdir}/${file.name}` : file.name
+          );
+          
+          console.log(`Attempting to delete ${subdirFilePaths.length} files from '${subdir || 'root'}':`, subdirFilePaths);
+          
+          const { data: subdirDeleteData, error: subdirDeleteError } = await supabase.storage
+            .from(bucketName)
+            .remove(subdirFilePaths);
+          
+          if (subdirDeleteError) {
+            console.error(`Error deleting files from '${subdir || 'root'}':`, subdirDeleteError);
+          } else {
+            console.log(`Successfully deleted files from '${subdir || 'root'}':`, subdirDeleteData);
+            allDeletedFiles = [...allDeletedFiles, ...subdirFilePaths];
+          }
+        }
+      } catch (e) {
+        console.error(`Error processing subdirectory '${subdir}':`, e);
       }
     }
-
-    // If we didn't delete any files, return a message
-    if (deletedFiles.length === 0 && subfoldersFiles.length === 0) {
+    
+    // Look for specific settlement image files by pattern
+    for (let i = 1; i <= 200; i++) {
+      try {
+        const filename = `settlement_${i}.jpg`;
+        console.log(`Checking if specific file exists: ${filename}`);
+        
+        // Try to delete this specific file
+        const { data: specificDeleteData, error: specificDeleteError } = await supabase.storage
+          .from(bucketName)
+          .remove([filename]);
+        
+        if (!specificDeleteError && specificDeleteData && specificDeleteData.length > 0) {
+          console.log(`Successfully deleted specific file: ${filename}`);
+          allDeletedFiles.push(filename);
+        }
+      } catch (e) {
+        // Ignore errors for specific files as they may not exist
+      }
+    }
+    
+    // Return the results
+    if (allDeletedFiles.length === 0) {
+      console.log("No files were deleted");
       return new Response(
-        JSON.stringify({ message: 'No files found to delete' }),
+        JSON.stringify({ 
+          message: 'No files found to delete', 
+          checkedLocations: [...possibleSubdirs.map(dir => dir || 'root directory')]
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
-
+    
+    console.log(`Successfully deleted ${allDeletedFiles.length} files:`, allDeletedFiles);
     return new Response(
       JSON.stringify({ 
         message: 'Files deleted successfully', 
-        deletedCount: deletedFiles.length + subfoldersFiles.length,
-        deletedFiles: [...deletedFiles, ...subfoldersFiles]
+        deletedCount: allDeletedFiles.length,
+        deletedFiles: allDeletedFiles
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error) {
     console.error('Deletion error:', error);
     return new Response(
-      JSON.stringify({ error: 'An unexpected error occurred', details: error.message }),
+      JSON.stringify({ error: 'An unexpected error occurred', details: error.message, stack: error.stack }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
