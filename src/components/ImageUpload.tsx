@@ -9,9 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 interface ImageUploadProps {
   onImageUpload: (url: string) => void;
   className?: string;
+  customFilename?: string;
 }
 
-const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
+const ImageUpload = ({ onImageUpload, className = "", customFilename }: ImageUploadProps) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
@@ -50,6 +51,11 @@ const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
       // Upload file using Edge Function
       const formData = new FormData();
       formData.append('file', file);
+      
+      // If customFilename is provided, add it to the form data
+      if (customFilename) {
+        formData.append('customFilename', customFilename);
+      }
 
       console.log('Uploading file to edge function...');
       const { data, error } = await supabase.functions.invoke('upload-settlement-image', {
@@ -80,7 +86,7 @@ const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
     } finally {
       setIsUploading(false);
     }
-  }, [onImageUpload, toast]);
+  }, [onImageUpload, toast, customFilename]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

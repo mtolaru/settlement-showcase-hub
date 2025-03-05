@@ -16,6 +16,7 @@ serve(async (req) => {
   try {
     const formData = await req.formData()
     const file = formData.get('file')
+    const customFilename = formData.get('customFilename')
 
     if (!file) {
       return new Response(
@@ -36,7 +37,18 @@ serve(async (req) => {
     const fileExt = sanitizedFileName.split('.').pop()
     
     // Create a unique filename with the processed_images folder
-    const filePath = `processed_images/${crypto.randomUUID()}.${fileExt}`
+    // If customFilename is provided, use it, otherwise generate a UUID
+    let filePath = '';
+    if (customFilename) {
+      filePath = `${customFilename}.${fileExt}`;
+    } else {
+      filePath = `settlement_${crypto.randomUUID()}.${fileExt}`;
+    }
+    
+    // Ensure the path starts with processed_images/
+    if (!filePath.startsWith('processed_images/')) {
+      filePath = `processed_images/${filePath}`;
+    }
 
     // Check if bucket exists, if not create it
     const { data: buckets } = await supabase.storage.listBuckets();

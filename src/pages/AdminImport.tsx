@@ -90,9 +90,22 @@ const AdminImport = () => {
         setUploadPhase(`Uploading image ${uploadedCount + 1}/${totalFiles}: ${file.name}`);
         setProgress(Math.floor((uploadedCount / totalFiles) * 100));
         
+        // Extract settlement number from filename if possible (e.g., "settlement_1.jpg")
+        const match = file.name.match(/settlement_(\d+)/i);
+        let customFilename = '';
+        
+        if (match && match[1]) {
+          customFilename = `processed_images/settlement_${match[1]}`;
+        }
+        
         // Create a form for the file upload
         const formData = new FormData();
         formData.append('file', file);
+        
+        // Add custom filename if it was extracted
+        if (customFilename) {
+          formData.append('customFilename', customFilename);
+        }
 
         // Call the Edge Function to handle the file upload
         const { data, error } = await supabase.functions.invoke('upload-settlement-image', {
