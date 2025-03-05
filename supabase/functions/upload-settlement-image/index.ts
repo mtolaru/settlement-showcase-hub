@@ -35,8 +35,8 @@ serve(async (req) => {
     // Get file extension
     const fileExt = sanitizedFileName.split('.').pop()
     
-    // Create a unique filename
-    const filePath = `${crypto.randomUUID()}.${fileExt}`
+    // Create a unique filename with the processed_images folder
+    const filePath = `processed_images/${crypto.randomUUID()}.${fileExt}`
 
     // Upload to attorney-photos bucket
     const { data, error: uploadError } = await supabase.storage

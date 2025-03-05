@@ -47,25 +47,20 @@ const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
     try {
       setIsUploading(true);
 
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${crypto.randomUUID()}.${fileExt}`;
+      // Upload file using Edge Function (this will now put it in processed_images folder)
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const { data, error: uploadError } = await supabase.storage
-        .from('attorney-photos')
-        .upload(filePath, file, {
-          contentType: file.type,
-          upsert: false
-        });
+      const { data, error } = await supabase.functions.invoke('upload-settlement-image', {
+        body: formData
+      });
 
-      if (uploadError) {
-        throw uploadError;
+      if (error) {
+        throw error;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('attorney-photos')
-        .getPublicUrl(filePath);
-
-      onImageUpload(publicUrl);
+      // The response will now have the publicUrl with the processed_images path
+      onImageUpload(data.publicUrl);
       
       toast({
         title: "Success",

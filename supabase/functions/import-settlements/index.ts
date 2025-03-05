@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -37,8 +36,26 @@ serve(async (req) => {
       'firm_website', 'photo_url'
     ];
 
+    // Process photo URLs to make sure they have the right path
+    const processedSettlements = settlements.map((settlement: any) => {
+      // If photo_url already contains processed_images, leave it as is
+      // Otherwise, update the path to include processed_images
+      if (settlement.photo_url && !settlement.photo_url.includes('processed_images')) {
+        const urlParts = settlement.photo_url.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        
+        if (filename) {
+          settlement.photo_url = settlement.photo_url.replace(
+            filename, 
+            `processed_images/${filename}`
+          );
+        }
+      }
+      return settlement;
+    });
+
     // Validate all settlements before import
-    const validSettlements = settlements.filter((settlement: any, index: number) => {
+    const validSettlements = processedSettlements.filter((settlement: any, index: number) => {
       // Check for required fields
       const missingFields = requiredFields.filter(field => {
         return settlement[field] === undefined || settlement[field] === null;
