@@ -99,6 +99,10 @@ serve(async (req) => {
       .from(bucketName)
       .getPublicUrl(filePath)
 
+    // Log the full public URL for debugging
+    console.log(`Generated public URL: ${publicUrl}`);
+    
+    // Store both the full public URL and the relative filepath
     return new Response(
       JSON.stringify({ 
         message: 'File uploaded successfully', 
