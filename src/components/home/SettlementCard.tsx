@@ -28,25 +28,52 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
 
   useEffect(() => {
+    console.log(`Processing photo_url for settlement ${settlement.id}:`, settlement.photo_url);
+    
     // Get the proper image URL
     if (settlement.photo_url) {
       // If it's already a full URL, use it directly
       if (settlement.photo_url.startsWith('http')) {
+        console.log(`Using direct URL for settlement ${settlement.id}:`, settlement.photo_url);
         setImageUrl(settlement.photo_url);
       } else {
-        // Otherwise, get the public URL from Supabase
-        const path = settlement.photo_url.replace('processed_images/', '');
+        // Extract the filename from the path
+        let filename = settlement.photo_url;
+        
+        // If the path contains a slash, get just the filename
+        if (settlement.photo_url.includes('/')) {
+          const parts = settlement.photo_url.split('/');
+          filename = parts[parts.length - 1];
+        }
+        
+        console.log(`Extracted filename for settlement ${settlement.id}:`, filename);
+        
+        // Try to get the public URL from the root of the bucket
         const { data } = supabase.storage
           .from('processed_images')
-          .getPublicUrl(path);
+          .getPublicUrl(filename);
         
         if (data?.publicUrl) {
           console.log(`Generated public URL for ${settlement.id}:`, data.publicUrl);
           setImageUrl(data.publicUrl);
+        } else {
+          console.error(`Failed to generate URL for settlement ${settlement.id} with filename ${filename}`);
+          
+          // Try with the full path as a fallback
+          const fullPathData = supabase.storage
+            .from('processed_images')
+            .getPublicUrl(settlement.photo_url);
+            
+          if (fullPathData.data?.publicUrl) {
+            console.log(`Generated public URL using full path for ${settlement.id}:`, fullPathData.data.publicUrl);
+            setImageUrl(fullPathData.data.publicUrl);
+          }
         }
       }
+    } else {
+      console.log(`No photo_url for settlement ${settlement.id}, using placeholder`);
     }
-  }, [settlement.photo_url]);
+  }, [settlement.photo_url, settlement.id]);
 
   const handleSettlementClick = (id: number) => {
     navigate(`/settlements/${id}`);
@@ -65,7 +92,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
           alt={`${settlement.type} case`}
           className="w-full h-full object-cover"
           onError={(e) => {
-            console.error(`Error loading image for settlement ${settlement.id}:`, e);
+            console.error(`Error loading image for settlement ${settlement.id} (${imageUrl}):`, e);
             (e.target as HTMLImageElement).src = "/placeholder.svg";
           }}
         />

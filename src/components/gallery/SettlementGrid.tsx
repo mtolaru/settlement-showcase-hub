@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -5,6 +6,7 @@ import type { Settlement } from "@/types/settlement";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 
 interface SettlementGridProps {
   settlements: Settlement[];
@@ -52,12 +54,23 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
   const getPublicImageUrl = (path: string | undefined) => {
     if (!path) return "/placeholder.svg";
     
+    // If it's already a full URL, use it directly
     if (path.startsWith('http')) return path;
+    
+    // Extract just the filename if it has a path
+    let filename = path;
+    if (path.includes('/')) {
+      const parts = path.split('/');
+      filename = parts[parts.length - 1];
+    }
+    
+    console.log(`Getting public URL for: ${filename} (original: ${path})`);
     
     const { data } = supabase.storage
       .from('processed_images')
-      .getPublicUrl(path.replace('processed_images/', ''));
+      .getPublicUrl(filename);
     
+    console.log(`Generated URL:`, data?.publicUrl);
     return data?.publicUrl || "/placeholder.svg";
   };
 
@@ -66,22 +79,15 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
   };
 
   console.log('Settlement grid items:', settlements);
+  
+  // Log the photo_url for debugging
   settlements.forEach((settlement, index) => {
-    console.log(`Settlement ${index} photo_url:`, settlement.photo_url);
+    console.log(`Settlement ${index} (ID: ${settlement.id}) photo_url:`, settlement.photo_url);
   });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {settlements.map((settlement, index) => {
-        console.log(`Settlement ${index} details:`, {
-          id: settlement.id,
-          amount: settlement.amount,
-          initial_offer: settlement.initial_offer,
-          policy_limit: settlement.policy_limit,
-          medical_expenses: settlement.medical_expenses,
-          photo_url: settlement.photo_url
-        });
-        
         const imageUrl = getPublicImageUrl(settlement.photo_url);
         console.log(`Generated image URL for settlement ${settlement.id}:`, imageUrl);
         
@@ -101,7 +107,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                   alt={`${settlement.type} case`}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    console.error(`Error loading image for settlement ${settlement.id}:`, e);
+                    console.error(`Error loading image for settlement ${settlement.id} (${imageUrl}):`, e);
                     (e.target as HTMLImageElement).src = "/placeholder.svg";
                   }}
                 />
