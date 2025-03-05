@@ -102,7 +102,9 @@ serve(async (req) => {
     // Log the full public URL for debugging
     console.log(`Generated public URL: ${publicUrl}`);
     
-    // Store both the full public URL and the relative filepath
+    // IMPORTANT: For the import-settlements function and database storage, 
+    // we'll still return the relative filePath for consistency, but we'll also
+    // return the complete publicUrl for direct use in the frontend
     return new Response(
       JSON.stringify({ 
         message: 'File uploaded successfully', 

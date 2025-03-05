@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -65,6 +66,7 @@ serve(async (req) => {
           
           // For imported settlements, use a predictable pattern: settlement_ID.jpg
           if (settlement.id) {
+            // Store the relative path which will be resolved by imageUtils.ts
             settlement.photo_url = `settlement_${settlement.id}.jpg`;
             console.log(`Set photo_url to predictable pattern: ${settlement.photo_url}`);
           } else {

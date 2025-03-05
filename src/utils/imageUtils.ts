@@ -64,6 +64,19 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
       return originalData.data.publicUrl;
     }
     
+    // Additional fallback: try using the path directly without the bucket name
+    if (!path.startsWith('processed_images/') && !path.startsWith('/')) {
+      const directPath = `processed_images/${path}`;
+      const directData = supabase.storage
+        .from(bucket)
+        .getPublicUrl(path);
+        
+      if (directData.data?.publicUrl) {
+        console.log(`Generated public URL using direct path: ${directData.data.publicUrl}`);
+        return directData.data.publicUrl;
+      }
+    }
+    
     // If we still can't get a URL and we have a settlement ID, try a pattern with settlement ID
     if (settlementId) {
       const alternativeFilename = `settlement_${settlementId}.jpg`;
