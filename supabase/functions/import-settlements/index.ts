@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -41,19 +40,38 @@ serve(async (req) => {
 
     console.log("Sample settlement to import:", settlements[0]);
 
-    // Process photo URLs to make sure they have the right path
+    // Process photo URLs to ensure consistent format
     const processedSettlements = settlements.map((settlement: any) => {
-      // If photo_url already contains processed_images, leave it as is
-      // Otherwise, update the path to include processed_images
-      if (settlement.photo_url && !settlement.photo_url.includes('processed_images')) {
-        const urlParts = settlement.photo_url.split('/');
-        const filename = urlParts[urlParts.length - 1];
+      // Handle photo_url standardization
+      if (settlement.photo_url && typeof settlement.photo_url === 'string') {
+        // Log the original photo_url
+        console.log(`Original photo_url for settlement:`, settlement.photo_url);
         
-        if (filename) {
-          settlement.photo_url = settlement.photo_url.replace(
-            filename, 
-            `processed_images/${filename}`
-          );
+        // If it's a full URL, keep it as is
+        if (settlement.photo_url.startsWith('http')) {
+          console.log('Using existing full URL');
+        } else {
+          // Extract just the filename without path
+          let filename = settlement.photo_url;
+          if (settlement.photo_url.includes('/')) {
+            const parts = settlement.photo_url.split('/');
+            filename = parts[parts.length - 1];
+          }
+          
+          // Ensure filename has an extension
+          if (!filename.includes('.')) {
+            filename = `${filename}.jpg`;
+          }
+          
+          // For imported settlements, use a predictable pattern: settlement_ID.jpg
+          if (settlement.id) {
+            settlement.photo_url = `settlement_${settlement.id}.jpg`;
+            console.log(`Set photo_url to predictable pattern: ${settlement.photo_url}`);
+          } else {
+            // If no ID yet, just use filename
+            settlement.photo_url = filename;
+            console.log(`Set photo_url to filename: ${settlement.photo_url}`);
+          }
         }
       }
       

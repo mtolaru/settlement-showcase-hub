@@ -36,19 +36,27 @@ serve(async (req) => {
     // Get file extension
     const fileExt = sanitizedFileName.split('.').pop()
     
-    // Create a unique filename with the processed_images folder
-    // If customFilename is provided, use it, otherwise generate a UUID
+    // Create a unique filename
     let filePath = '';
     if (customFilename) {
+      // For custom filenames from import, ensure they're stored consistently
       filePath = `${customFilename}.${fileExt}`;
+      
+      // Log for debugging
+      console.log(`Using custom filename: ${filePath}`);
     } else {
+      // For uploads from the app, use a predictable pattern with UUID
       filePath = `settlement_${crypto.randomUUID()}.${fileExt}`;
+      console.log(`Generated filename: ${filePath}`);
     }
     
-    // Ensure the path starts with processed_images/
+    // Standardize path format - ensure all files are stored in processed_images folder
+    // but don't duplicate the folder name if it's already there
     if (!filePath.startsWith('processed_images/')) {
       filePath = `processed_images/${filePath}`;
     }
+    
+    console.log(`Final path for storage: ${filePath}`);
 
     // Check if bucket exists, if not create it
     const { data: buckets } = await supabase.storage.listBuckets();
@@ -71,12 +79,12 @@ serve(async (req) => {
       }
     }
 
-    // Upload to processed_images bucket
+    // Upload to processed_images bucket with standardized path
     const { data, error: uploadError } = await supabase.storage
       .from(bucketName)
       .upload(filePath, file, {
         contentType: file.type,
-        upsert: false
+        upsert: true // Use upsert to replace existing files with same name
       })
 
     if (uploadError) {
