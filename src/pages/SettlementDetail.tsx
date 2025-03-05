@@ -67,20 +67,55 @@ const SettlementDetail = () => {
         console.log('Processed settlement data:', processedData);
         setSettlement(processedData);
         
-        if (processedData.photo_url) {
+        if (processedData.photo_url && processedData.photo_url !== "") {
           if (processedData.photo_url.startsWith('http')) {
             setImageUrl(processedData.photo_url);
           } else {
-            const path = processedData.photo_url.replace('processed_images/', '');
+            let filename = processedData.photo_url;
+            if (processedData.photo_url.includes('/')) {
+              const parts = processedData.photo_url.split('/');
+              filename = parts[parts.length - 1];
+            }
+            
+            if (!filename.includes('.')) {
+              filename = `${filename}.jpg`;
+              console.log(`Added extension to filename: ${filename}`);
+            }
+            
+            console.log(`Getting image for detail page, settlement ${processedData.id}, filename: ${filename}`);
+            
             const { data: urlData } = supabase.storage
               .from('processed_images')
-              .getPublicUrl(path);
+              .getPublicUrl(filename);
             
             if (urlData?.publicUrl) {
               console.log(`Generated public URL for detail page:`, urlData.publicUrl);
               setImageUrl(urlData.publicUrl);
+            } else {
+              const alternativeFilename = `settlement_${processedData.id}.jpg`;
+              console.log(`Trying alternative filename: ${alternativeFilename}`);
+              
+              const altData = supabase.storage
+                .from('processed_images')
+                .getPublicUrl(alternativeFilename);
+                
+              if (altData.data?.publicUrl) {
+                console.log(`Generated URL with settlement ID pattern:`, altData.data.publicUrl);
+                setImageUrl(altData.data.publicUrl);
+              } else {
+                const fullPathData = supabase.storage
+                  .from('processed_images')
+                  .getPublicUrl(processedData.photo_url);
+                  
+                if (fullPathData.data?.publicUrl) {
+                  console.log(`Generated public URL using full path:`, fullPathData.data.publicUrl);
+                  setImageUrl(fullPathData.data.publicUrl);
+                }
+              }
             }
           }
+        } else {
+          console.log(`No photo_url for settlement ${processedData.id}, using placeholder`);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -205,8 +240,12 @@ const SettlementDetail = () => {
                   alt={`${settlement.type} case`}
                   className="w-full h-full object-cover absolute inset-0"
                   onError={(e) => {
-                    console.error(`Error loading image for detail page:`, e);
-                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                    const target = e.target as HTMLImageElement;
+                    console.error(`Error loading image for detail page:`, target.src);
+                    
+                    if (target.src !== `${window.location.origin}/placeholder.svg`) {
+                      target.src = "/placeholder.svg";
+                    }
                   }}
                 />
               </div>

@@ -51,27 +51,55 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
     }
   };
 
-  const getPublicImageUrl = (path: string | undefined) => {
-    if (!path) return "/placeholder.svg";
+  const getPublicImageUrl = (settlement: Settlement) => {
+    const path = settlement.photo_url;
+    if (!path || path === "") return "/placeholder.svg";
     
     // If it's already a full URL, use it directly
     if (path.startsWith('http')) return path;
     
-    // Extract just the filename if it has a path
+    // Try to extract just the filename
     let filename = path;
     if (path.includes('/')) {
       const parts = path.split('/');
       filename = parts[parts.length - 1];
     }
     
-    console.log(`Getting public URL for: ${filename} (original: ${path})`);
+    console.log(`Getting public URL for settlement ${settlement.id}, filename: ${filename} (original: ${path})`);
     
+    // Check if the filename has a proper extension, if not, add .jpg
+    if (!filename.includes('.')) {
+      filename = `${filename}.jpg`;
+      console.log(`Added extension to filename: ${filename}`);
+    }
+    
+    // Get the URL with just the filename
     const { data } = supabase.storage
       .from('processed_images')
       .getPublicUrl(filename);
     
-    console.log(`Generated URL:`, data?.publicUrl);
-    return data?.publicUrl || "/placeholder.svg";
+    if (data?.publicUrl) {
+      console.log(`Generated URL for settlement ${settlement.id}:`, data.publicUrl);
+      return data.publicUrl;
+    }
+    
+    // Try with a common naming pattern if the direct filename doesn't work
+    const alternativeFilename = `settlement_${settlement.id}.jpg`;
+    console.log(`Trying alternative filename for settlement ${settlement.id}: ${alternativeFilename}`);
+    
+    const altData = supabase.storage
+      .from('processed_images')
+      .getPublicUrl(alternativeFilename);
+      
+    if (altData.data?.publicUrl) {
+      console.log(`Generated URL with settlement ID pattern for ${settlement.id}:`, altData.data.publicUrl);
+      return altData.data.publicUrl;
+    }
+    
+    // Last resort, try the full path
+    return supabase.storage
+      .from('processed_images')
+      .getPublicUrl(path).data?.publicUrl || "/placeholder.svg";
   };
 
   const handleCardClick = (id: number) => {
@@ -79,17 +107,12 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
   };
 
   console.log('Settlement grid items:', settlements);
-  
-  // Log the photo_url for debugging
-  settlements.forEach((settlement, index) => {
-    console.log(`Settlement ${index} (ID: ${settlement.id}) photo_url:`, settlement.photo_url);
-  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {settlements.map((settlement, index) => {
-        const imageUrl = getPublicImageUrl(settlement.photo_url);
-        console.log(`Generated image URL for settlement ${settlement.id}:`, imageUrl);
+        const imageUrl = getPublicImageUrl(settlement);
+        console.log(`Final image URL for settlement ${settlement.id}:`, imageUrl);
         
         return (
           <motion.div
@@ -107,8 +130,13 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                   alt={`${settlement.type} case`}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    console.error(`Error loading image for settlement ${settlement.id} (${imageUrl}):`, e);
-                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                    const target = e.target as HTMLImageElement;
+                    console.error(`Error loading image for settlement ${settlement.id} (${target.src})`);
+                    
+                    // If the current src is not the placeholder, try the placeholder
+                    if (target.src !== `${window.location.origin}/placeholder.svg`) {
+                      target.src = "/placeholder.svg";
+                    }
                   }}
                 />
                 <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
