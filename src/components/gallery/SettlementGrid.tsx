@@ -34,6 +34,21 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
     }
   };
 
+  const getSettlementPhaseLabel = (phase: string | null) => {
+    if (!phase) return "";
+    
+    switch (phase) {
+      case 'pre-litigation':
+        return 'Pre-Litigation';
+      case 'during-litigation':
+        return 'During Litigation';
+      case 'post-trial':
+        return 'Post-Trial';
+      default:
+        return phase.charAt(0).toUpperCase() + phase.slice(1);
+    }
+  };
+
   const handleCardClick = (id: number) => {
     window.location.href = `/settlements/${id}`;
   };
@@ -57,10 +72,15 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                 alt={`${settlement.type} case`}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute top-4 left-4">
+              <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
                 <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
                   {settlement.type}
                 </span>
+                {settlement.settlement_phase && (
+                  <span className="bg-primary-100 px-3 py-1 rounded-full text-sm font-medium text-primary-800">
+                    {getSettlementPhaseLabel(settlement.settlement_phase)}
+                  </span>
+                )}
               </div>
             </div>
             
@@ -97,13 +117,13 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                 <p className="text-sm text-neutral-600">
                   {settlement.firmWebsite ? (
                     <a
-                      href={settlement.firmWebsite}
+                      href={settlement.firmWebsite.startsWith('http') ? settlement.firmWebsite : `https://${settlement.firmWebsite}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        window.open(settlement.firmWebsite, '_blank');
+                        window.open(settlement.firmWebsite?.startsWith('http') ? settlement.firmWebsite : `https://${settlement.firmWebsite}`, '_blank');
                       }}
                       className="hover:text-primary-500 transition-colors"
                     >
@@ -120,6 +140,11 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
                 <p className="text-sm text-neutral-600">
                   Settlement Date: {formatDate(settlement.settlement_date) || formatDate(settlement.created_at)}
                 </p>
+                {settlement.case_description && (
+                  <p className="text-sm text-neutral-600 mt-2 line-clamp-2">
+                    {settlement.case_description}
+                  </p>
+                )}
               </div>
             </div>
           </div>

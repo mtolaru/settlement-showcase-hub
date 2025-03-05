@@ -61,7 +61,8 @@ const SettlementDetail = () => {
           temporary_id: data.temporary_id,
           user_id: data.user_id,
           payment_completed: data.payment_completed,
-          photo_url: data.photo_url
+          photo_url: data.photo_url,
+          attorney_email: data.attorney_email
         };
 
         setSettlement(processedData);
@@ -133,6 +134,21 @@ const SettlementDetail = () => {
     }
   };
 
+  const getSettlementPhaseLabel = (phase: string | null) => {
+    if (!phase) return "Settlement";
+    
+    switch (phase) {
+      case 'pre-litigation':
+        return 'Pre-Litigation';
+      case 'during-litigation':
+        return 'During Litigation';
+      case 'post-trial':
+        return 'Post-Trial';
+      default:
+        return phase.charAt(0).toUpperCase() + phase.slice(1);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="bg-primary-900 text-white py-12">
@@ -180,13 +196,7 @@ const SettlementDetail = () => {
                     {settlement.type}
                   </span>
                   <span className="inline-block bg-neutral-100 text-neutral-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {settlement.settlement_phase === 'pre-litigation' 
-                      ? 'Pre-Litigation'
-                      : settlement.settlement_phase === 'during-litigation'
-                      ? 'During Litigation'
-                      : settlement.settlement_phase === 'post-trial'
-                      ? 'Post-Trial'
-                      : 'Settlement'}
+                    {getSettlementPhaseLabel(settlement.settlement_phase)}
                   </span>
                 </div>
                 <h2 className="text-xl font-semibold mt-2 mb-1">Case Overview</h2>
@@ -230,19 +240,19 @@ const SettlementDetail = () => {
                         </div>
                       </div>
                     )}
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-full bg-primary-100 p-2">
-                        <PieChart className="h-5 w-5 text-primary-600" />
+                    {settlement.medical_expenses && (
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-primary-100 p-2">
+                          <PieChart className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div>
+                          <dt className="text-sm text-neutral-500">Settlement/Medical Ratio</dt>
+                          <dd className="font-medium">
+                            {`${(settlement.amount / settlement.medical_expenses).toFixed(1)}x`}
+                          </dd>
+                        </div>
                       </div>
-                      <div>
-                        <dt className="text-sm text-neutral-500">Settlement/Medical Ratio</dt>
-                        <dd className="font-medium">
-                          {settlement.medical_expenses 
-                            ? `${(settlement.amount / settlement.medical_expenses).toFixed(1)}x`
-                            : 'N/A'}
-                        </dd>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -274,6 +284,13 @@ const SettlementDetail = () => {
                       <Building2 className="h-4 w-4 mr-1" />
                       {settlement.location}
                     </div>
+                    {settlement.attorney_email && (
+                      <p className="text-neutral-600">
+                        <a href={`mailto:${settlement.attorney_email}`} className="text-primary-600 hover:underline">
+                          {settlement.attorney_email}
+                        </a>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
