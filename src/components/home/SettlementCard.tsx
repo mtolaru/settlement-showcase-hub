@@ -1,11 +1,10 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ShareButton } from "@/components/sharing/ShareButton";
-import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
+import { resolveSettlementImageUrl } from "@/utils/imageUtils";
 
 interface Settlement {
   id: number;
@@ -29,98 +28,8 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
 
   useEffect(() => {
-    // If photo_url is empty or undefined, use placeholder
-    if (!settlement.photo_url || settlement.photo_url === "") {
-      console.log(`No photo_url for settlement ${settlement.id}, using placeholder`);
-      return;
-    }
-    
-    console.log(`Processing photo_url for settlement ${settlement.id}:`, settlement.photo_url);
-    
-    try {
-      // If it's already a full URL, use it directly
-      if (settlement.photo_url.startsWith('http')) {
-        console.log(`Using direct URL for settlement ${settlement.id}:`, settlement.photo_url);
-        setImageUrl(settlement.photo_url);
-        return;
-      }
-      
-      // Compare path patterns between created and imported settlements
-      console.log(`Analyzing path format for settlement ${settlement.id}`);
-      
-      // First try: Get just the filename (handles both cases with or without processed_images prefix)
-      let filename = settlement.photo_url;
-      
-      // Remove any path prefix (processed_images/, etc)
-      if (settlement.photo_url.includes('/')) {
-        const parts = settlement.photo_url.split('/');
-        filename = parts[parts.length - 1];
-        console.log(`Extracted filename from path: ${filename}`);
-      }
-      
-      // Check if the filename has a proper extension, if not, add .jpg
-      if (!filename.includes('.')) {
-        filename = `${filename}.jpg`;
-        console.log(`Added extension to filename: ${filename}`);
-      }
-      
-      // Try getting URL with the filename directly from processed_images bucket
-      const { data } = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(filename);
-      
-      if (data?.publicUrl) {
-        console.log(`Generated public URL for settlement ${settlement.id} using filename:`, data.publicUrl);
-        setImageUrl(data.publicUrl);
-        return;
-      }
-      
-      // Second try: If that doesn't work, try a pattern with settlement ID
-      const alternativeFilename = `settlement_${settlement.id}.jpg`;
-      console.log(`Trying alternative filename pattern: ${alternativeFilename}`);
-      
-      const altData = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(alternativeFilename);
-        
-      if (altData.data?.publicUrl) {
-        console.log(`Generated public URL using ID pattern for settlement ${settlement.id}:`, altData.data.publicUrl);
-        setImageUrl(altData.data.publicUrl);
-        return;
-      }
-      
-      // Third try: Try with full 'processed_images/' prefix
-      let prefixedPath = settlement.photo_url;
-      if (!prefixedPath.startsWith('processed_images/')) {
-        prefixedPath = `processed_images/${prefixedPath}`;
-      }
-      
-      console.log(`Trying with prefixed path: ${prefixedPath}`);
-      const prefixedData = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(prefixedPath);
-        
-      if (prefixedData.data?.publicUrl) {
-        console.log(`Generated public URL using prefixed path:`, prefixedData.data.publicUrl);
-        setImageUrl(prefixedData.data.publicUrl);
-        return;
-      }
-      
-      // Last attempt: Try the original path as provided
-      console.log(`Falling back to original path: ${settlement.photo_url}`);
-      const originalData = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(settlement.photo_url);
-        
-      if (originalData.data?.publicUrl) {
-        console.log(`Generated public URL using original path:`, originalData.data.publicUrl);
-        setImageUrl(originalData.data.publicUrl);
-      } else {
-        console.log(`Could not generate a valid URL for settlement ${settlement.id}, using placeholder`);
-      }
-    } catch (error) {
-      console.error(`Error processing image URL for settlement ${settlement.id}:`, error);
-    }
+    // Use our utility function to resolve the image URL
+    setImageUrl(resolveSettlementImageUrl(settlement.photo_url, settlement.id));
   }, [settlement.photo_url, settlement.id]);
 
   const handleSettlementClick = (id: number) => {

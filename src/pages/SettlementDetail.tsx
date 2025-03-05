@@ -6,6 +6,7 @@ import { ShareButton } from "@/components/sharing/ShareButton";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Settlement } from "@/types/settlement";
+import { resolveSettlementImageUrl } from "@/utils/imageUtils";
 
 const SettlementDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,56 +68,7 @@ const SettlementDetail = () => {
         console.log('Processed settlement data:', processedData);
         setSettlement(processedData);
         
-        if (processedData.photo_url && processedData.photo_url !== "") {
-          if (processedData.photo_url.startsWith('http')) {
-            setImageUrl(processedData.photo_url);
-          } else {
-            let filename = processedData.photo_url;
-            if (processedData.photo_url.includes('/')) {
-              const parts = processedData.photo_url.split('/');
-              filename = parts[parts.length - 1];
-            }
-            
-            if (!filename.includes('.')) {
-              filename = `${filename}.jpg`;
-              console.log(`Added extension to filename: ${filename}`);
-            }
-            
-            console.log(`Getting image for detail page, settlement ${processedData.id}, filename: ${filename}`);
-            
-            const { data: urlData } = supabase.storage
-              .from('processed_images')
-              .getPublicUrl(filename);
-            
-            if (urlData?.publicUrl) {
-              console.log(`Generated public URL for detail page:`, urlData.publicUrl);
-              setImageUrl(urlData.publicUrl);
-            } else {
-              const alternativeFilename = `settlement_${processedData.id}.jpg`;
-              console.log(`Trying alternative filename: ${alternativeFilename}`);
-              
-              const altData = supabase.storage
-                .from('processed_images')
-                .getPublicUrl(alternativeFilename);
-                
-              if (altData.data?.publicUrl) {
-                console.log(`Generated URL with settlement ID pattern:`, altData.data.publicUrl);
-                setImageUrl(altData.data.publicUrl);
-              } else {
-                const fullPathData = supabase.storage
-                  .from('processed_images')
-                  .getPublicUrl(processedData.photo_url);
-                  
-                if (fullPathData.data?.publicUrl) {
-                  console.log(`Generated public URL using full path:`, fullPathData.data.publicUrl);
-                  setImageUrl(fullPathData.data.publicUrl);
-                }
-              }
-            }
-          }
-        } else {
-          console.log(`No photo_url for settlement ${processedData.id}, using placeholder`);
-        }
+        setImageUrl(resolveSettlementImageUrl(processedData.photo_url, processedData.id));
       } catch (error) {
         console.error('Error:', error);
         toast({
@@ -413,7 +365,7 @@ const SettlementDetail = () => {
                 >
                   <span className="flex items-center">
                     <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v14a2 2 0 0 1-2 2v1h-14a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2z" />
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
                     Email

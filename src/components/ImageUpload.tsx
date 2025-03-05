@@ -68,8 +68,16 @@ const ImageUpload = ({ onImageUpload, className = "", customFilename }: ImageUpl
       }
 
       console.log('Upload successful:', data);
-      // The response will now have the publicUrl
-      onImageUpload(data.publicUrl);
+      
+      // The response will now have the publicUrl - use that directly
+      if (data.publicUrl) {
+        onImageUpload(data.publicUrl);
+        console.log('Using public URL from response:', data.publicUrl);
+      } else {
+        // Fallback to the old behavior if for some reason publicUrl isn't in the response
+        onImageUpload(data.filePath);
+        console.log('Falling back to file path:', data.filePath);
+      }
       
       toast({
         title: "Success",

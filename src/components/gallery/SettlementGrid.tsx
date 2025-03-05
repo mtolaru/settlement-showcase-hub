@@ -1,12 +1,11 @@
-
 import { motion } from "framer-motion";
 import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Settlement } from "@/types/settlement";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { Card, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
+import { resolveSettlementImageUrl } from "@/utils/imageUtils";
 
 interface SettlementGridProps {
   settlements: Settlement[];
@@ -51,57 +50,6 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
     }
   };
 
-  const getPublicImageUrl = (settlement: Settlement) => {
-    const path = settlement.photo_url;
-    if (!path || path === "") return "/placeholder.svg";
-    
-    // If it's already a full URL, use it directly
-    if (path.startsWith('http')) return path;
-    
-    // Try to extract just the filename
-    let filename = path;
-    if (path.includes('/')) {
-      const parts = path.split('/');
-      filename = parts[parts.length - 1];
-    }
-    
-    console.log(`Getting public URL for settlement ${settlement.id}, filename: ${filename} (original: ${path})`);
-    
-    // Check if the filename has a proper extension, if not, add .jpg
-    if (!filename.includes('.')) {
-      filename = `${filename}.jpg`;
-      console.log(`Added extension to filename: ${filename}`);
-    }
-    
-    // Get the URL with just the filename
-    const { data } = supabase.storage
-      .from('processed_images')
-      .getPublicUrl(filename);
-    
-    if (data?.publicUrl) {
-      console.log(`Generated URL for settlement ${settlement.id}:`, data.publicUrl);
-      return data.publicUrl;
-    }
-    
-    // Try with a common naming pattern if the direct filename doesn't work
-    const alternativeFilename = `settlement_${settlement.id}.jpg`;
-    console.log(`Trying alternative filename for settlement ${settlement.id}: ${alternativeFilename}`);
-    
-    const altData = supabase.storage
-      .from('processed_images')
-      .getPublicUrl(alternativeFilename);
-      
-    if (altData.data?.publicUrl) {
-      console.log(`Generated URL with settlement ID pattern for ${settlement.id}:`, altData.data.publicUrl);
-      return altData.data.publicUrl;
-    }
-    
-    // Last resort, try the full path
-    return supabase.storage
-      .from('processed_images')
-      .getPublicUrl(path).data?.publicUrl || "/placeholder.svg";
-  };
-
   const handleCardClick = (id: number) => {
     window.location.href = `/settlements/${id}`;
   };
@@ -111,8 +59,7 @@ const SettlementGrid = ({ settlements }: SettlementGridProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {settlements.map((settlement, index) => {
-        const imageUrl = getPublicImageUrl(settlement);
-        console.log(`Final image URL for settlement ${settlement.id}:`, imageUrl);
+        const imageUrl = resolveSettlementImageUrl(settlement.photo_url, settlement.id);
         
         return (
           <motion.div
