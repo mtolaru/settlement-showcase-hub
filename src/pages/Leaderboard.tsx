@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 import SettlementGrid from "@/components/gallery/SettlementGrid";
@@ -6,13 +7,20 @@ import SubmitCTA from "@/components/gallery/SubmitCTA";
 import { supabase } from "@/integrations/supabase/client";
 import type { Settlement } from "@/types/settlement";
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 const Leaderboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [filteredSettlements, setFilteredSettlements] = useState<Settlement[]>([]);
+  const [displayedSettlements, setDisplayedSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const { toast } = useToast();
+  const observerTarget = useRef<HTMLDivElement>(null);
+  
+  const itemsPerPage = 9; // Load 9 items at a time (3x3 grid)
   
   const initialFilters = {
     amount: searchParams.get("amount") || "all",
@@ -143,6 +151,8 @@ const Leaderboard = () => {
       }
       
       setFilteredSettlements(result);
+      setDisplayedSettlements(result.slice(0, itemsPerPage));
+      setHasMore(result.length > itemsPerPage);
       
       setSearchParams({
         amount: filters.amount,
@@ -153,7 +163,46 @@ const Leaderboard = () => {
     };
     
     applyFilters();
-  }, [settlements, filters, setSearchParams]);
+  }, [settlements, filters, setSearchParams, itemsPerPage]);
+
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    
+    // Wait a moment to simulate loading (and prevent rapid calls)
+    setTimeout(() => {
+      const currentLength = displayedSettlements.length;
+      const newItems = filteredSettlements.slice(currentLength, currentLength + itemsPerPage);
+      
+      setDisplayedSettlements(prev => [...prev, ...newItems]);
+      setHasMore(currentLength + newItems.length < filteredSettlements.length);
+      setIsLoadingMore(false);
+    }, 500);
+  }, [displayedSettlements, filteredSettlements, hasMore, isLoadingMore]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    
+    const currentTarget = observerTarget.current;
+    
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+    
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
   const getFilterOptions = () => {
     const caseTypes = ["all", ...new Set(settlements.map(s => s.type))];
@@ -185,7 +234,7 @@ const Leaderboard = () => {
       <div className="container py-8">
         <div>
           <SettlementGrid 
-            settlements={filteredSettlements}
+            settlements={displayedSettlements}
           />
           
           {!isLoading && filteredSettlements.length === 0 && (
@@ -200,6 +249,21 @@ const Leaderboard = () => {
               >
                 Reset All Filters
               </button>
+            </div>
+          )}
+          
+          {/* Loading indicator and intersection observer target */}
+          {(hasMore || isLoadingMore) && (
+            <div 
+              ref={observerTarget} 
+              className="py-8 flex justify-center items-center"
+            >
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 text-neutral-600">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Loading more settlements...</span>
+                </div>
+              )}
             </div>
           )}
           

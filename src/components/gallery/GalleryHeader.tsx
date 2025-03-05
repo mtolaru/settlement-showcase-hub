@@ -136,6 +136,7 @@ const GalleryHeader = ({
                 onChange={(e) => handleFilterChange("sort", e.target.value)}
               >
                 <option value="highest">Highest Amount</option>
+                <option value="lowest">Lowest Amount</option>
                 <option value="newest">Most Recent</option>
               </select>
               
