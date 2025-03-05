@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, AlertCircle } from 'lucide-react';
+import { Trash2, AlertCircle, FileUp, ImageUp, Link } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const AdminImport = () => {
@@ -19,8 +18,9 @@ const AdminImport = () => {
   const [imagesUploaded, setImagesUploaded] = useState<{name: string, url: string}[]>([]);
   const [tab, setTab] = useState('data');
   const [isDeletingImages, setIsDeletingImages] = useState(false);
+  const [isMappingImages, setIsMappingImages] = useState(false);
+  const [mappingResults, setMappingResults] = useState<any>(null);
 
-  // Handle JSON file upload
   const onDropJson = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     
@@ -49,7 +49,6 @@ const AdminImport = () => {
       setUploadPhase('Uploading to Supabase');
       setProgress(30);
 
-      // Call the Edge Function to handle the import
       const { data: result, error } = await supabase.functions.invoke('import-settlements', {
         body: { settlements: data }
       });
@@ -76,7 +75,6 @@ const AdminImport = () => {
     }
   }, [toast]);
 
-  // Handle image files upload
   const onDropImages = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     
@@ -90,7 +88,6 @@ const AdminImport = () => {
         setUploadPhase(`Uploading image ${uploadedCount + 1}/${totalFiles}: ${file.name}`);
         setProgress(Math.floor((uploadedCount / totalFiles) * 100));
         
-        // Extract settlement number from filename if possible (e.g., "settlement_1.jpg")
         const match = file.name.match(/settlement_(\d+)/i);
         let customFilename = '';
         
@@ -98,16 +95,13 @@ const AdminImport = () => {
           customFilename = `processed_images/settlement_${match[1]}`;
         }
         
-        // Create a form for the file upload
         const formData = new FormData();
         formData.append('file', file);
         
-        // Add custom filename if it was extracted
         if (customFilename) {
           formData.append('customFilename', customFilename);
         }
 
-        // Call the Edge Function to handle the file upload
         const { data, error } = await supabase.functions.invoke('upload-settlement-image', {
           body: formData
         });
@@ -138,7 +132,6 @@ const AdminImport = () => {
     }
   }, [toast]);
 
-  // Handle deleting all images
   const handleDeleteAllImages = async () => {
     if (isDeletingImages) return;
     
@@ -167,6 +160,37 @@ const AdminImport = () => {
     }
   };
 
+  const handleMapSettlementImages = async () => {
+    if (isMappingImages) return;
+    
+    try {
+      setIsMappingImages(true);
+      setUploadPhase('Mapping settlement images to database records');
+      setProgress(30);
+      
+      const { data, error } = await supabase.functions.invoke('map-settlement-images');
+      
+      if (error) throw error;
+      
+      setMappingResults(data);
+      setProgress(100);
+      
+      toast({
+        title: "Mapping Successful",
+        description: data.message || `Mapped ${data.updated} out of ${data.total} settlements to images`,
+      });
+    } catch (error: any) {
+      console.error('Error mapping settlement images:', error);
+      toast({
+        title: "Mapping Failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsMappingImages(false);
+    }
+  };
+
   const { getRootProps: getJsonRootProps, getInputProps: getJsonInputProps } = useDropzone({
     onDrop: onDropJson,
     accept: {
@@ -190,9 +214,10 @@ const AdminImport = () => {
       <h1 className="text-3xl font-bold mb-6">Admin Import Tool</h1>
       
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="data">Import Settlements</TabsTrigger>
           <TabsTrigger value="images">Upload Images</TabsTrigger>
+          <TabsTrigger value="mapping">Map Images</TabsTrigger>
         </TabsList>
         
         <TabsContent value="data">
@@ -303,6 +328,53 @@ const AdminImport = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="mapping">
+          <Card>
+            <CardHeader>
+              <CardTitle>Map Images to Settlements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This utility will map uploaded settlement images to their corresponding settlements 
+                  in the database using the settlement ID pattern (settlement_ID.jpg).
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
+                <Link className="h-12 w-12 text-blue-500 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Map Settlement Images</h3>
+                <p className="text-gray-500 text-center mb-4">
+                  Click the button below to map settlement images to their corresponding records in the database.
+                </p>
+                <Button 
+                  onClick={handleMapSettlementImages} 
+                  disabled={isMappingImages}
+                  className="mt-2"
+                >
+                  {isMappingImages ? 'Mapping...' : 'Map Settlement Images'}
+                </Button>
+              </div>
+
+              {isMappingImages && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500 mb-2">{uploadPhase}</p>
+                  <Progress value={progress} className="w-full" />
+                </div>
+              )}
+
+              {mappingResults && (
+                <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                  <h3 className="font-semibold text-green-800">Mapping Results</h3>
+                  <p>Total settlements processed: {mappingResults.total}</p>
+                  <p>Settlements mapped to images: {mappingResults.updated}</p>
                 </div>
               )}
             </CardContent>
