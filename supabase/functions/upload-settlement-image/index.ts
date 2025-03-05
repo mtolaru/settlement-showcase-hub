@@ -38,9 +38,30 @@ serve(async (req) => {
     // Create a unique filename with the processed_images folder
     const filePath = `processed_images/${crypto.randomUUID()}.${fileExt}`
 
-    // Upload to attorney-photos bucket
+    // Check if bucket exists, if not create it
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketName = 'settlements';
+    
+    if (!buckets?.find(b => b.name === bucketName)) {
+      console.log(`Bucket '${bucketName}' doesn't exist, creating it...`);
+      const { error } = await supabase.storage.createBucket(bucketName, {
+        public: true,
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+        fileSizeLimit: 5242880 // 5MB
+      });
+      
+      if (error) {
+        console.error('Error creating bucket:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create storage bucket', details: error }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+    }
+
+    // Upload to settlements bucket
     const { data, error: uploadError } = await supabase.storage
-      .from('attorney-photos')
+      .from(bucketName)
       .upload(filePath, file, {
         contentType: file.type,
         upsert: false
@@ -55,7 +76,7 @@ serve(async (req) => {
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('attorney-photos')
+      .from(bucketName)
       .getPublicUrl(filePath)
 
     return new Response(
@@ -67,6 +88,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   } catch (error) {
+    console.error('Upload error:', error);
     return new Response(
       JSON.stringify({ error: 'An unexpected error occurred', details: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

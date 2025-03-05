@@ -47,19 +47,22 @@ const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
     try {
       setIsUploading(true);
 
-      // Upload file using Edge Function (this will now put it in processed_images folder)
+      // Upload file using Edge Function
       const formData = new FormData();
       formData.append('file', file);
 
+      console.log('Uploading file to edge function...');
       const { data, error } = await supabase.functions.invoke('upload-settlement-image', {
         body: formData
       });
 
       if (error) {
+        console.error('Upload error:', error);
         throw error;
       }
 
-      // The response will now have the publicUrl with the processed_images path
+      console.log('Upload successful:', data);
+      // The response will now have the publicUrl
       onImageUpload(data.publicUrl);
       
       toast({
@@ -67,6 +70,7 @@ const ImageUpload = ({ onImageUpload, className = "" }: ImageUploadProps) => {
         description: "Photo uploaded successfully",
       });
     } catch (error) {
+      console.error('Upload failed:', error);
       toast({
         variant: "destructive",
         title: "Upload failed",
