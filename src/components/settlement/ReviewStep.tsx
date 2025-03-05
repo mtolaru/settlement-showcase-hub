@@ -136,10 +136,7 @@ export const ReviewStep = ({
                   <dt className="text-sm text-neutral-600">Location</dt>
                   <dd className="font-medium break-words">{formData.location}</dd>
                 </div>
-                <div>
-                  <dt className="text-sm text-neutral-600">Email</dt>
-                  <dd className="font-medium break-words">{formData.attorneyEmail}</dd>
-                </div>
+                {/* Attorney email is not displayed, but still collected */}
                 <div>
                   <dt className="text-sm text-neutral-600">Website</dt>
                   <dd className="font-medium break-words overflow-hidden text-ellipsis">{formData.firmWebsite}</dd>

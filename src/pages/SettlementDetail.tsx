@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,10 +20,8 @@ const SettlementDetail = () => {
 
       try {
         setIsLoading(true);
-        // Convert string ID to number for Supabase query
         const numberId = parseInt(id, 10);
         
-        // Check if conversion was successful
         if (isNaN(numberId)) {
           throw new Error("Invalid settlement ID");
         }
@@ -43,7 +40,6 @@ const SettlementDetail = () => {
 
         console.log('Raw settlement data:', data);
 
-        // Process to ensure all required fields exist
         const processedData: Settlement = {
           id: data.id,
           amount: data.amount,
@@ -251,7 +247,9 @@ const SettlementDetail = () => {
                         <div>
                           <dt className="text-sm text-neutral-500">Settlement/Medical Ratio</dt>
                           <dd className="font-medium">
-                            {`${(settlement.amount / settlement.medical_expenses).toFixed(1)}x`}
+                            {settlement.medical_expenses > 0 
+                              ? `${(settlement.amount / settlement.medical_expenses).toFixed(1)}x`
+                              : "-"}
                           </dd>
                         </div>
                       </div>
@@ -287,13 +285,6 @@ const SettlementDetail = () => {
                       <Building2 className="h-4 w-4 mr-1" />
                       {settlement.location}
                     </div>
-                    {settlement.attorney_email && (
-                      <p className="text-neutral-600">
-                        <a href={`mailto:${settlement.attorney_email}`} className="text-primary-600 hover:underline">
-                          {settlement.attorney_email}
-                        </a>
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
