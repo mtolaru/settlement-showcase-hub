@@ -40,7 +40,7 @@ serve(async (req) => {
 
     // Check if bucket exists, if not create it
     const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketName = 'settlements';
+    const bucketName = 'processed_images';
     
     if (!buckets?.find(b => b.name === bucketName)) {
       console.log(`Bucket '${bucketName}' doesn't exist, creating it...`);
@@ -59,7 +59,7 @@ serve(async (req) => {
       }
     }
 
-    // Upload to settlements bucket
+    // Upload to processed_images bucket
     const { data, error: uploadError } = await supabase.storage
       .from(bucketName)
       .upload(filePath, file, {
