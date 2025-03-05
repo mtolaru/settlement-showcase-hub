@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -30,11 +31,13 @@ serve(async (req) => {
 
     const errors: string[] = [];
     const requiredFields = [
-      'amount', 'attorney', 'firm', 'location', 'type',
-      'initial_offer', 'policy_limit', 'medical_expenses',
-      'settlement_phase', 'settlement_date', 'case_description'
+      'amount', 'attorney', 'firm', 'location', 'type'
     ];
-    const optionalFields = ['firm_website', 'photo_url', 'attorney_email'];
+    const optionalFields = [
+      'initial_offer', 'policy_limit', 'medical_expenses',
+      'settlement_phase', 'settlement_date', 'case_description',
+      'firm_website', 'photo_url', 'attorney_email'
+    ];
 
     console.log("Sample settlement to import:", settlements[0]);
 
@@ -67,6 +70,16 @@ serve(async (req) => {
         }
       }
       
+      // Ensure numeric fields are actually numbers and not null/undefined
+      const numericFields = ['initial_offer', 'policy_limit', 'medical_expenses'];
+      for (const field of numericFields) {
+        if (settlement[field] === undefined || settlement[field] === null) {
+          settlement[field] = 0; // Default to zero if not provided
+        } else if (typeof settlement[field] === 'string') {
+          settlement[field] = parseFloat(settlement[field]) || 0;
+        }
+      }
+      
       return settlement;
     });
 
@@ -85,7 +98,7 @@ serve(async (req) => {
       // Validate numeric fields
       const numericFields = ['amount', 'initial_offer', 'policy_limit', 'medical_expenses'];
       for (const field of numericFields) {
-        if (isNaN(Number(settlement[field]))) {
+        if (settlement[field] !== undefined && settlement[field] !== null && isNaN(Number(settlement[field]))) {
           errors.push(`Settlement #${index + 1}: Field "${field}" must be a number`);
           return false;
         }

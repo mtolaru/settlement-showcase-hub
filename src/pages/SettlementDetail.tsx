@@ -41,6 +41,8 @@ const SettlementDetail = () => {
           throw new Error("Settlement not found");
         }
 
+        console.log('Raw settlement data:', data);
+
         // Process to ensure all required fields exist
         const processedData: Settlement = {
           id: data.id,
@@ -54,9 +56,9 @@ const SettlementDetail = () => {
           settlement_date: data.settlement_date || data.created_at,
           description: data.description,
           case_description: data.case_description,
-          initial_offer: data.initial_offer,
-          policy_limit: data.policy_limit,
-          medical_expenses: data.medical_expenses,
+          initial_offer: data.initial_offer !== undefined ? data.initial_offer : null,
+          policy_limit: data.policy_limit !== undefined ? data.policy_limit : null,
+          medical_expenses: data.medical_expenses !== undefined ? data.medical_expenses : null,
           settlement_phase: data.settlement_phase,
           temporary_id: data.temporary_id,
           user_id: data.user_id,
@@ -65,6 +67,7 @@ const SettlementDetail = () => {
           attorney_email: data.attorney_email
         };
 
+        console.log('Processed settlement data:', processedData);
         setSettlement(processedData);
       } catch (error) {
         console.error('Error:', error);
@@ -207,7 +210,7 @@ const SettlementDetail = () => {
                 <div className="border-t border-neutral-200 pt-6 mt-6">
                   <h3 className="text-lg font-semibold mb-4">Settlement Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {settlement.initial_offer && (
+                    {settlement.initial_offer !== null && settlement.initial_offer !== undefined && (
                       <div className="flex items-start gap-3">
                         <div className="rounded-full bg-primary-100 p-2">
                           <ClipboardCheck className="h-5 w-5 text-primary-600" />
@@ -218,7 +221,7 @@ const SettlementDetail = () => {
                         </div>
                       </div>
                     )}
-                    {settlement.policy_limit && (
+                    {settlement.policy_limit !== null && settlement.policy_limit !== undefined && (
                       <div className="flex items-start gap-3">
                         <div className="rounded-full bg-primary-100 p-2">
                           <Award className="h-5 w-5 text-primary-600" />
@@ -229,7 +232,7 @@ const SettlementDetail = () => {
                         </div>
                       </div>
                     )}
-                    {settlement.medical_expenses && (
+                    {settlement.medical_expenses !== null && settlement.medical_expenses !== undefined && (
                       <div className="flex items-start gap-3">
                         <div className="rounded-full bg-primary-100 p-2">
                           <Stethoscope className="h-5 w-5 text-primary-600" />
@@ -240,7 +243,7 @@ const SettlementDetail = () => {
                         </div>
                       </div>
                     )}
-                    {settlement.medical_expenses && (
+                    {settlement.medical_expenses !== null && settlement.medical_expenses !== undefined && settlement.amount && (
                       <div className="flex items-start gap-3">
                         <div className="rounded-full bg-primary-100 p-2">
                           <PieChart className="h-5 w-5 text-primary-600" />
