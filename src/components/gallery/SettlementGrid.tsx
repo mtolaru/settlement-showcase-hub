@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -91,8 +92,6 @@ const SettlementGridItem = ({
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
-  const [retryCount, setRetryCount] = useState<number>(0);
-  const [shouldRender, setShouldRender] = useState<boolean>(true);
 
   useEffect(() => {
     // Get a sync URL immediately for fast initial render
@@ -110,7 +109,6 @@ const SettlementGridItem = ({
         }
       } catch (err) {
         console.error(`Error loading verified image for settlement ${settlement.id}:`, err);
-        // If we can't verify the image, we'll just keep the sync URL
       }
     };
     
@@ -121,31 +119,9 @@ const SettlementGridItem = ({
     console.error(`Error loading image for settlement ${settlement.id} (${imageUrl})`);
     setLoadError(true);
     
-    // Retry with a different approach if we haven't exceeded retry limit
-    if (retryCount < 2) {
-      setRetryCount(prevCount => prevCount + 1);
-      
-      resolveSettlementImageUrl(settlement.photo_url, settlement.id)
-        .then(newUrl => {
-          if (newUrl !== imageUrl && newUrl !== "/placeholder.svg") {
-            console.log(`Retry found new URL for settlement ${settlement.id}: ${newUrl}`);
-            setImageUrl(newUrl);
-          } else if (imageUrl !== "/placeholder.svg") {
-            // If no better URL was found, fall back to placeholder
-            console.log(`No better URL found for settlement ${settlement.id}, using placeholder`);
-            setImageUrl("/placeholder.svg");
-          }
-        })
-        .catch(() => {
-          // On error, use placeholder
-          if (imageUrl !== "/placeholder.svg") {
-            setImageUrl("/placeholder.svg");
-          }
-        });
-    } else {
-      // If we've exhausted retries and still have errors, don't show this settlement
-      console.log(`Failed to load image for settlement ${settlement.id} after ${retryCount} retries, hiding settlement`);
-      setShouldRender(false);
+    // If we haven't already tried the placeholder, use it now
+    if (imageUrl !== "/placeholder.svg") {
+      setImageUrl("/placeholder.svg");
     }
   };
   
@@ -153,11 +129,6 @@ const SettlementGridItem = ({
     setImageLoaded(true);
     setLoadError(false);
   };
-
-  // Don't render if we've decided this settlement shouldn't be shown
-  if (!shouldRender) {
-    return null;
-  }
 
   return (
     <motion.div

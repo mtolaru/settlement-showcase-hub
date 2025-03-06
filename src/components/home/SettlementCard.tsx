@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Building2 } from "lucide-react";
@@ -103,11 +104,6 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
     setImageLoaded(true);
     setLoadError(false);
   };
-
-  // Skip rendering if the image has failed to load after all retries
-  if (loadError && retryCount >= 2 && imageUrl === "/placeholder.svg") {
-    return null;
-  }
 
   return (
     <motion.div

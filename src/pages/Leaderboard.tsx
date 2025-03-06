@@ -8,8 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Settlement } from "@/types/settlement";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 const Leaderboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,7 +17,6 @@ const Leaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [hideInvalidImages, setHideInvalidImages] = useState(true);
   const { toast } = useToast();
   const observerTarget = useRef<HTMLDivElement>(null);
   
@@ -109,13 +106,6 @@ const Leaderboard = () => {
         }) || [];
         
         setSettlements(processedData);
-        
-        // Filter out settlements with invalid images if requested
-        if (hideInvalidImages) {
-          await filterSettlementsWithValidImages(processedData);
-        } else {
-          setFilteredSettlements(processedData);
-        }
       } catch (error) {
         console.error('Error fetching settlements:', error);
         toast({
@@ -129,74 +119,11 @@ const Leaderboard = () => {
     };
 
     fetchSettlements();
-  }, [toast, hideInvalidImages]);
-  
-  const filterSettlementsWithValidImages = async (allSettlements: Settlement[]) => {
-    try {
-      setIsLoading(true);
-      const validSettlements: Settlement[] = [];
-      
-      for (const settlement of allSettlements) {
-        if (!settlement.photo_url) {
-          // Skip settlements with no photo_url
-          console.log(`Settlement ${settlement.id} has no photo_url, filtering out`);
-          continue;
-        }
-        
-        // Get the file path
-        let filePath = settlement.photo_url;
-        if (filePath.startsWith('processed_images/')) {
-          filePath = filePath.substring('processed_images/'.length);
-        }
-        
-        try {
-          // Try to get public URL
-          const { data: publicUrlData } = supabase.storage
-            .from('processed_images')
-            .getPublicUrl(filePath);
-            
-          if (publicUrlData?.publicUrl) {
-            try {
-              const response = await fetch(publicUrlData.publicUrl, { method: 'HEAD' });
-              if (response.ok) {
-                validSettlements.push(settlement);
-                continue;
-              }
-            } catch {
-              // Continue to try other methods
-            }
-          }
-          
-          // Try standard naming pattern
-          const standardPath = `settlement_${settlement.id}.jpg`;
-          const { data } = await supabase.storage
-            .from('processed_images')
-            .createSignedUrl(standardPath, 10);
-            
-          if (data?.signedUrl) {
-            validSettlements.push(settlement);
-          } else {
-            console.log(`Image for settlement ${settlement.id} doesn't exist, filtering out`);
-          }
-        } catch (error) {
-          console.error(`Error checking image for settlement ${settlement.id}:`, error);
-        }
-      }
-      
-      console.log(`Filtered from ${allSettlements.length} to ${validSettlements.length} settlements with valid images`);
-      setFilteredSettlements(validSettlements);
-    } catch (error) {
-      console.error('Error filtering settlements with valid images:', error);
-      // Fallback to showing all settlements
-      setFilteredSettlements(allSettlements);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [toast]);
   
   useEffect(() => {
     const applyFilters = () => {
-      let result = [...filteredSettlements];
+      let result = [...settlements];
       
       if (filters.amount !== "all") {
         const [min, max] = filters.amount.split("-").map(Number);
@@ -223,6 +150,7 @@ const Leaderboard = () => {
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       }
       
+      setFilteredSettlements(result);
       setDisplayedSettlements(result.slice(0, itemsPerPage));
       setHasMore(result.length > itemsPerPage);
       
@@ -235,7 +163,7 @@ const Leaderboard = () => {
     };
     
     applyFilters();
-  }, [filteredSettlements, filters, setSearchParams, itemsPerPage]);
+  }, [settlements, filters, setSearchParams, itemsPerPage]);
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return;
@@ -292,10 +220,6 @@ const Leaderboard = () => {
     setFilters(newFilters);
   };
 
-  const toggleHideInvalidImages = () => {
-    setHideInvalidImages(!hideInvalidImages);
-  };
-
   return (
     <div className="min-h-screen bg-neutral-50">
       <GalleryHeader 
@@ -308,26 +232,6 @@ const Leaderboard = () => {
       />
       
       <div className="container py-8">
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="hide-invalid-images" 
-              checked={hideInvalidImages}
-              onCheckedChange={toggleHideInvalidImages}
-            />
-            <Label htmlFor="hide-invalid-images">
-              Hide settlements with invalid images
-            </Label>
-          </div>
-          
-          {isLoading && (
-            <div className="flex items-center gap-2 text-neutral-600">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Filtering settlements...</span>
-            </div>
-          )}
-        </div>
-      
         <div>
           <SettlementGrid 
             settlements={displayedSettlements}
@@ -337,9 +241,7 @@ const Leaderboard = () => {
             <div className="bg-white rounded-lg shadow p-8 text-center mt-6">
               <h3 className="text-xl font-bold mb-2">No Settlements Found</h3>
               <p className="text-neutral-600 mb-6">
-                {hideInvalidImages 
-                  ? "We couldn't find any settlements with valid images matching your current filters."
-                  : "We couldn't find any settlements matching your current filters."}
+                We couldn't find any settlements matching your current filters.
               </p>
               <button
                 onClick={() => setFilters(initialFilters)}
