@@ -15,9 +15,15 @@ export const useEmailValidation = (
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedEmailRef = useRef<string>("");
   const lastValidatedEmailRef = useRef<string>("");
+  const isValidatingRef = useRef(false);
 
   // Only validate the email when it changes and is not empty
   useEffect(() => {
+    // Skip validation if the hook is already in the middle of validating
+    if (isValidatingRef.current) {
+      return;
+    }
+
     // Skip validation if email is empty
     if (!email) {
       setAlreadyExists(false);
@@ -57,13 +63,14 @@ export const useEmailValidation = (
       return;
     }
 
-    // Don't revalidate if we already checked this email
+    // Don't revalidate if we already checked this email recently
     if (email === lastValidatedEmailRef.current) {
       return;
     }
 
     // Set loading state
     setIsValidatingEmail(true);
+    isValidatingRef.current = true;
 
     // Store the current email being validated
     lastCheckedEmailRef.current = email;
@@ -73,6 +80,7 @@ export const useEmailValidation = (
       try {
         // Only proceed if this is still the current email
         if (email === lastCheckedEmailRef.current) {
+          console.log("Validating email:", email);
           const emailExists = await verifyEmail(email, user?.email);
           
           // Only update state if this is still the current email
@@ -99,17 +107,14 @@ export const useEmailValidation = (
         }
       } catch (error) {
         console.error("Error validating email:", error);
-        // Clear the validating state even if there was an error
-        if (email === lastCheckedEmailRef.current) {
-          setIsValidatingEmail(false);
-        }
       } finally {
         // Only update loading state if this is still the current email
         if (email === lastCheckedEmailRef.current) {
           setIsValidatingEmail(false);
         }
+        isValidatingRef.current = false;
       }
-    }, 500);
+    }, 800); // Increase debounce time to reduce validation frequency
   }, [email, isAuthenticated, user?.email, isValidEmail, setErrors]);
 
   // Cleanup on unmount

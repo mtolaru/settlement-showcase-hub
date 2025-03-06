@@ -21,10 +21,7 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
   try {
     // Use the Edge Function for checking email existence
     const { data, error } = await supabase.functions.invoke('check-email', {
-      body: { email: normalizedEmail },
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      body: { email: normalizedEmail }
     });
     
     if (error) {
@@ -56,15 +53,14 @@ async function fallbackEmailCheck(normalizedEmail: string): Promise<boolean> {
       console.error('Error checking email in settlements:', settlementError);
     }
 
-    // If found in settlements, no need to check auth
+    // If found in settlements, no need to check further
     if (settlementData && settlementData.length > 0) {
       console.log("Email found in settlements table");
       return true;
     }
 
-    // Don't check the profiles table as it doesn't exist in the schema
-    // Instead, just return false if not found in settlements
-    console.log("Email not found in settlements table");
+    // Not found in any table
+    console.log("Email not found in any table");
     return false;
   } catch (err) {
     console.error('Exception in fallback email check:', err);
