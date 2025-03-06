@@ -1,4 +1,3 @@
-<lov-codelov-code>
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -295,4 +294,3 @@ export const verifyFileExists = async (filePath: string): Promise<boolean> => {
     return false;
   }
 };
-</lov-code>
