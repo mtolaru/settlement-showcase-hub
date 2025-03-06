@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -22,6 +22,7 @@ export function LoginDialog() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,11 +40,17 @@ export function LoginDialog() {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    // Clear error message when switching between login/register/forgot password modes
+    setErrorMessage("");
+  }, [isRegisterMode, isForgotPasswordMode]);
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
     setIsLoading(false);
     setResetSent(false);
+    setErrorMessage("");
   };
 
   const handleDialogClose = () => {
@@ -67,9 +74,26 @@ export function LoginDialog() {
     }
   };
 
+  const mapAuthErrorToMessage = (errorMessage: string): string => {
+    if (errorMessage.includes("Invalid login credentials")) {
+      return "Invalid email or password. Please try again.";
+    }
+    if (errorMessage.includes("Email not confirmed")) {
+      return "Please verify your email before logging in.";
+    }
+    if (errorMessage.includes("Password should be at least")) {
+      return "Password must be at least 8 characters long.";
+    }
+    if (errorMessage.includes("User already registered")) {
+      return "An account with this email already exists. Please log in instead.";
+    }
+    return errorMessage;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
 
     try {
       if (isForgotPasswordMode) {
@@ -85,26 +109,35 @@ export function LoginDialog() {
           description: "Please check your email to reset your password.",
         });
       } else if (isRegisterMode) {
-        validatePassword(password);
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        if (error) throw error;
-        toast({
-          title: "Registration successful!",
-          description: "Please check your email to verify your account.",
-        });
-        handleDialogClose();
+        try {
+          validatePassword(password);
+          const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
+          if (error) throw error;
+          toast({
+            title: "Registration successful!",
+            description: "Please check your email to verify your account.",
+          });
+          handleDialogClose();
+        } catch (error: any) {
+          setErrorMessage(mapAuthErrorToMessage(error.message));
+        }
       } else {
-        const { error, data } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          console.error("Login error:", error);
+          setErrorMessage(mapAuthErrorToMessage(error.message));
+          throw error;
+        }
         
         toast({
           title: "Success",
@@ -118,11 +151,15 @@ export function LoginDialog() {
         handleDialogClose();
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-      });
+      console.log("Auth error:", error);
+      // Error toast is now only shown for unexpected errors
+      if (!errorMessage) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -243,6 +280,13 @@ export function LoginDialog() {
                   )}
                 </div>
               </div>
+              
+              {errorMessage && (
+                <div className="flex items-center p-3 rounded-md bg-red-50 border border-red-100 text-red-600 text-sm">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
               
               {!isRegisterMode && (
                 <div className="text-right">
