@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.3.0?target=deno";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -85,6 +84,45 @@ serve(async (req) => {
           // If userId is available, also update it
           if (userId) {
             updateData.user_id = userId;
+          }
+          
+          const { data: settlementData, error: checkError } = await supabase
+            .from('settlements')
+            .select('id, user_id, attorney_email')
+            .eq('temporary_id', temporaryId)
+            .maybeSingle();
+            
+          if (checkError) {
+            console.error('Error checking existing settlement:', checkError);
+          } else if (settlementData) {
+            console.log('Found existing settlement:', settlementData);
+            
+            // If the settlement already has a user_id and it's different from what we have now,
+            // log this situation but still proceed with the update using our user_id if available
+            if (settlementData.user_id && userId && settlementData.user_id !== userId) {
+              console.log(`Settlement already has a different user_id: ${settlementData.user_id} vs new ${userId}`);
+            }
+            
+            // If we don't have a userId but the settlement has an attorney_email, 
+            // try to find a user with that email to associate
+            if (!userId && !settlementData.user_id && settlementData.attorney_email) {
+              const { data: userData, error: userError } = await supabase
+                .auth.admin.listUsers();
+                
+              if (userError) {
+                console.error('Error listing users:', userError);
+              } else if (userData) {
+                // Find a user with matching email
+                const matchingUser = userData.users.find(user => 
+                  user.email?.toLowerCase() === settlementData.attorney_email?.toLowerCase()
+                );
+                
+                if (matchingUser) {
+                  console.log(`Found matching user by email: ${matchingUser.id}`);
+                  updateData.user_id = matchingUser.id;
+                }
+              }
+            }
           }
           
           const { error: settlementError } = await supabase

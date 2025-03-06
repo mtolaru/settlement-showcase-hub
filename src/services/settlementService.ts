@@ -12,7 +12,7 @@ export const settlementService = {
       // Check if this temporaryId already has a completed payment
       const { data: existingSettlement, error: checkError } = await supabase
         .from('settlements')
-        .select('id')
+        .select('id, user_id')
         .eq('temporary_id', temporaryId)
         .eq('payment_completed', true)
         .maybeSingle();
@@ -96,7 +96,7 @@ export const settlementService = {
       // Check if this temporaryId already has a record (to prevent duplicates)
       const { data: existingSettlement, error: checkError } = await supabase
         .from('settlements')
-        .select('id, payment_completed')
+        .select('id, payment_completed, user_id')
         .eq('temporary_id', temporaryId)
         .maybeSingle();
 
@@ -110,7 +110,7 @@ export const settlementService = {
           console.log("Found existing completed payment for this temporaryId:", existingSettlement.id);
           
           // If a user is logged in but the settlement doesn't have a user_id, update it
-          if (session?.user?.id) {
+          if (session?.user?.id && !existingSettlement.user_id) {
             const { error: updateError } = await supabase
               .from('settlements')
               .update({ user_id: session.user.id })
@@ -128,7 +128,7 @@ export const settlementService = {
         }
         
         // If there's a user logged in now, update the user_id
-        if (session?.user?.id) {
+        if (session?.user?.id && !existingSettlement.user_id) {
           const { error: updateError } = await supabase
             .from('settlements')
             .update({ user_id: session.user.id })
