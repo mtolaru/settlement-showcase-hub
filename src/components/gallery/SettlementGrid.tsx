@@ -5,8 +5,8 @@ import type { Settlement } from "@/types/settlement";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useEffect } from "react";
-import { resolveSettlementImageUrlSync, resolveSettlementImageUrl } from "@/utils/imageUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { generateSettlementImageUrl, verifySettlementImageExists } from "@/utils/imageHelpers";
 
 interface SettlementGridProps {
   settlements: Settlement[];
@@ -95,34 +95,27 @@ const SettlementGridItem = ({
   const [shouldHide, setShouldHide] = useState<boolean>(false);
 
   useEffect(() => {
-    const initialUrl = resolveSettlementImageUrlSync(settlement.photo_url, settlement.id);
-    if (initialUrl !== imageUrl) {
-      setImageUrl(initialUrl);
-    }
+    const initialUrl = settlement.photo_url || generateSettlementImageUrl(settlement.id);
+    setImageUrl(initialUrl);
     
-    const loadVerifiedImage = async () => {
+    const verifyImage = async () => {
       try {
-        const verifiedUrl = await resolveSettlementImageUrl(settlement.photo_url, settlement.id);
+        const imageExists = await verifySettlementImageExists(settlement.id, settlement.photo_url);
         
-        if (verifiedUrl === "/placeholder.svg" && initialUrl !== "/placeholder.svg") {
-          console.log(`Settlement ${settlement.id} has missing image, marking hidden`);
+        if (!imageExists) {
+          console.log(`Settlement ${settlement.id} has missing or inaccessible image, marking hidden`);
           markSettlementHidden(settlement.id);
           setShouldHide(true);
-          return;
-        }
-        
-        if (verifiedUrl !== imageUrl) {
-          setImageUrl(verifiedUrl);
         }
       } catch (err) {
-        console.error(`Error loading verified image for settlement ${settlement.id}:`, err);
+        console.error(`Error verifying image for settlement ${settlement.id}:`, err);
         markSettlementHidden(settlement.id);
         setShouldHide(true);
       }
     };
     
-    loadVerifiedImage();
-  }, [settlement.photo_url, settlement.id]);
+    verifyImage();
+  }, [settlement.id, settlement.photo_url]);
   
   const markSettlementHidden = async (settlementId: number) => {
     try {
@@ -145,14 +138,10 @@ const SettlementGridItem = ({
     console.error(`Error loading image for settlement ${settlement.id} (${imageUrl})`);
     setLoadError(true);
     
-    if (imageUrl !== "/placeholder.svg") {
-      markSettlementHidden(settlement.id);
-      setShouldHide(true);
-    }
+    markSettlementHidden(settlement.id);
+    setShouldHide(true);
     
-    if (imageUrl !== "/placeholder.svg") {
-      setImageUrl("/placeholder.svg");
-    }
+    setImageUrl("/placeholder.svg");
   };
   
   const handleImageLoad = () => {

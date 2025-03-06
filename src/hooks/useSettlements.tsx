@@ -36,11 +36,12 @@ export const useSettlements = (user: User | null) => {
       }
       
       // If user has an active subscription, get all their settlements
+      // Only get non-hidden settlements
       let query = supabase
         .from('settlements')
         .select('*')
         .eq('user_id', user.id)
-        .eq('hidden', false); // Only get non-hidden settlements
+        .eq('hidden', false);
       
       const { data, error } = await query.order('created_at', { ascending: false });
 

@@ -5,8 +5,9 @@ import { Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { useState, useEffect } from "react";
-import { resolveSettlementImageUrlSync, resolveSettlementImageUrl } from "@/utils/imageUtils";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { verifySettlementImageExists } from "@/utils/imageHelpers";
 
 interface Settlement {
   id: number;
@@ -31,6 +32,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [retryCount, setRetryCount] = useState<number>(0);
+  const [shouldHide, setShouldHide] = useState<boolean>(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,30 +40,57 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
     setImageLoaded(false);
     setLoadError(false);
     
-    // Get a sync URL immediately for fast initial render
-    const initialUrl = resolveSettlementImageUrlSync(settlement.photo_url, settlement.id);
-    if (initialUrl !== imageUrl) {
-      console.log(`Initial image URL for settlement ${settlement.id}: ${initialUrl}`);
-      setImageUrl(initialUrl);
+    // Start with a direct image URL if available
+    if (settlement.photo_url) {
+      setImageUrl(settlement.photo_url);
+    } else {
+      // Try the standard naming pattern
+      const standardUrl = `settlement_${settlement.id}.jpg`;
+      const { data } = supabase.storage
+        .from('processed_images')
+        .getPublicUrl(standardUrl);
+        
+      if (data?.publicUrl) {
+        setImageUrl(data.publicUrl);
+      }
     }
     
-    // Then get the verified URL asynchronously
-    const loadVerifiedImage = async () => {
+    // Verify if the image actually exists
+    const verifyImage = async () => {
       try {
-        console.log(`Loading verified image for settlement ${settlement.id} (${settlement.photo_url})`);
-        const verifiedUrl = await resolveSettlementImageUrl(settlement.photo_url, settlement.id);
-        console.log(`Verified image URL for settlement ${settlement.id}: ${verifiedUrl}`);
+        const imageExists = await verifySettlementImageExists(settlement.id, settlement.photo_url);
         
-        if (verifiedUrl !== imageUrl) {
-          setImageUrl(verifiedUrl);
+        if (!imageExists) {
+          console.log(`Settlement ${settlement.id} has missing image, hiding`);
+          markSettlementHidden(settlement.id);
+          setShouldHide(true);
         }
       } catch (err) {
-        console.error(`Error loading verified image for settlement ${settlement.id}:`, err);
+        console.error(`Error verifying image for settlement ${settlement.id}:`, err);
+        markSettlementHidden(settlement.id);
+        setShouldHide(true);
       }
     };
     
-    loadVerifiedImage();
+    verifyImage();
   }, [settlement.photo_url, settlement.id]);
+
+  const markSettlementHidden = async (settlementId: number) => {
+    try {
+      const { error } = await supabase
+        .from('settlements')
+        .update({ hidden: true })
+        .eq('id', settlementId);
+        
+      if (error) {
+        console.error(`Failed to mark settlement ${settlementId} as hidden:`, error);
+      } else {
+        console.log(`Successfully marked settlement ${settlementId} as hidden`);
+      }
+    } catch (err) {
+      console.error(`Error marking settlement ${settlementId} as hidden:`, err);
+    }
+  };
 
   const handleSettlementClick = (id: number) => {
     navigate(`/settlements/${id}`);
@@ -71,39 +100,32 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
     console.error(`Error loading image for settlement ${settlement.id} (${imageUrl})`);
     setLoadError(true);
     
-    // Retry with a different approach if we haven't exceeded retry limit
-    if (retryCount < 2) {
-      setRetryCount(prevCount => prevCount + 1);
-      
-      // Force a reload with async method
-      resolveSettlementImageUrl(settlement.photo_url, settlement.id)
-        .then(newUrl => {
-          if (newUrl !== imageUrl && newUrl !== "/placeholder.svg") {
-            console.log(`Retry found new URL for settlement ${settlement.id}: ${newUrl}`);
-            setImageUrl(newUrl);
-          } else if (imageUrl !== "/placeholder.svg") {
-            // If no better URL was found, fall back to placeholder
-            console.log(`No better URL found for settlement ${settlement.id}, using placeholder`);
-            setImageUrl("/placeholder.svg");
-          }
-        })
-        .catch(() => {
-          // On error, use placeholder
-          if (imageUrl !== "/placeholder.svg") {
-            setImageUrl("/placeholder.svg");
-          }
-        });
-    } else if (imageUrl !== "/placeholder.svg") {
-      // If we've exceeded retry limit, use placeholder
+    // Mark the settlement as hidden in the database and hide it in the UI
+    markSettlementHidden(settlement.id);
+    setShouldHide(true);
+    
+    // Fall back to placeholder
+    if (imageUrl !== "/placeholder.svg") {
       setImageUrl("/placeholder.svg");
     }
   };
   
   const handleImageLoad = () => {
-    console.log(`Image loaded successfully for settlement ${settlement.id}: ${imageUrl}`);
-    setImageLoaded(true);
-    setLoadError(false);
+    // If we're loading a placeholder, the settlement should be hidden
+    if (imageUrl === "/placeholder.svg") {
+      markSettlementHidden(settlement.id);
+      setShouldHide(true);
+    } else {
+      console.log(`Image loaded successfully for settlement ${settlement.id}: ${imageUrl}`);
+      setImageLoaded(true);
+      setLoadError(false);
+    }
   };
+
+  // Don't render this component if the settlement should be hidden
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <motion.div
