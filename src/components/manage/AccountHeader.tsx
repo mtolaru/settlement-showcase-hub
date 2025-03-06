@@ -1,7 +1,5 @@
 
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 
 interface AccountHeaderProps {
@@ -16,14 +14,6 @@ const AccountHeader = ({ user, signOut }: AccountHeaderProps) => {
         <h1 className="text-4xl font-bold font-display text-primary-900">
           My Account
         </h1>
-        <Button 
-          variant="outline" 
-          onClick={signOut}
-          className="gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
-        </Button>
       </div>
 
       {user && (
