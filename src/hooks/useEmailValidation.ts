@@ -12,8 +12,13 @@ export const useEmailValidation = (
   const { user } = useAuth();
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
   const [alreadyExists, setAlreadyExists] = useState(false);
+  const [lastCheckedEmail, setLastCheckedEmail] = useState("");
 
   const handleEmailChange = async (email: string) => {
+    // Store the current email for which we're running validation
+    const currentEmailCheck = email;
+    setLastCheckedEmail(currentEmailCheck);
+    
     // Check if the email belongs to the currently logged-in user
     const isCurrentUserEmail = user?.email === email;
     
@@ -32,30 +37,39 @@ export const useEmailValidation = (
       try {
         console.log("Verifying if email exists:", email);
         const emailExists = await verifyEmail(email, user?.email);
-        console.log("Email verification result:", emailExists);
-        setAlreadyExists(emailExists);
+        console.log("Email verification result:", emailExists, "for email:", email);
         
-        if (emailExists) {
-          console.log("Setting email already exists error");
-          setErrors((prev: FormErrors) => ({
-            ...prev,
-            attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
-          }));
+        // Only update state if this is still the latest email check
+        if (currentEmailCheck === lastCheckedEmail) {
+          setAlreadyExists(emailExists);
+          
+          if (emailExists) {
+            console.log("Setting email already exists error");
+            setErrors((prev: FormErrors) => ({
+              ...prev,
+              attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
+            }));
+          } else {
+            // Clear the error if email doesn't exist
+            console.log("Clearing email error as email doesn't exist");
+            setErrors((prev: FormErrors) => {
+              const newErrors = { ...prev };
+              if (newErrors.attorneyEmail && newErrors.attorneyEmail.includes("already associated")) {
+                delete newErrors.attorneyEmail;
+              }
+              return newErrors;
+            });
+          }
         } else {
-          // Clear the error if email doesn't exist
-          console.log("Clearing email error as email doesn't exist");
-          setErrors((prev: FormErrors) => {
-            const newErrors = { ...prev };
-            if (newErrors.attorneyEmail && newErrors.attorneyEmail.includes("already associated")) {
-              delete newErrors.attorneyEmail;
-            }
-            return newErrors;
-          });
+          console.log("Ignoring stale email validation result for:", email, "current email is:", lastCheckedEmail);
         }
       } catch (error) {
         console.error("Error validating email:", error);
       } finally {
-        setIsValidatingEmail(false);
+        // Only update loading state if this is still the latest email check
+        if (currentEmailCheck === lastCheckedEmail) {
+          setIsValidatingEmail(false);
+        }
       }
     } else if (isCurrentUserEmail) {
       // Clear any existing errors for the email if it belongs to the current user
@@ -80,6 +94,16 @@ export const useEmailValidation = (
       }, 500); // Debounce email validation
       
       return () => clearTimeout(timer);
+    } else {
+      // Clear existing errors if email is empty
+      setErrors((prev: FormErrors) => {
+        const newErrors = { ...prev };
+        if (newErrors.attorneyEmail) {
+          delete newErrors.attorneyEmail;
+        }
+        return newErrors;
+      });
+      setAlreadyExists(false);
     }
   }, [email]);
 

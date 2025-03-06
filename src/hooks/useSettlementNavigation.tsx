@@ -70,9 +70,9 @@ export const useSettlementNavigation = ({
         return false;
       }
       
-      // Check if email already exists (unless it's the current user's email)
+      // Check if email already exists according to the status
       if (emailStatus.alreadyExists) {
-        console.log("Email already exists, cannot proceed");
+        console.log("Email already exists according to status, cannot proceed");
         setErrors({ 
           attorneyEmail: "This email is already associated with settlements. Please log in or use a different email." 
         });
