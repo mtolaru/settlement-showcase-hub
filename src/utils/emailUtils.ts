@@ -10,6 +10,7 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
   }
   
   try {
+    console.log("Checking if email exists in database:", email);
     const { data, error } = await supabase
       .from('settlements')
       .select('attorney_email')
@@ -21,6 +22,7 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
       return false;
     }
 
+    console.log("Email verification result from database:", !!data);
     return !!data;
   } catch (err) {
     console.error('Exception checking email:', err);

@@ -23,7 +23,9 @@ export const useAuth = (): AuthReturn => {
     // Get initial session
     const initSession = async () => {
       try {
+        console.log("Initializing auth session");
         const { data: { session } } = await supabase.auth.getSession();
+        console.log("Initial session:", session ? `User ID: ${session.user.id}` : "No session");
         setUser(session?.user ?? null);
       } catch (error) {
         console.error('Error getting session:', error);
@@ -38,6 +40,8 @@ export const useAuth = (): AuthReturn => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event);
+      console.log("New session:", session ? `User ID: ${session.user.id}` : "No session");
       setUser(session?.user ?? null);
       setIsLoading(false);
     });

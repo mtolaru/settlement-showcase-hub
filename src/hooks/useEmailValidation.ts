@@ -30,16 +30,20 @@ export const useEmailValidation = (
 
       setIsValidatingEmail(true);
       try {
+        console.log("Verifying if email exists:", email);
         const emailExists = await verifyEmail(email, user?.email);
+        console.log("Email verification result:", emailExists);
         setAlreadyExists(emailExists);
         
         if (emailExists) {
+          console.log("Setting email already exists error");
           setErrors((prev: FormErrors) => ({
             ...prev,
             attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
           }));
         } else {
           // Clear the error if email doesn't exist
+          console.log("Clearing email error as email doesn't exist");
           setErrors((prev: FormErrors) => {
             const newErrors = { ...prev };
             if (newErrors.attorneyEmail && newErrors.attorneyEmail.includes("already associated")) {
@@ -55,6 +59,7 @@ export const useEmailValidation = (
       }
     } else if (isCurrentUserEmail) {
       // Clear any existing errors for the email if it belongs to the current user
+      console.log("Using current user's email, clearing any errors");
       setErrors((prev: FormErrors) => {
         const newErrors = { ...prev };
         if (newErrors.attorneyEmail) {
@@ -69,6 +74,7 @@ export const useEmailValidation = (
 
   useEffect(() => {
     if (email) {
+      console.log("Email changed, will validate after debounce:", email);
       const timer = setTimeout(() => {
         handleEmailChange(email);
       }, 500); // Debounce email validation

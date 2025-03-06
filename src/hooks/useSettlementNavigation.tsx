@@ -70,8 +70,14 @@ export const useSettlementNavigation = ({
         return false;
       }
       
-      // Skip email exists check if the email belongs to the logged-in user
-      // (this is handled within validateStep2, but we make it explicit here)
+      // Check if email already exists (unless it's the current user's email)
+      if (emailStatus.alreadyExists) {
+        console.log("Email already exists, cannot proceed");
+        setErrors({ 
+          attorneyEmail: "This email is already associated with settlements. Please log in or use a different email." 
+        });
+        return false;
+      }
       
       // Always run validation - this will set errors via setErrors inside validateStep2
       const isValid = validateStep2(formData);
