@@ -171,8 +171,16 @@ export const settlementService = {
       const { data: { user } } = await supabase.auth.getUser();
       const userTemporaryId = user?.user_metadata?.temporaryId;
       
+      console.log('User temporary ID from metadata:', userTemporaryId);
+      console.log('Settlement temporary ID:', settlement.temporary_id);
+      
+      // Allow deletion if either:
+      // 1. The settlement's user_id matches the current user's ID
+      // 2. The settlement has a temporary_id that matches the temporaryId in the user's metadata
+      // 3. The settlement has no user_id yet (which means it was created before the account)
       const isOwner = 
         settlement.user_id === userId || 
+        settlement.user_id === null ||
         (settlement.temporary_id && userTemporaryId && settlement.temporary_id === userTemporaryId);
       
       if (!isOwner) {
@@ -180,7 +188,8 @@ export const settlementService = {
         throw new Error("You don't have permission to delete this settlement");
       }
 
-      // Proceed with deletion
+      // Proceed with deletion - remove the user_id condition to allow deletion of settlements
+      // that were created before the account was created
       const { error } = await supabase
         .from('settlements')
         .delete()
