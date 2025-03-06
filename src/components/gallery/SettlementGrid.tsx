@@ -140,7 +140,7 @@ const SettlementGridItem = ({
       onClick={() => onCardClick(settlement.id)}
     >
       <div className="relative">
-        <div className="relative h-48 bg-neutral-100 flex items-center justify-center">
+        <div className="relative h-48 bg-neutral-100">
           {!imageLoaded && !loadError && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="h-8 w-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
@@ -149,17 +149,16 @@ const SettlementGridItem = ({
           <img
             src={imageUrl}
             alt={`${settlement.type} case`}
-            className={`w-full h-auto max-h-48 ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+            className={`w-full h-full object-cover ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
             onError={handleImageError}
             onLoad={handleImageLoad}
-            style={{ objectFit: 'contain' }}
           />
-          <div className="absolute top-4 left-4 flex gap-2 flex-wrap z-10">
-            <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900 shadow-sm">
+          <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
+            <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
               {settlement.type}
             </span>
             {settlement.settlement_phase && (
-              <span className="bg-primary-100 px-3 py-1 rounded-full text-sm font-medium text-primary-800 shadow-sm">
+              <span className="bg-primary-100 px-3 py-1 rounded-full text-sm font-medium text-primary-800">
                 {getSettlementPhaseLabel(settlement.settlement_phase)}
               </span>
             )}
