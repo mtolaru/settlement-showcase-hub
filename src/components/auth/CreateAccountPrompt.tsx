@@ -18,6 +18,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isExistingAccount, setIsExistingAccount] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -41,6 +42,22 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         if (data?.attorney_email) {
           console.log("Pre-populating email from settlement:", data.attorney_email);
           setEmail(data.attorney_email);
+          
+          // Check if this email already exists in auth
+          const { data: userData, error: userError } = await supabase.auth.signInWithOtp({
+            email: data.attorney_email,
+            options: {
+              shouldCreateUser: false // Just check if user exists, don't send email
+            }
+          });
+          
+          if (!userError && userData?.user) {
+            // This is a sign that the email is already registered
+            setIsExistingAccount(true);
+          } else {
+            // Assume new user if there's an error with this API call
+            setIsExistingAccount(false);
+          }
         }
       } catch (error) {
         console.error("Error in fetchSettlementEmail:", error);
@@ -58,123 +75,78 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     try {
       console.log("Creating account for temporaryId:", temporaryId);
       
-      // First, try to sign in with the provided credentials
-      // This handles the case where the user has already registered
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      // First check if the email exists in the auth system
+      const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers({
+        filter: {
+          email: email
+        }
       });
       
-      if (!signInError && signInData.user) {
-        console.log("User signed in successfully:", signInData.user.id);
-        
-        // Update the settlement with the user ID
-        const { error: updateError } = await supabase
-          .from('settlements')
-          .update({ user_id: signInData.user.id })
-          .eq('temporary_id', temporaryId);
-
-        if (updateError) {
-          console.error("Error updating settlement:", updateError);
-        } else {
-          console.log("Settlement updated with user_id");
-        }
-        
-        toast({
-          title: "Signed in successfully!",
-          description: "You have been logged in to your existing account.",
+      const emailExists = users && users.length > 0;
+      
+      if (emailExists) {
+        console.log("Email already exists, attempting sign in");
+        // If email exists, try to sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
         });
         
-        navigate("/manage");
-        onClose();
-        return;
-      }
-      
-      // If sign in failed, it could be because:
-      // 1. User doesn't exist - try to sign up
-      // 2. Password is incorrect - show error
-      
-      if (signInError) {
-        console.log("Sign in error:", signInError.message);
-        
-        // If the error is about incorrect password, show specific message
-        if (signInError.message?.toLowerCase().includes('invalid login credentials')) {
-          setErrorMessage("Incorrect password. If you already have an account, please use the correct password.");
+        if (signInError) {
+          console.error("Sign in error:", signInError);
+          setErrorMessage("Incorrect password. Please use the correct password for this existing account.");
           setIsLoading(false);
           return;
         }
-      }
-      
-      // Try to sign up (this will fail if email is already registered)
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            temporaryId
-          }
-        }
-      });
-
-      if (signUpError) {
-        // Email already registered but password was incorrect
-        if (signUpError.message?.toLowerCase().includes('email already registered')) {
-          setErrorMessage("This email is already registered. Please use the correct password to sign in.");
-        } else {
-          setErrorMessage(signUpError.message || "An unexpected error occurred. Please try again.");
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      if (signUpData.user) {
-        console.log("User created successfully:", signUpData.user.id);
         
-        try {
-          // Update the settlement with the user ID
-          const { error: updateError } = await supabase
-            .from('settlements')
-            .update({ user_id: signUpData.user.id })
-            .eq('temporary_id', temporaryId);
-
-          if (updateError) {
-            console.error("Error updating settlement:", updateError);
-          } else {
-            console.log("Settlement updated with user_id");
-          }
-          
-          // Also update any subscription record with the same temporary_id
-          const { error: subscriptionError } = await supabase
-            .from('subscriptions')
-            .update({ user_id: signUpData.user.id })
-            .eq('temporary_id', temporaryId);
-
-          if (subscriptionError) {
-            console.error("Error updating subscription:", subscriptionError);
-          } else {
-            console.log("Subscription updated with user_id");
-          }
-        } catch (error) {
-          console.error("Error in database updates after signup:", error);
-        }
-
-        if (signUpData.session) {
-          // User is automatically signed in
+        // If sign in successful, update the settlement with the user ID
+        const { data: session } = await supabase.auth.getSession();
+        if (session?.session?.user) {
+          await updateSettlementWithUserId(session.session.user.id);
           toast({
-            title: "Account created successfully!",
-            description: "You have been automatically logged in.",
+            title: "Signed in successfully!",
+            description: "You have been logged in to your existing account.",
           });
-
           navigate("/manage");
           onClose();
-        } else {
-          // User needs to verify email
-          toast({
-            title: "Almost there!",
-            description: "Please check your email to verify your account. Once verified, you'll be able to access your settlements.",
-          });
+        }
+      } else {
+        console.log("Email does not exist, creating new account");
+        // Email doesn't exist, create a new account
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              temporaryId
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error("Sign up error:", signUpError);
+          setErrorMessage(signUpError.message || "An unexpected error occurred. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+
+        if (signUpData.user) {
+          await updateSettlementWithUserId(signUpData.user.id);
           
-          // Close the account creation prompt even if email verification is pending
+          if (signUpData.session) {
+            // User is automatically signed in
+            toast({
+              title: "Account created successfully!",
+              description: "You have been automatically logged in.",
+            });
+            navigate("/manage");
+          } else {
+            // User needs to verify email
+            toast({
+              title: "Almost there!",
+              description: "Please check your email to verify your account. Once verified, you'll be able to access your settlements.",
+            });
+          }
           onClose();
         }
       }
@@ -185,6 +157,36 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       setIsLoading(false);
     }
   };
+  
+  const updateSettlementWithUserId = async (userId: string) => {
+    try {
+      // Update the settlement with the user ID
+      const { error: updateError } = await supabase
+        .from('settlements')
+        .update({ user_id: userId })
+        .eq('temporary_id', temporaryId);
+
+      if (updateError) {
+        console.error("Error updating settlement:", updateError);
+      } else {
+        console.log("Settlement updated with user_id");
+      }
+      
+      // Also update any subscription record with the same temporary_id
+      const { error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .update({ user_id: userId })
+        .eq('temporary_id', temporaryId);
+
+      if (subscriptionError) {
+        console.error("Error updating subscription:", subscriptionError);
+      } else {
+        console.log("Subscription updated with user_id");
+      }
+    } catch (error) {
+      console.error("Error in updateSettlementWithUserId:", error);
+    }
+  };
 
   return (
     <motion.div
@@ -193,9 +195,13 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-primary-900 mb-4">Create Your Account</h2>
+        <h2 className="text-2xl font-bold text-primary-900 mb-4">
+          {isExistingAccount ? "Sign In to Your Account" : "Create Your Account"}
+        </h2>
         <p className="text-neutral-600">
-          Please create an account to access your settlement and submit additional cases.
+          {isExistingAccount 
+            ? "Please sign in to access your settlement and submit additional cases." 
+            : "Please create an account to access your settlement and submit additional cases."}
         </p>
       </div>
 
@@ -230,7 +236,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10"
-              placeholder="Create a password"
+              placeholder={isExistingAccount ? "Enter your password" : "Create a password"}
               required
               minLength={6}
             />
@@ -249,12 +255,14 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           className="w-full bg-primary-600 hover:bg-primary-700 text-lg py-6"
           disabled={isLoading}
         >
-          {isLoading ? "Processing..." : "Create Account"} {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
+          {isLoading ? "Processing..." : isExistingAccount ? "Sign In" : "Create Account"} {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
         </Button>
 
         <div className="text-center">
           <p className="text-sm text-neutral-500">
-            Creating an account is required to access your settlements.
+            {isExistingAccount 
+              ? "Signing in is required to access your settlements." 
+              : "Creating an account is required to access your settlements."}
           </p>
         </div>
       </form>
