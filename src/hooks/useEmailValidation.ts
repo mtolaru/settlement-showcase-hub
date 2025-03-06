@@ -9,7 +9,7 @@ export const useEmailValidation = (
   isValidEmail: (email: string) => boolean,
   setErrors: (errors: FormErrors | ((prev: FormErrors) => FormErrors)) => void
 ) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
   const [alreadyExists, setAlreadyExists] = useState(false);
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -19,21 +19,28 @@ export const useEmailValidation = (
     // Clear any previous timeout
     if (validationTimeoutRef.current) {
       clearTimeout(validationTimeoutRef.current);
+      validationTimeoutRef.current = null;
     }
 
-    // Skip validation if email is empty or belongs to current user
-    if (!email || (user?.email === email)) {
+    // Skip validation if email is empty
+    if (!email) {
+      setAlreadyExists(false);
+      setIsValidatingEmail(false);
+      return;
+    }
+
+    // Skip validation if user is authenticated and using their own email
+    if (isAuthenticated && user?.email === email) {
+      console.log("Email matches authenticated user, skipping validation");
       setAlreadyExists(false);
       setIsValidatingEmail(false);
       
       // Clear email errors if it's the current user's email
-      if (user?.email === email) {
-        setErrors((prev: FormErrors) => {
-          const newErrors = { ...prev };
-          delete newErrors.attorneyEmail;
-          return newErrors;
-        });
-      }
+      setErrors((prev: FormErrors) => {
+        const newErrors = { ...prev };
+        delete newErrors.attorneyEmail;
+        return newErrors;
+      });
       return;
     }
 
@@ -84,6 +91,10 @@ export const useEmailValidation = (
         }
       } catch (error) {
         console.error("Error validating email:", error);
+        // Clear the validating state even if there was an error
+        if (email === lastCheckedEmailRef.current) {
+          setIsValidatingEmail(false);
+        }
       } finally {
         // Only update loading state if this is still the current email
         if (email === lastCheckedEmailRef.current) {
@@ -100,6 +111,7 @@ export const useEmailValidation = (
     return () => {
       if (validationTimeoutRef.current) {
         clearTimeout(validationTimeoutRef.current);
+        validationTimeoutRef.current = null;
       }
     };
   }, [email]);

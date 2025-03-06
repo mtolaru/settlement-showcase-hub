@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 }) => {
   const { user } = useAuth();
   
+  // Only disable the email field if user is authenticated AND using their own email
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
   const isNamePreFilled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
   
@@ -58,6 +60,12 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
       isEmailDisabled
     });
   }, [isAuthenticated, user, formData.attorneyEmail, isEmailDisabled]);
+
+  const handleEmailInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isEmailDisabled) {
+      handleInputChange("attorneyEmail", e.target.value);
+    }
+  };
 
   return (
     <div>
@@ -114,10 +122,11 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             <Input
               id="attorneyEmail"
               value={formData.attorneyEmail}
-              onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
+              onChange={handleEmailInputChange}
               placeholder="john.doe@lawfirm.com"
               className={`mt-1 ${errors.attorneyEmail ? "border-red-500" : ""} pr-10`}
               disabled={isEmailDisabled}
+              readOnly={isEmailDisabled}
             />
             {isEmailDisabled && (
               <Lock className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />

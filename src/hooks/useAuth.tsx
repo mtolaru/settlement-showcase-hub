@@ -18,6 +18,7 @@ export const useAuth = (): AuthReturn => {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -26,11 +27,19 @@ export const useAuth = (): AuthReturn => {
         console.log("Initializing auth session");
         const { data: { session } } = await supabase.auth.getSession();
         console.log("Initial session:", session ? `User ID: ${session.user.id}` : "No session");
-        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          setUser(session.user);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } catch (error) {
         console.error('Error getting session:', error);
         // Ensure user is set to null on error
         setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -44,7 +53,15 @@ export const useAuth = (): AuthReturn => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", _event);
       console.log("New session:", session ? `User ID: ${session.user.id}` : "No session");
-      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      
       setIsLoading(false);
     });
 
@@ -69,6 +86,7 @@ export const useAuth = (): AuthReturn => {
       await supabase.auth.signOut();
       console.log("Sign out completed");
       setUser(null);
+      setIsAuthenticated(false);
       navigate('/');
       toast({
         title: "Signed out successfully",
@@ -89,6 +107,6 @@ export const useAuth = (): AuthReturn => {
     isLoading, 
     checkAuth,
     signOut,
-    isAuthenticated: !!user 
+    isAuthenticated
   };
 };

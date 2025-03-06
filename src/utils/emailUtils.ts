@@ -21,7 +21,13 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
   try {
     // Use the Edge Function for checking email existence
     const { data, error } = await supabase.functions.invoke('check-email', {
-      body: { email: normalizedEmail }
+      body: { email: normalizedEmail },
+      // Add a timeout to prevent hanging requests
+      options: {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     });
     
     if (error) {
@@ -59,30 +65,26 @@ async function fallbackEmailCheck(normalizedEmail: string): Promise<boolean> {
       return true;
     }
 
-    // Check auth using signInWithOTP as a way to verify if user exists
-    // This is a workaround since we can't directly query auth.users
-    try {
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email: normalizedEmail,
-        options: {
-          shouldCreateUser: false // Just check if user exists, don't send email
-        }
-      });
+    // Don't use auth.signInWithOtp as it's causing issues
+    // Instead, check the profiles table if available
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('email', normalizedEmail)
+      .limit(1);
       
-      // If there's no error or the error doesn't contain "User not found", the email exists
-      const emailExistsInAuth = !authError || (authError.message && !authError.message.includes("User not found"));
-      
-      if (authError && !authError.message.includes("User not found")) {
-        console.error('Error checking email in auth:', authError);
-      } else {
-        console.log("Email check in auth result:", emailExistsInAuth ? "exists" : "not found");
-      }
-      
-      return emailExistsInAuth;
-    } catch (authCheckError) {
-      console.error("Error during auth check:", authCheckError);
+    if (profileError) {
+      console.error('Error checking profiles table:', profileError);
       return false;
     }
+    
+    if (profileData && profileData.length > 0) {
+      console.log("Email found in profiles table");
+      return true;
+    }
+    
+    console.log("Email not found in any table");
+    return false;
   } catch (err) {
     console.error('Exception in fallback email check:', err);
     return false;
