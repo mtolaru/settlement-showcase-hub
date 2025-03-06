@@ -35,16 +35,13 @@ const Leaderboard = () => {
     const fetchSettlements = async () => {
       try {
         setIsLoading(true);
-        console.log('Fetching settlements for leaderboard...');
         
-        // Get active subscriptions
         const { data: subscribedUsers, error: subscriptionError } = await supabase
           .from('subscriptions')
           .select('user_id, temporary_id')
           .eq('is_active', true);
           
         if (subscriptionError) {
-          console.error('Subscription fetch error:', subscriptionError);
           throw subscriptionError;
         }
         
@@ -56,8 +53,6 @@ const Leaderboard = () => {
           ?.filter(sub => sub.temporary_id)
           .map(sub => sub.temporary_id) || [];
         
-        console.log(`Found ${userIds.length} users and ${temporaryIds.length} temporary IDs with active subscriptions`);
-        
         if (userIds.length === 0 && temporaryIds.length === 0) {
           console.log('No active subscriptions found');
           setSettlements([]);
@@ -65,36 +60,27 @@ const Leaderboard = () => {
           return;
         }
         
-        // Build query for fetching settlements
-        let query = supabase
+        let queryParts = [];
+        
+        if (userIds.length > 0) {
+          queryParts.push(`user_id.in.(${userIds.join(',')})`);
+        }
+        
+        if (temporaryIds.length > 0) {
+          queryParts.push(`temporary_id.in.(${temporaryIds.join(',')})`);
+        }
+        
+        queryParts.push('payment_completed.eq.true');
+        
+        const { data, error } = await supabase
           .from('settlements')
           .select('*')
-          .eq('payment_completed', true);
-          
-        // Add user_id and temporary_id conditions if available
-        if (userIds.length > 0) {
-          query = query.in('user_id', userIds);
-        }
-        
-        if (temporaryIds.length > 0 && userIds.length > 0) {
-          // If we have both, we need to use or condition
-          query = query.or(`user_id.in.(${userIds.join(',')}),temporary_id.in.(${temporaryIds.join(',')})`);
-        } else if (temporaryIds.length > 0) {
-          // If we only have temporary IDs
-          query = query.in('temporary_id', temporaryIds);
-        }
-        
-        // Execute the query
-        const { data, error } = await query;
+          .or(queryParts.join(','));
 
         if (error) {
-          console.error('Settlement fetch error:', error);
           throw error;
         }
 
-        console.log(`Fetched ${data?.length || 0} settlements from database`);
-        
-        // Process and map the data
         const processedData: Settlement[] = data?.map(settlement => {
           return {
             id: settlement.id,
@@ -115,18 +101,11 @@ const Leaderboard = () => {
             temporary_id: settlement.temporary_id,
             user_id: settlement.user_id,
             payment_completed: settlement.payment_completed,
-            photo_url: settlement.photo_url,
-            hidden: settlement.hidden
+            photo_url: settlement.photo_url
           };
         }) || [];
         
-        console.log(`Processed ${processedData.length} settlements for display`);
-        
-        // Filter out hidden settlements
-        const visibleSettlements = processedData.filter(settlement => !settlement.hidden);
-        console.log(`${visibleSettlements.length} settlements visible (not hidden)`);
-        
-        setSettlements(visibleSettlements);
+        setSettlements(processedData);
       } catch (error) {
         console.error('Error fetching settlements:', error);
         toast({

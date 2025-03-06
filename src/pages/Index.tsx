@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
 import LocationSelector from "@/components/home/LocationSelector";
-import SettlementCard from "@/components/home/card/SettlementCard";
+import SettlementCard from "@/components/home/SettlementCard";
 import WhyShare from "@/components/home/WhyShare";
 import CallToAction from "@/components/home/CallToAction";
 import { ArrowRight, Trophy, Clock, FileQuestion, Loader2 } from "lucide-react";

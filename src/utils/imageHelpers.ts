@@ -67,23 +67,7 @@ export const verifyFileExists = async (filePath: string | number): Promise<boole
       return false;
     }
     
-    if (data?.signedUrl) {
-      // Verify the signed URL is accessible
-      try {
-        const response = await fetch(data.signedUrl, { method: 'HEAD' });
-        if (response.ok) {
-          console.log(`Verified file exists via signed URL: ${fileName}`);
-          return true;
-        }
-        console.log(`Signed URL exists but returned status ${response.status}: ${fileName}`);
-        return false;
-      } catch (err) {
-        console.log(`Error checking signed URL: ${err}`);
-        return false;
-      }
-    }
-    
-    return false;
+    return !!data?.signedUrl;
   } catch (error) {
     console.error(`Error verifying file existence:`, error);
     return false;
