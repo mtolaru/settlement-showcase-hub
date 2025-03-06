@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOCATIONS } from "@/lib/locations";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, CheckCircle } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle, Lock } from "lucide-react";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -89,10 +90,13 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               className={`mt-1 ${errors.attorneyEmail ? "border-red-500" : ""} pr-10`}
               disabled={isEmailDisabled}
             />
-            {emailStatus.isValidating && (
+            {isEmailDisabled && (
+              <Lock className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />
+            )}
+            {!isEmailDisabled && emailStatus.isValidating && (
               <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />
             )}
-            {!emailStatus.isValidating && formData.attorneyEmail && !errors.attorneyEmail && (
+            {!isEmailDisabled && !emailStatus.isValidating && formData.attorneyEmail && !errors.attorneyEmail && (
               <CheckCircle className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-green-500" />
             )}
           </div>

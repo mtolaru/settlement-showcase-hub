@@ -6,7 +6,7 @@ import { FormData, FormErrors } from "@/types/settlementForm";
 interface UseSettlementNavigationProps {
   formData: FormData;
   setStep: (step: number) => void;
-  setErrors: (errors: FormErrors) => void;
+  setErrors: (errors: FormErrors | ((prev: FormErrors) => FormErrors)) => void;
   validateStep1: (formData: FormData) => boolean;
   validateStep2: (formData: FormData, skipEmailValidation?: boolean) => boolean;
   verifyEmail: (email: string) => Promise<boolean>;
@@ -66,20 +66,14 @@ export const useSettlementNavigation = ({
       // Check if email validation is still in progress
       if (emailStatus.isValidating) {
         console.log("Email validation in progress, waiting...");
-        setErrors(prev => ({
-          ...prev,
-          attorneyEmail: "Please wait for email validation to complete"
-        }));
+        setErrors({ attorneyEmail: "Please wait for email validation to complete" });
         return false;
       }
       
       // Check if email already exists before proceeding
       if (emailStatus.alreadyExists) {
         console.log("Email already exists, cannot proceed");
-        setErrors(prev => ({
-          ...prev,
-          attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
-        }));
+        setErrors({ attorneyEmail: "This email is already associated with settlements. Please log in or use a different email." });
         return false;
       }
       
@@ -93,10 +87,7 @@ export const useSettlementNavigation = ({
             const emailExists = await verifyEmail(formData.attorneyEmail);
             if (emailExists) {
               console.log("Final check - email already exists, cannot proceed");
-              setErrors(prev => ({
-                ...prev,
-                attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
-              }));
+              setErrors({ attorneyEmail: "This email is already associated with settlements. Please log in or use a different email." });
               return false;
             }
           } catch (error) {

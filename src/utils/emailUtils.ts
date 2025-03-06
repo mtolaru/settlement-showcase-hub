@@ -2,7 +2,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export const verifyEmail = async (email: string, userEmail: string | undefined | null): Promise<boolean> => {
+  // If the email being verified is the same as the current user's email,
+  // we should always return false (not existing) to allow the user to use their own email
   if (userEmail === email) {
+    console.log("Email being verified belongs to current user:", email);
     return false;
   }
   

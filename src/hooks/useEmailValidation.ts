@@ -14,7 +14,10 @@ export const useEmailValidation = (
   const [alreadyExists, setAlreadyExists] = useState(false);
 
   const handleEmailChange = async (email: string) => {
-    if (email && !(user?.email === email)) {
+    // Check if the email belongs to the currently logged-in user
+    const isCurrentUserEmail = user?.email === email;
+    
+    if (email && !isCurrentUserEmail) {
       // First validate email format before checking if it exists
       if (!isValidEmail(email)) {
         setErrors((prev: FormErrors) => ({
@@ -50,6 +53,17 @@ export const useEmailValidation = (
       } finally {
         setIsValidatingEmail(false);
       }
+    } else if (isCurrentUserEmail) {
+      // Clear any existing errors for the email if it belongs to the current user
+      setErrors((prev: FormErrors) => {
+        const newErrors = { ...prev };
+        if (newErrors.attorneyEmail) {
+          delete newErrors.attorneyEmail;
+        }
+        return newErrors;
+      });
+      setAlreadyExists(false);
+      setIsValidatingEmail(false);
     }
   };
 
