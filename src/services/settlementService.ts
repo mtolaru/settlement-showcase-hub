@@ -24,6 +24,22 @@ export const settlementService = {
 
       if (existingSettlement?.id) {
         console.log("Found existing settlement with this temporaryId:", existingSettlement);
+        
+        // If a user is logged in but the settlement doesn't have a user_id, update it
+        if (session?.user?.id) {
+          const { error: updateError } = await supabase
+            .from('settlements')
+            .update({ user_id: session.user.id })
+            .eq('id', existingSettlement.id)
+            .is('user_id', null);
+            
+          if (updateError) {
+            console.error('Error updating settlement user_id:', updateError);
+          } else {
+            console.log('Updated settlement with user_id:', session.user.id);
+          }
+        }
+        
         return { success: true, isExisting: true };
       }
 
@@ -92,7 +108,38 @@ export const settlementService = {
         // If we have an existing record with payment completed, just redirect
         if (existingSettlement.payment_completed) {
           console.log("Found existing completed payment for this temporaryId:", existingSettlement.id);
+          
+          // If a user is logged in but the settlement doesn't have a user_id, update it
+          if (session?.user?.id) {
+            const { error: updateError } = await supabase
+              .from('settlements')
+              .update({ user_id: session.user.id })
+              .eq('id', existingSettlement.id)
+              .is('user_id', null);
+              
+            if (updateError) {
+              console.error('Error updating settlement user_id:', updateError);
+            } else {
+              console.log('Updated settlement with user_id:', session.user.id);
+            }
+          }
+          
           return { success: true, isExisting: true };
+        }
+        
+        // If there's a user logged in now, update the user_id
+        if (session?.user?.id) {
+          const { error: updateError } = await supabase
+            .from('settlements')
+            .update({ user_id: session.user.id })
+            .eq('id', existingSettlement.id)
+            .is('user_id', null);
+            
+          if (updateError) {
+            console.error('Error updating settlement user_id:', updateError);
+          } else {
+            console.log('Updated settlement with user_id:', session.user.id);
+          }
         }
         
         // Otherwise, continue with the existing record
@@ -115,7 +162,7 @@ export const settlementService = {
           settlement_date: formData.settlementDate,
           photo_url: formData.photoUrl,
           temporary_id: temporaryId,
-          user_id: session?.user?.id,
+          user_id: session?.user?.id, // Always set user_id if available
           attorney_email: formData.attorneyEmail,
           payment_completed: false,
           created_at: new Date().toISOString()
@@ -241,7 +288,31 @@ export const settlementService = {
         }
       }
       
-      // Attempt deletion with various strategies, ordered by most restrictive to least
+      // After claiming attempts, fetch the settlement again to get updated user_id
+      const { data: updatedSettlement } = await supabase
+        .from('settlements')
+        .select('user_id')
+        .eq('id', settlementId)
+        .maybeSingle();
+        
+      if (updatedSettlement && updatedSettlement.user_id === userId) {
+        console.log("Settlement now belongs to current user, proceeding with deletion");
+        
+        const { data: deleteData, error: deleteError } = await supabase
+          .from('settlements')
+          .delete()
+          .eq('id', settlementId);
+          
+        if (deleteError) {
+          console.error('Error deleting settlement:', deleteError);
+          throw new Error("Error deleting settlement: " + deleteError.message);
+        }
+        
+        console.log('Settlement deleted successfully');
+        return { success: true, data: deleteData };
+      }
+      
+      // If still not owned by user, try deletion with various methods
       
       // 1. Try to delete by user_id (most secure)
       const { data: deleteByUserIdData, error: deleteByUserIdError } = await supabase

@@ -78,17 +78,39 @@ serve(async (req) => {
 
         console.log('Successfully created subscription record with customer ID:', customerId);
         
-        // Also update any existing settlement with the customer ID
+        // Update any existing settlement with the user ID (if available) and mark as payment completed
         if (temporaryId) {
+          let updateData: any = { payment_completed: true };
+          
+          // If userId is available, also update it
+          if (userId) {
+            updateData.user_id = userId;
+          }
+          
           const { error: settlementError } = await supabase
             .from('settlements')
-            .update({ payment_completed: true })
+            .update(updateData)
             .eq('temporary_id', temporaryId);
             
           if (settlementError) {
             console.error('Error updating settlement status:', settlementError);
           } else {
-            console.log('Successfully marked settlement as paid');
+            console.log('Successfully marked settlement as paid and assigned user ID (if available)');
+          }
+        }
+        
+        // If we have a userId but no temporaryId, update any settlements for this user that aren't marked as completed
+        if (userId && !temporaryId) {
+          const { error: userSettlementError } = await supabase
+            .from('settlements')
+            .update({ payment_completed: true })
+            .eq('user_id', userId)
+            .eq('payment_completed', false);
+            
+          if (userSettlementError) {
+            console.error('Error updating user settlements:', userSettlementError);
+          } else {
+            console.log('Successfully marked all user settlements as paid');
           }
         }
         

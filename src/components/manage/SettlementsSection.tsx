@@ -36,9 +36,8 @@ const SettlementsSection = ({
       setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // First, verify that the settlement exists and belongs to the user
+      // First, verify that the settlement exists
       try {
-        // Try multiple methods to verify settlement exists and can be deleted
         const { data: settlementData } = await supabase
           .from('settlements')
           .select('id, user_id, attorney_email, temporary_id')
@@ -54,6 +53,29 @@ const SettlementsSection = ({
             description: "Settlement not found. It may have been already deleted.",
           });
           return;
+        }
+        
+        // If the settlement doesn't belong to this user, try to claim it
+        if (!settlementData.user_id || settlementData.user_id !== userId) {
+          console.log("Settlement doesn't belong to current user, attempting to claim it first");
+          
+          // Get user email for claiming
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user?.email && settlementData.attorney_email === user.email) {
+            console.log("User's email matches settlement attorney_email, attempting to claim");
+            
+            const { error: claimError } = await supabase
+              .from('settlements')
+              .update({ user_id: userId })
+              .eq('id', settlementId);
+              
+            if (claimError) {
+              console.error("Error claiming settlement by email:", claimError);
+            } else {
+              console.log("Successfully claimed settlement before deletion");
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching settlement:", error);
