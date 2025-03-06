@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -46,12 +47,15 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   const { user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
   const isNamePreFilled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
+  
+  // Check if there are any errors in the form
+  const hasFormErrors = Object.keys(errors).length > 0;
 
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-6 text-gray-800">Attorney Information</h2>
 
-      {hasErrors && (
+      {hasFormErrors && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -73,13 +77,13 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               placeholder="John Doe"
               className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""} ${isNamePreFilled ? "pr-10" : "pr-10"}`}
             />
-            {formData.attorneyName && (
+            {formData.attorneyName && clearFormField && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                onClick={() => handleResetFirmInfo('attorneyName')}
+                onClick={() => clearFormField('attorneyName')}
                 aria-label="Clear attorney name"
               >
                 <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
@@ -168,23 +172,21 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="location">
             Location <span className="text-red-500">*</span>
           </Label>
-          <div onClick={handleSelectClick}>
-            <Select
-              value={formData.location}
-              onValueChange={(value) => handleInputChange("location", value)}
-            >
-              <SelectTrigger id="location" className={`mt-1 ${errors.location ? "border-red-500" : ""}`}>
-                <SelectValue placeholder="Select a location" />
-              </SelectTrigger>
-              <SelectContent>
-                {LOCATIONS.map((location) => (
-                  <SelectItem key={location} value={location}>
-                    {location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select
+            value={formData.location}
+            onValueChange={(value) => handleInputChange("location", value)}
+          >
+            <SelectTrigger id="location" className={`mt-1 ${errors.location ? "border-red-500" : ""}`}>
+              <SelectValue placeholder="Select a location" />
+            </SelectTrigger>
+            <SelectContent>
+              {LOCATIONS.map((location) => (
+                <SelectItem key={location} value={location}>
+                  {location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {errors.location && (
             <p className="text-red-500 text-sm mt-1">{errors.location}</p>
           )}
