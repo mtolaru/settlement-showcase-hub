@@ -120,7 +120,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           password,
           options: {
             data: {
-              temporaryId
+              // Store the temporary ID in the user metadata
+              temporaryId: temporaryId
             }
           }
         });
@@ -162,6 +163,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
   
   const updateSettlementWithUserId = async (userId: string) => {
     try {
+      console.log(`Linking settlement ${temporaryId} to user ${userId}`);
+      
       // Update the settlement with the user ID
       const { error: updateError } = await supabase
         .from('settlements')
@@ -172,6 +175,26 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         console.error("Error updating settlement:", updateError);
       } else {
         console.log("Settlement updated with user_id");
+      }
+      
+      // Also try to link any other settlements with the same email but no user_id
+      if (email) {
+        const { data: emailSettlements, error: emailError } = await supabase
+          .from('settlements')
+          .update({ user_id: userId })
+          .is('user_id', null)
+          .eq('attorney_email', email)
+          .select('id');
+          
+        if (emailError) {
+          console.error("Error linking additional settlements by email:", emailError);
+        } else if (emailSettlements && emailSettlements.length > 0) {
+          console.log(`Linked ${emailSettlements.length} additional settlement(s) by email`);
+          toast({
+            title: "Additional Settlements Linked",
+            description: `${emailSettlements.length} additional settlement(s) have been linked to your account.`,
+          });
+        }
       }
       
       // Also update any subscription record with the same temporary_id

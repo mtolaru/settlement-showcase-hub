@@ -105,7 +105,7 @@ const SettlementsSection = ({
           description: "Your settlement has been successfully deleted.",
         });
       } else {
-        console.error("Delete operation did not return success=true:", result);
+        console.error("Delete operation failed:", result);
         toast({
           variant: "destructive",
           title: "Error",
