@@ -56,6 +56,7 @@ export const useSettlementFormState = () => {
   });
 
   const handleInputChange = (field: string, value: string) => {
+    console.log(`Setting field ${field} to: ${value}`);
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -65,6 +66,20 @@ export const useSettlementFormState = () => {
       ...prev,
       [field]: undefined
     }));
+  };
+
+  const clearFormField = (field: string) => {
+    console.log(`Explicitly clearing field ${field}`);
+    setFormData(prev => ({
+      ...prev,
+      [field]: ""
+    }));
+    
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
   };
 
   const handleImageUpload = (url: string) => {
@@ -91,6 +106,7 @@ export const useSettlementFormState = () => {
     temporaryId,
     setTemporaryId,
     handleInputChange,
-    handleImageUpload
+    handleImageUpload,
+    clearFormField
   };
 };

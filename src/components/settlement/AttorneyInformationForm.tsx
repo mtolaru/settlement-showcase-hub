@@ -47,6 +47,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 
   // Reset firm information fields
   const handleResetFirmInfo = (field: 'firmName' | 'firmWebsite') => {
+    console.log(`Clearing ${field} field`);
     handleInputChange(field, '');
   };
 
@@ -142,11 +143,16 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               className={`mt-1 ${errors.firmName ? "border-red-500" : ""} pr-10`}
             />
             {formData.firmName && (
-              <X 
-                className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400 cursor-pointer hover:text-gray-600"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
                 onClick={() => handleResetFirmInfo('firmName')}
                 aria-label="Clear firm name"
-              />
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </Button>
             )}
           </div>
           {errors.firmName && (
@@ -170,11 +176,16 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               className={`mt-1 ${errors.firmWebsite ? "border-red-500" : ""} pr-10`}
             />
             {formData.firmWebsite && (
-              <X 
-                className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400 cursor-pointer hover:text-gray-600"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
                 onClick={() => handleResetFirmInfo('firmWebsite')}
                 aria-label="Clear firm website"
-              />
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </Button>
             )}
           </div>
           {errors.firmWebsite && (

@@ -25,7 +25,8 @@ export const useSubmitSettlementForm = () => {
     isSubmitting, setIsSubmitting,
     submissionLock, setSubmissionLock,
     temporaryId, setTemporaryId,
-    handleInputChange, handleImageUpload
+    handleInputChange, handleImageUpload,
+    clearFormField
   } = useSettlementFormState();
   
   const { validateStep1, validateStep2, unformatNumber, isValidEmail } = useSettlementForm();
@@ -101,6 +102,7 @@ export const useSubmitSettlementForm = () => {
     temporaryId,
     handleInputChange,
     handleImageUpload,
+    clearFormField,
     setErrors,
     setIsLoading,
     setIsSubmitting,

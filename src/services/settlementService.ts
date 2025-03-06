@@ -1,11 +1,13 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 
 export const settlementService = {
   async submitWithSubscription(temporaryId: string, formData: any, unformatNumber: (value: string) => string) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log("Submitting settlement with subscription for user:", session?.user?.id);
+      console.log("Form data:", formData);
+      console.log("Temporary ID:", temporaryId);
       
       // Check if this temporaryId already has a completed payment
       const { data: existingSettlement, error: checkError } = await supabase
@@ -21,6 +23,7 @@ export const settlementService = {
       }
 
       if (existingSettlement?.id) {
+        console.log("Found existing settlement with this temporaryId:", existingSettlement);
         return { success: true, isExisting: true };
       }
 
@@ -46,14 +49,20 @@ export const settlementService = {
         created_at: new Date().toISOString()
       };
 
+      console.log("About to insert settlement data:", submissionData);
+
       const { data, error } = await supabase
         .from('settlements')
         .insert(submissionData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Submission error from database:', error);
+        throw error;
+      }
 
+      console.log("Settlement successfully inserted:", data);
       return { success: true, data };
     } catch (error: any) {
       console.error('Submission error:', error);
@@ -64,6 +73,9 @@ export const settlementService = {
   async createCheckoutSession(temporaryId: string, formData: any, unformatNumber: (value: string) => string) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log("Creating checkout session for temporaryId:", temporaryId);
+      console.log("User ID:", session?.user?.id);
       
       // Check if this temporaryId already has a record (to prevent duplicates)
       const { data: existingSettlement, error: checkError } = await supabase
@@ -79,6 +91,7 @@ export const settlementService = {
       if (existingSettlement?.id) {
         // If we have an existing record with payment completed, just redirect
         if (existingSettlement.payment_completed) {
+          console.log("Found existing completed payment for this temporaryId:", existingSettlement.id);
           return { success: true, isExisting: true };
         }
         
@@ -108,11 +121,16 @@ export const settlementService = {
           created_at: new Date().toISOString()
         };
 
+        console.log("Creating new settlement record:", submissionData);
+
         const { error: settlementError } = await supabase
           .from('settlements')
           .insert(submissionData);
 
-        if (settlementError) throw settlementError;
+        if (settlementError) {
+          console.error('Error inserting settlement:', settlementError);
+          throw settlementError;
+        }
       }
 
       const returnUrl = `${window.location.origin}/confirmation?temporaryId=${temporaryId}`;
@@ -132,9 +150,11 @@ export const settlementService = {
       });
 
       if (response.error) {
+        console.error('Error from create-checkout-session function:', response.error);
         throw response.error;
       }
 
+      console.log("Checkout session created successfully:", response.data);
       return response.data;
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
@@ -150,49 +170,8 @@ export const settlementService = {
 
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // First, try to find the settlement to confirm it exists and get its details
-      const { data: settlement, error: findError } = await supabase
-        .from('settlements')
-        .select('id, user_id, temporary_id')
-        .eq('id', settlementId)
-        .single();
-
-      if (findError) {
-        console.error('Error finding settlement:', findError);
-        throw findError;
-      }
-
-      if (!settlement) {
-        throw new Error("Settlement not found");
-      }
-
-      console.log('Settlement to delete:', settlement);
-      console.log('Current user ID:', userId);
-
-      // Check if this settlement belongs to the user (either by user_id or by temporary_id in user metadata)
-      const { data: { user } } = await supabase.auth.getUser();
-      const userTemporaryId = user?.user_metadata?.temporaryId;
-      
-      console.log('User temporary ID from metadata:', userTemporaryId);
-      console.log('Settlement temporary ID:', settlement.temporary_id);
-      
-      // Allow deletion if either:
-      // 1. The settlement's user_id matches the current user's ID
-      // 2. The settlement has no user_id yet (which means it was created before the account)
-      // 3. The settlement has a temporary_id that matches the temporaryId in the user's metadata
-      const isOwner = 
-        settlement.user_id === userId || 
-        settlement.user_id === null ||
-        (settlement.temporary_id && userTemporaryId && settlement.temporary_id === userTemporaryId);
-      
-      if (!isOwner) {
-        console.error('User does not own this settlement');
-        throw new Error("You don't have permission to delete this settlement");
-      }
-
-      // Force deletion regardless of conditions by only using the id
-      // This ensures we're not adding any additional conditions that might prevent deletion
-      console.log(`Proceeding with deletion of settlement ID: ${settlementId}`);
+      // Direct deletion by ID for simplicity and reliability
+      console.log(`Proceeding with direct deletion of settlement ID: ${settlementId}`);
       
       const { data, error } = await supabase
         .from('settlements')
