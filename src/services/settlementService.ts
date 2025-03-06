@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -147,14 +148,50 @@ export const settlementService = {
         throw new Error("User ID is required to delete a settlement");
       }
 
+      // First, try to find the settlement to confirm it exists and get its details
+      const { data: settlement, error: findError } = await supabase
+        .from('settlements')
+        .select('id, user_id, temporary_id')
+        .eq('id', settlementId)
+        .single();
+
+      if (findError) {
+        console.error('Error finding settlement:', findError);
+        throw findError;
+      }
+
+      if (!settlement) {
+        throw new Error("Settlement not found");
+      }
+
+      console.log('Settlement to delete:', settlement);
+      console.log('Current user ID:', userId);
+
+      // Check if this settlement belongs to the user (either by user_id or by temporary_id in user metadata)
+      const { data: { user } } = await supabase.auth.getUser();
+      const userTemporaryId = user?.user_metadata?.temporaryId;
+      
+      const isOwner = 
+        settlement.user_id === userId || 
+        (settlement.temporary_id && userTemporaryId && settlement.temporary_id === userTemporaryId);
+      
+      if (!isOwner) {
+        console.error('User does not own this settlement');
+        throw new Error("You don't have permission to delete this settlement");
+      }
+
+      // Proceed with deletion
       const { error } = await supabase
         .from('settlements')
         .delete()
-        .eq('id', settlementId)
-        .eq('user_id', userId);
+        .eq('id', settlementId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting settlement:', error);
+        throw error;
+      }
 
+      console.log('Settlement deleted successfully');
       return { success: true };
     } catch (error: any) {
       console.error('Delete settlement error:', error);

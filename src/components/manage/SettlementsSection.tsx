@@ -22,6 +22,16 @@ const SettlementsSection = ({
 
   const handleDeleteSettlement = async (settlementId: number) => {
     try {
+      if (!userId) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "You must be logged in to delete settlements.",
+        });
+        return;
+      }
+
+      console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       await settlementService.deleteSettlement(settlementId, userId);
       refreshSettlements();
       toast({
