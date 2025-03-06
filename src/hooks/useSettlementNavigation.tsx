@@ -79,6 +79,21 @@ export const useSettlementNavigation = ({
         return false;
       }
       
+      // Perform an additional real-time check to ensure email doesn't exist
+      if (formData.attorneyEmail) {
+        console.log("Performing final email verification before proceeding");
+        const emailExists = await verifyEmail(formData.attorneyEmail);
+        console.log("Final email verification result:", emailExists);
+        
+        if (emailExists) {
+          console.log("Email exists in final check, cannot proceed");
+          setErrors({ 
+            attorneyEmail: "This email is already associated with settlements. Please log in or use a different email." 
+          });
+          return false;
+        }
+      }
+      
       // Always run validation - this will set errors via setErrors inside validateStep2
       const isValid = validateStep2(formData);
       console.log("Step 2 validation result:", isValid);

@@ -22,8 +22,9 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
       return false;
     }
 
-    console.log("Email verification result from database:", !!data);
-    return !!data;
+    const emailExists = !!data;
+    console.log("Email verification result from database:", emailExists, "Data:", data);
+    return emailExists;
   } catch (err) {
     console.error('Exception checking email:', err);
     return false;
