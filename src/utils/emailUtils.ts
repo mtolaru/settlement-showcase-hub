@@ -22,11 +22,8 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
     // Use the Edge Function for checking email existence
     const { data, error } = await supabase.functions.invoke('check-email', {
       body: { email: normalizedEmail },
-      // Add a timeout to prevent hanging requests
-      options: {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      headers: {
+        'Content-Type': 'application/json'
       }
     });
     
@@ -65,25 +62,9 @@ async function fallbackEmailCheck(normalizedEmail: string): Promise<boolean> {
       return true;
     }
 
-    // Don't use auth.signInWithOtp as it's causing issues
-    // Instead, check the profiles table if available
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .ilike('email', normalizedEmail)
-      .limit(1);
-      
-    if (profileError) {
-      console.error('Error checking profiles table:', profileError);
-      return false;
-    }
-    
-    if (profileData && profileData.length > 0) {
-      console.log("Email found in profiles table");
-      return true;
-    }
-    
-    console.log("Email not found in any table");
+    // Don't check the profiles table as it doesn't exist in the schema
+    // Instead, just return false if not found in settlements
+    console.log("Email not found in settlements table");
     return false;
   } catch (err) {
     console.error('Exception in fallback email check:', err);
