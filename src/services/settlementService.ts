@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const settlementService = {
@@ -251,7 +250,7 @@ export const settlementService = {
         .eq('id', settlementId)
         .eq('user_id', userId);
         
-      if (!deleteByUserIdError && deleteByUserIdData && deleteByUserIdData.length > 0) {
+      if (!deleteByUserIdError && deleteByUserIdData !== null) {
         console.log('Settlement deleted successfully by user ID');
         return { success: true, data: deleteByUserIdData };
       }
@@ -270,7 +269,7 @@ export const settlementService = {
           .eq('id', settlementId)
           .eq('attorney_email', userEmail);
           
-        if (!deleteByEmailError && deleteByEmailData && deleteByEmailData.length > 0) {
+        if (!deleteByEmailError && deleteByEmailData !== null) {
           console.log('Settlement deleted successfully by attorney email');
           return { success: true, data: deleteByEmailData };
         }
@@ -292,7 +291,7 @@ export const settlementService = {
           .delete()
           .eq('id', settlementId);
           
-        if (!directDeleteError && directDeleteData && directDeleteData.length > 0) {
+        if (!directDeleteError && directDeleteData !== null) {
           console.log('Settlement deleted successfully via direct delete');
           return { success: true, data: directDeleteData };
         }
