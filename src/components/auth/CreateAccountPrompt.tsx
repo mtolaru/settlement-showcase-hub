@@ -75,14 +75,16 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     try {
       console.log("Creating account for temporaryId:", temporaryId);
       
-      // First check if the email exists in the auth system
-      const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers({
-        filter: {
-          email: email
+      // Check if email exists by attempting to sign in with magic link (but not sending the email)
+      const { error: checkError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false
         }
       });
       
-      const emailExists = users && users.length > 0;
+      // If there's no error, the email exists; if there's an error about user not found, it doesn't exist
+      const emailExists = !checkError;
       
       if (emailExists) {
         console.log("Email already exists, attempting sign in");
