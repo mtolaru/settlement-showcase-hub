@@ -81,6 +81,78 @@ export type Database = {
         }
         Relationships: []
       }
+      "settlements_Backup-": {
+        Row: {
+          amount: number
+          attorney: string
+          attorney_email: string | null
+          case_description: string | null
+          created_at: string
+          description: string | null
+          firm: string
+          firm_website: string | null
+          hidden: boolean | null
+          id: number
+          initial_offer: number | null
+          location: string
+          medical_expenses: number | null
+          payment_completed: boolean | null
+          photo_url: string | null
+          policy_limit: number | null
+          settlement_date: string | null
+          settlement_phase: string | null
+          temporary_id: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          attorney: string
+          attorney_email?: string | null
+          case_description?: string | null
+          created_at?: string
+          description?: string | null
+          firm: string
+          firm_website?: string | null
+          hidden?: boolean | null
+          id?: number
+          initial_offer?: number | null
+          location: string
+          medical_expenses?: number | null
+          payment_completed?: boolean | null
+          photo_url?: string | null
+          policy_limit?: number | null
+          settlement_date?: string | null
+          settlement_phase?: string | null
+          temporary_id?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          attorney?: string
+          attorney_email?: string | null
+          case_description?: string | null
+          created_at?: string
+          description?: string | null
+          firm?: string
+          firm_website?: string | null
+          hidden?: boolean | null
+          id?: number
+          initial_offer?: number | null
+          location?: string
+          medical_expenses?: number | null
+          payment_completed?: boolean | null
+          photo_url?: string | null
+          policy_limit?: number | null
+          settlement_date?: string | null
+          settlement_phase?: string | null
+          temporary_id?: string | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           customer_id: string | null

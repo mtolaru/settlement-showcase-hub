@@ -25,7 +25,6 @@ const Index = () => {
       try {
         setIsLoading(true);
         
-        // First, get all users with active subscriptions
         const { data: subscribedUsers, error: subscriptionError } = await supabase
           .from('subscriptions')
           .select('user_id, temporary_id')
@@ -35,7 +34,6 @@ const Index = () => {
           throw subscriptionError;
         }
         
-        // Collect all user IDs and temporary IDs from active subscriptions
         const userIds = subscribedUsers
           ?.filter(sub => sub.user_id)
           .map(sub => sub.user_id) || [];
@@ -51,7 +49,6 @@ const Index = () => {
           return;
         }
         
-        // Build the query parts
         let queryParts = [];
         
         if (userIds.length > 0) {
@@ -62,10 +59,8 @@ const Index = () => {
           queryParts.push(`temporary_id.in.(${temporaryIds.join(',')})`);
         }
         
-        // Add individually paid settlements
         queryParts.push('payment_completed.eq.true');
         
-        // Fetch settlements
         const { data, error } = await supabase
           .from('settlements')
           .select('*')
@@ -75,8 +70,6 @@ const Index = () => {
           throw error;
         }
 
-        console.log('Fetched settlements for homepage:', data);
-        
         const processedData: Settlement[] = data?.map(settlement => {
           return {
             id: settlement.id,
@@ -127,7 +120,7 @@ const Index = () => {
   );
 
   const recentSettlements = [...filteredSettlements]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .sort((a, b) => new Date(b.settlement_date).getTime() - new Date(a.settlement_date).getTime())
     .slice(0, 3);
 
   const topSettlements = [...filteredSettlements]
