@@ -4,6 +4,7 @@ import type { Settlement } from "@/types/settlement";
 import SettlementsList from "@/components/manage/SettlementsList";
 import { settlementService } from "@/services/settlementService";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SettlementsSectionProps {
