@@ -35,7 +35,7 @@ export const useSubmitSettlementForm = () => {
   const { settlements, getLatestAttorneyInfo } = useSettlements(user);
 
   useValidateDollarInput(formData, handleInputChange);
-  const { handleEmailChange, isValidatingEmail, alreadyExists } = useEmailValidation(formData.attorneyEmail, isValidEmail, setErrors);
+  const { isValidatingEmail, alreadyExists } = useEmailValidation(formData.attorneyEmail, isValidEmail, setErrors);
   useSubscriptionStatus(setHasActiveSubscription, setIsCheckingSubscription);
 
   useEffect(() => {
@@ -75,12 +75,6 @@ export const useSubmitSettlementForm = () => {
     } else {
       // User is not authenticated, make sure fields are clearable
       console.log("User not authenticated, ensuring email field is editable");
-      if (formData.attorneyEmail && !clearedFields.has('attorneyEmail')) {
-        setFormData(prev => ({
-          ...prev,
-          attorneyEmail: ""
-        }));
-      }
     }
     
     if (!isLoadingSubscription) {
@@ -91,7 +85,7 @@ export const useSubmitSettlementForm = () => {
     }
   }, [isAuthenticated, user, subscription, isLoadingSubscription, setFormData, 
       setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
-      getLatestAttorneyInfo, settlements, clearedFields, formData.attorneyEmail]);
+      getLatestAttorneyInfo, settlements, clearedFields]);
 
   useEffect(() => {
     if (isAuthenticated && user?.email === formData.attorneyEmail && errors.attorneyEmail) {

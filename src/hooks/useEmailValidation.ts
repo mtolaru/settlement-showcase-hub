@@ -14,14 +14,10 @@ export const useEmailValidation = (
   const [alreadyExists, setAlreadyExists] = useState(false);
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedEmailRef = useRef<string>("");
+  const lastValidatedEmailRef = useRef<string>("");
 
-  const handleEmailChange = async (email: string) => {
-    // Clear any previous timeout
-    if (validationTimeoutRef.current) {
-      clearTimeout(validationTimeoutRef.current);
-      validationTimeoutRef.current = null;
-    }
-
+  // Only validate the email when it changes and is not empty
+  useEffect(() => {
     // Skip validation if email is empty
     if (!email) {
       setAlreadyExists(false);
@@ -44,6 +40,12 @@ export const useEmailValidation = (
       return;
     }
 
+    // Clear any previous timeout
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+      validationTimeoutRef.current = null;
+    }
+
     // First validate email format
     if (!isValidEmail(email)) {
       setErrors((prev: FormErrors) => ({
@@ -52,6 +54,11 @@ export const useEmailValidation = (
       }));
       setAlreadyExists(false);
       setIsValidatingEmail(false);
+      return;
+    }
+
+    // Don't revalidate if we already checked this email
+    if (email === lastValidatedEmailRef.current) {
       return;
     }
 
@@ -71,6 +78,7 @@ export const useEmailValidation = (
           // Only update state if this is still the current email
           if (email === lastCheckedEmailRef.current) {
             setAlreadyExists(emailExists);
+            lastValidatedEmailRef.current = email;
             
             if (emailExists) {
               setErrors((prev: FormErrors) => ({
@@ -102,19 +110,17 @@ export const useEmailValidation = (
         }
       }
     }, 500);
-  };
+  }, [email, isAuthenticated, user?.email, isValidEmail, setErrors]);
 
+  // Cleanup on unmount
   useEffect(() => {
-    // Reset validation state when email changes
-    handleEmailChange(email);
-
     return () => {
       if (validationTimeoutRef.current) {
         clearTimeout(validationTimeoutRef.current);
         validationTimeoutRef.current = null;
       }
     };
-  }, [email]);
+  }, []);
 
-  return { handleEmailChange, isValidatingEmail, alreadyExists };
+  return { isValidatingEmail, alreadyExists };
 };

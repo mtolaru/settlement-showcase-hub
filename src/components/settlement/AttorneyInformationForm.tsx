@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -61,12 +60,6 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
     });
   }, [isAuthenticated, user, formData.attorneyEmail, isEmailDisabled]);
 
-  const handleEmailInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isEmailDisabled) {
-      handleInputChange("attorneyEmail", e.target.value);
-    }
-  };
-
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-6 text-gray-800">Attorney Information</h2>
@@ -122,7 +115,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             <Input
               id="attorneyEmail"
               value={formData.attorneyEmail}
-              onChange={handleEmailInputChange}
+              onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
               placeholder="john.doe@lawfirm.com"
               className={`mt-1 ${errors.attorneyEmail ? "border-red-500" : ""} pr-10`}
               disabled={isEmailDisabled}
