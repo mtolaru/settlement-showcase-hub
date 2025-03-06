@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -183,7 +182,6 @@ const AdminImport = () => {
         description: data.message || `Mapped ${data.updated} out of ${data.total} settlements to images`,
       });
       
-      // Refresh settlement stats after mapping
       fetchSettlementStats();
     } catch (error: any) {
       console.error('Error mapping settlement images:', error);
@@ -202,31 +200,25 @@ const AdminImport = () => {
       setUploadPhase('Fetching settlement statistics');
       setProgress(50);
       
-      // Get total number of settlements - Fix for count() error
-      const { data: totalData, error: totalError } = await supabase
+      const { count: totalCount, error: totalError } = await supabase
         .from('settlements')
         .select('*', { count: 'exact', head: true });
       
       if (totalError) throw totalError;
-      const totalCount = totalData?.count || 0;
       
-      // Get count of settlements with photo_url - Fix for count() error
-      const { data: withPhotoData, error: photoError } = await supabase
+      const { count: withPhotoCount, error: photoError } = await supabase
         .from('settlements')
         .select('*', { count: 'exact', head: true })
         .not('photo_url', 'is', null);
       
       if (photoError) throw photoError;
-      const withPhotoCount = withPhotoData?.count || 0;
       
-      // Get count of settlements without photo_url - Fix for count() error
-      const { data: withoutPhotoData, error: withoutPhotoError } = await supabase
+      const { count: withoutPhotoCount, error: withoutPhotoError } = await supabase
         .from('settlements')
         .select('*', { count: 'exact', head: true })
         .is('photo_url', null);
       
       if (withoutPhotoError) throw withoutPhotoError;
-      const withoutPhotoCount = withoutPhotoData?.count || 0;
       
       setSettlementStats({
         total: totalCount,
@@ -245,7 +237,6 @@ const AdminImport = () => {
     }
   };
   
-  // Fetch settlement stats when the component mounts or tab changes to mapping
   React.useEffect(() => {
     if (tab === 'mapping') {
       fetchSettlementStats();
