@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -241,8 +242,13 @@ const TestImageAccess = () => {
                   alt="Image preview" 
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling!.style.display = 'flex';
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    // Use optional chaining and type assertion for next element sibling
+                    const nextElement = target.nextElementSibling as HTMLElement | null;
+                    if (nextElement) {
+                      nextElement.style.display = 'flex';
+                    }
                   }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center hidden">

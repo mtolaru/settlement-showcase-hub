@@ -399,7 +399,7 @@ const AdminImport = () => {
                 </AlertDescription>
               </Alert>
               
-              <TestImageAccess defaultFileName="settlement_1.jpg" />
+              <TestImageAccess />
               
               <div className="p-4 border rounded-lg bg-gray-50">
                 <h3 className="font-medium mb-2">Bucket Content Checker</h3>

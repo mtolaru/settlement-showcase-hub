@@ -1,4 +1,4 @@
-
+<lov-codelov-code>
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -17,7 +17,7 @@ export const resolveSettlementImageUrl = async (photoUrl?: string | null, settle
         const predictablePhotoUrl = `settlement_${settlementId}.jpg`;
         
         // First, verify the file exists by checking its metadata
-        const { data: metadataData, error: metadataError } = await supabase.storage
+        const { data: metadataData } = await supabase.storage
           .from('processed_images')
           .getPublicUrl(predictablePhotoUrl);
           
@@ -295,3 +295,4 @@ export const verifyFileExists = async (filePath: string): Promise<boolean> => {
     return false;
   }
 };
+</lov-code>
