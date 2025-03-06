@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle, CheckCircle, XCircle, FolderSearch } from 'lucide-react';
+import { AlertCircle, CheckCircle, FolderSearch } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { resolveSettlementImageUrl, verifyFileExists } from "@/utils/imageUtils";
@@ -12,11 +11,16 @@ interface ImageDebuggerProps {
   photo_url?: string | null;
 }
 
+interface BucketFile {
+  name: string;
+  size: number;
+}
+
 const ImageDebugger = ({ settlementId, photo_url }: ImageDebuggerProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [bucketFiles, setBucketFiles] = useState<Array<{name: string, size: number}>>([]);
+  const [bucketFiles, setBucketFiles] = useState<BucketFile[]>([]);
   const [searchPattern, setSearchPattern] = useState<string>('');
-  const [filteredFiles, setFilteredFiles] = useState<Array<{name: string, size: number}>>([]);
+  const [filteredFiles, setFilteredFiles] = useState<BucketFile[]>([]);
   const [result, setResult] = useState<{success: boolean; url?: string; error?: string} | null>(null);
   const [loadingFiles, setLoadingFiles] = useState(false);
   
@@ -42,8 +46,13 @@ const ImageDebugger = ({ settlementId, photo_url }: ImageDebuggerProps) => {
         return;
       }
       
-      // Filter out folders (they have id === null)
-      const files = data?.filter(item => item.id !== null) || [];
+      // Map FileObjects to our BucketFile type, filtering out folders
+      const files: BucketFile[] = (data || [])
+        .filter(item => item.id !== null)
+        .map(file => ({
+          name: file.name,
+          size: file.metadata?.size || 0
+        }));
       
       setBucketFiles(files);
       setFilteredFiles(files);
