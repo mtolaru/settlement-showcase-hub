@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, AlertCircle, FileUp, ImageUp, Link, Info } from 'lucide-react';
+import { Trash2, AlertCircle, FileUp, ImageUp, Link, Info, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import TestImageAccess from '@/components/admin/TestImageAccess';
 
@@ -21,6 +22,7 @@ const AdminImport = () => {
   const [isDeletingImages, setIsDeletingImages] = useState(false);
   const [isMappingImages, setIsMappingImages] = useState(false);
   const [mappingResults, setMappingResults] = useState<any>(null);
+  const [settlementStats, setSettlementStats] = useState<any>(null);
 
   const onDropJson = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -166,7 +168,7 @@ const AdminImport = () => {
     
     try {
       setIsMappingImages(true);
-      setUploadPhase('Mapping settlement images to database records');
+      setUploadPhase('Completely remapping all settlement images');
       setProgress(30);
       
       const { data, error } = await supabase.functions.invoke('map-settlement-images');
@@ -180,6 +182,9 @@ const AdminImport = () => {
         title: "Mapping Successful",
         description: data.message || `Mapped ${data.updated} out of ${data.total} settlements to images`,
       });
+      
+      // Refresh settlement stats after mapping
+      fetchSettlementStats();
     } catch (error: any) {
       console.error('Error mapping settlement images:', error);
       toast({
@@ -191,6 +196,58 @@ const AdminImport = () => {
       setIsMappingImages(false);
     }
   };
+  
+  const fetchSettlementStats = async () => {
+    try {
+      setUploadPhase('Fetching settlement statistics');
+      setProgress(50);
+      
+      // Get total number of settlements
+      const { count: totalCount, error: totalError } = await supabase
+        .from('settlements')
+        .count();
+      
+      if (totalError) throw totalError;
+      
+      // Get count of settlements with photo_url
+      const { count: withPhotoCount, error: photoError } = await supabase
+        .from('settlements')
+        .select('id', { count: 'exact', head: true })
+        .not('photo_url', 'is', null);
+      
+      if (photoError) throw photoError;
+      
+      // Get count of settlements without photo_url
+      const { count: withoutPhotoCount, error: withoutPhotoError } = await supabase
+        .from('settlements')
+        .select('id', { count: 'exact', head: true })
+        .is('photo_url', null);
+      
+      if (withoutPhotoError) throw withoutPhotoError;
+      
+      setSettlementStats({
+        total: totalCount,
+        withPhoto: withPhotoCount,
+        withoutPhoto: withoutPhotoCount
+      });
+      
+      setProgress(100);
+    } catch (error) {
+      console.error('Error fetching settlement stats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch settlement statistics",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Fetch settlement stats when the component mounts or tab changes to mapping
+  React.useEffect(() => {
+    if (tab === 'mapping') {
+      fetchSettlementStats();
+    }
+  }, [tab]);
 
   const { getRootProps: getJsonRootProps, getInputProps: getJsonInputProps } = useDropzone({
     onDrop: onDropJson,
@@ -339,29 +396,51 @@ const AdminImport = () => {
         <TabsContent value="mapping">
           <Card>
             <CardHeader>
-              <CardTitle>Map Images to Settlements</CardTitle>
+              <CardTitle className="flex justify-between items-center">
+                <span>Map Images to Settlements</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={fetchSettlementStats} 
+                  className="flex items-center gap-1"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh Stats
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Alert className="mb-4">
+              <Alert className="mb-4" variant="warning">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  This utility will map uploaded settlement images to their corresponding settlements 
-                  in the database using the settlement ID pattern (settlement_ID.jpg).
+                  This utility will reset all photo URL mappings in the database, then map only existing images to their settlements.
+                  All settlements without a corresponding image in the bucket will have their photo_url set to null.
                 </AlertDescription>
               </Alert>
               
+              {settlementStats && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-semibold text-blue-800 mb-2">Current Settlement Statistics</h3>
+                  <div className="space-y-2">
+                    <p>Total settlements: <span className="font-medium">{settlementStats.total}</span></p>
+                    <p>Settlements with images: <span className="font-medium text-green-600">{settlementStats.withPhoto}</span></p>
+                    <p>Settlements without images: <span className="font-medium text-red-600">{settlementStats.withoutPhoto}</span></p>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
                 <Link className="h-12 w-12 text-blue-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Map Settlement Images</h3>
+                <h3 className="text-lg font-semibold mb-2">Complete Remapping</h3>
                 <p className="text-gray-500 text-center mb-4">
-                  Click the button below to map settlement images to their corresponding records in the database.
+                  Click the button below to reset all photo URL mappings and re-map only existing images to settlements.
                 </p>
                 <Button 
                   onClick={handleMapSettlementImages} 
                   disabled={isMappingImages}
                   className="mt-2"
                 >
-                  {isMappingImages ? 'Mapping...' : 'Map Settlement Images'}
+                  {isMappingImages ? 'Remapping...' : 'Remap All Settlement Images'}
                 </Button>
               </div>
 
@@ -374,9 +453,23 @@ const AdminImport = () => {
 
               {mappingResults && (
                 <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                  <h3 className="font-semibold text-green-800">Mapping Results</h3>
+                  <h3 className="font-semibold text-green-800 mb-2">Mapping Results</h3>
                   <p>Total settlements processed: {mappingResults.total}</p>
                   <p>Settlements mapped to images: {mappingResults.updated}</p>
+                  <p>Settlements without matching images: {mappingResults.not_mapped}</p>
+                  
+                  {mappingResults.errors && mappingResults.errors.length > 0 && (
+                    <div className="mt-3">
+                      <h4 className="font-semibold text-amber-800">Errors:</h4>
+                      <div className="mt-1 max-h-36 overflow-y-auto">
+                        <ul className="list-disc pl-5 text-sm text-amber-700">
+                          {mappingResults.errors.map((err: string, index: number) => (
+                            <li key={index}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

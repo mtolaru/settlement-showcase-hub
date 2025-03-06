@@ -5,14 +5,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import type { Settlement } from "@/types/settlement";
 import { useSubscription } from "@/hooks/useSubscription";
-import { verifySettlementImageExists } from "@/utils/imageHelpers";
 
 export const useSettlements = (user: User | null) => {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { subscription } = useSubscription(user);
-  const [processingImages, setProcessingImages] = useState(false);
 
   const fetchSettlements = async () => {
     try {
@@ -35,11 +33,13 @@ export const useSettlements = (user: User | null) => {
         return;
       }
       
-      // If user has an active subscription, get all their settlements
+      // If user has an active subscription, get only settlements with photos
+      // We don't want to show settlements without photos
       let query = supabase
         .from('settlements')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .not('photo_url', 'is', null);
       
       const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -49,7 +49,7 @@ export const useSettlements = (user: User | null) => {
       }
       
       if (!data || data.length === 0) {
-        console.log('No settlements found for user_id. Checking temporary_id...');
+        console.log('No settlements found for user_id with photo_url. Checking temporary_id...');
         
         // Try to find settlements by temporary ID
         if (user.user_metadata?.temporaryId) {
@@ -59,6 +59,7 @@ export const useSettlements = (user: User | null) => {
             .from('settlements')
             .select('*')
             .eq('temporary_id', tempId)
+            .not('photo_url', 'is', null)
             .order('created_at', { ascending: false });
             
           if (tempError) {
@@ -68,7 +69,6 @@ export const useSettlements = (user: User | null) => {
             
             // Process the data to ensure all required fields exist
             const allSettlements = processSettlementData(tempData);
-            await filterSettlementsWithMissingImages(allSettlements);
             
             // Update these settlements with the user_id
             const { error: updateError } = await supabase
@@ -82,16 +82,19 @@ export const useSettlements = (user: User | null) => {
               console.log('Updated settlements with user_id');
             }
             
+            setSettlements(allSettlements);
+            setIsLoading(false);
             return;
           }
         }
       }
       
-      console.log('Found settlements:', data);
+      console.log('Found settlements with photos:', data);
       
       // Process the data to ensure all required fields exist
       const allSettlements = processSettlementData(data || []);
-      await filterSettlementsWithMissingImages(allSettlements);
+      setSettlements(allSettlements);
+      setIsLoading(false);
       
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
@@ -131,47 +134,6 @@ export const useSettlements = (user: User | null) => {
       };
     });
   };
-  
-  // Filter out settlements with missing images
-  const filterSettlementsWithMissingImages = async (allSettlements: Settlement[]) => {
-    setProcessingImages(true);
-    console.log('Checking image availability for', allSettlements.length, 'settlements');
-    
-    const filteredSettlements: Settlement[] = [];
-    
-    for (const settlement of allSettlements) {
-      try {
-        // Skip if the settlement is explicitly marked as hidden
-        if (settlement.hidden) {
-          console.log(`Skipping hidden settlement ${settlement.id}`);
-          continue;
-        }
-        
-        // Check if the image exists
-        const imageExists = await verifySettlementImageExists(settlement.id, settlement.photo_url);
-        
-        if (imageExists) {
-          filteredSettlements.push(settlement);
-        } else {
-          console.log(`Hiding settlement ${settlement.id} due to missing image`);
-          
-          // Optionally update the hidden flag in the database
-          await supabase
-            .from('settlements')
-            .update({ hidden: true })
-            .eq('id', settlement.id);
-        }
-      } catch (error) {
-        console.error(`Error processing settlement ${settlement.id}:`, error);
-        // If there's an error, skip this settlement
-      }
-    }
-    
-    console.log(`Showing ${filteredSettlements.length} of ${allSettlements.length} settlements (${allSettlements.length - filteredSettlements.length} hidden due to missing images)`);
-    setSettlements(filteredSettlements);
-    setProcessingImages(false);
-    setIsLoading(false);
-  };
 
   useEffect(() => {
     if (user) {
@@ -184,7 +146,7 @@ export const useSettlements = (user: User | null) => {
 
   return {
     settlements,
-    isLoading: isLoading || processingImages,
+    isLoading,
     refreshSettlements: fetchSettlements
   };
 };

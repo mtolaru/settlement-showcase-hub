@@ -20,27 +20,41 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
     
-    // Get all settlements with empty photo_url, including temporary_id which might be useful for matching
+    console.log('Starting complete image remapping process...');
+    
+    // First, reset all photo_url to null for all settlements
+    const { error: resetError } = await supabase
+      .from('settlements')
+      .update({ photo_url: null })
+      .is('id', 'not.null');  // This will affect all settlements
+      
+    if (resetError) {
+      console.error('Error resetting settlement photo URLs:', resetError);
+      throw resetError;
+    }
+    
+    console.log('Reset all settlement photo_url fields to null');
+    
+    // Get all settlements to process
     const { data: settlements, error: fetchError } = await supabase
       .from('settlements')
-      .select('id, temporary_id')
-      .is('photo_url', null);
+      .select('id, temporary_id');
       
     if (fetchError) {
       console.error('Error fetching settlements:', fetchError);
       throw fetchError;
     }
     
-    console.log(`Found ${settlements?.length || 0} settlements with empty photo_url`);
+    console.log(`Found ${settlements?.length || 0} settlements to process`);
     
     if (!settlements || settlements.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No settlements with empty photo_url found' }),
+        JSON.stringify({ message: 'No settlements found to process' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
     
-    // First, get a list of all files in the processed_images bucket to have a complete reference
+    // Get a list of all files in the processed_images bucket
     const { data: allBucketFiles, error: bucketError } = await supabase.storage
       .from('processed_images')
       .list('');
@@ -57,11 +71,15 @@ serve(async (req) => {
     
     // Process settlements one by one
     const updatedSettlements = [];
+    const notMappedSettlements = [];
     const errors = [];
     
     for (const settlement of settlements) {
       try {
         console.log(`Processing settlement ID: ${settlement.id}, Temporary ID: ${settlement.temporary_id || 'none'}`);
+        
+        let fileFound = false;
+        let mappedFileName = null;
         
         // Try the standard pattern with settlement ID
         const fileName = `settlement_${settlement.id}.jpg`;
@@ -72,20 +90,8 @@ serve(async (req) => {
         
         if (fileExists) {
           console.log(`File ${fileName} exists in bucket`);
-          
-          // Update the settlement with just the filename (not full path)
-          const { error: updateError } = await supabase
-            .from('settlements')
-            .update({ photo_url: fileName })
-            .eq('id', settlement.id);
-            
-          if (updateError) {
-            console.error(`Error updating settlement ${settlement.id}:`, updateError);
-            errors.push(`Settlement ${settlement.id}: ${updateError.message}`);
-          } else {
-            console.log(`Mapped settlement ${settlement.id} to photo: ${fileName}`);
-            updatedSettlements.push(settlement.id);
-          }
+          mappedFileName = fileName;
+          fileFound = true;
         } else {
           console.log(`No file found for settlement ${settlement.id} with filename ${fileName}`);
           
@@ -98,19 +104,8 @@ serve(async (req) => {
             
             if (tempFileExists) {
               console.log(`File ${tempFileName} exists in bucket`);
-              
-              const { error: updateError } = await supabase
-                .from('settlements')
-                .update({ photo_url: tempFileName })
-                .eq('id', settlement.id);
-                
-              if (updateError) {
-                console.error(`Error updating settlement ${settlement.id} with temp ID:`, updateError);
-                errors.push(`Settlement ${settlement.id} (temp): ${updateError.message}`);
-              } else {
-                console.log(`Mapped settlement ${settlement.id} to photo: ${tempFileName} (using temp ID)`);
-                updatedSettlements.push(settlement.id);
-              }
+              mappedFileName = tempFileName;
+              fileFound = true;
             } else {
               console.log(`No file found for settlement ${settlement.id} with temp ID filename ${tempFileName}`);
               
@@ -122,19 +117,8 @@ serve(async (req) => {
               
               if (matchingFile) {
                 console.log(`Found matching file via partial search: ${matchingFile.name}`);
-                
-                const { error: updateError } = await supabase
-                  .from('settlements')
-                  .update({ photo_url: matchingFile.name })
-                  .eq('id', settlement.id);
-                  
-                if (updateError) {
-                  console.error(`Error updating settlement ${settlement.id} with partial match:`, updateError);
-                  errors.push(`Settlement ${settlement.id} (partial): ${updateError.message}`);
-                } else {
-                  console.log(`Mapped settlement ${settlement.id} to photo: ${matchingFile.name} (partial match)`);
-                  updatedSettlements.push(settlement.id);
-                }
+                mappedFileName = matchingFile.name;
+                fileFound = true;
               } else {
                 console.log(`No matching file found for settlement ${settlement.id} using any pattern`);
               }
@@ -145,23 +129,31 @@ serve(async (req) => {
             
             if (matchingFile) {
               console.log(`Found matching file via partial search: ${matchingFile.name}`);
-              
-              const { error: updateError } = await supabase
-                .from('settlements')
-                .update({ photo_url: matchingFile.name })
-                .eq('id', settlement.id);
-                
-              if (updateError) {
-                console.error(`Error updating settlement ${settlement.id} with partial match:`, updateError);
-                errors.push(`Settlement ${settlement.id} (partial): ${updateError.message}`);
-              } else {
-                console.log(`Mapped settlement ${settlement.id} to photo: ${matchingFile.name} (partial match)`);
-                updatedSettlements.push(settlement.id);
-              }
+              mappedFileName = matchingFile.name;
+              fileFound = true;
             } else {
               console.log(`No matching file found for settlement ${settlement.id}`);
             }
           }
+        }
+        
+        if (fileFound && mappedFileName) {
+          // Update the settlement with the found filename
+          const { error: updateError } = await supabase
+            .from('settlements')
+            .update({ photo_url: mappedFileName })
+            .eq('id', settlement.id);
+            
+          if (updateError) {
+            console.error(`Error updating settlement ${settlement.id}:`, updateError);
+            errors.push(`Settlement ${settlement.id}: ${updateError.message}`);
+          } else {
+            console.log(`Mapped settlement ${settlement.id} to photo: ${mappedFileName}`);
+            updatedSettlements.push(settlement.id);
+          }
+        } else {
+          console.log(`No image found for settlement ${settlement.id}, leaving photo_url as null`);
+          notMappedSettlements.push(settlement.id);
         }
       } catch (err) {
         console.error(`Error processing settlement ${settlement.id}:`, err);
@@ -172,8 +164,9 @@ serve(async (req) => {
     // Return the results
     return new Response(
       JSON.stringify({ 
-        message: `Mapped ${updatedSettlements.length} settlements to their photos`,
+        message: `Completely remapped settlement images. Found matches for ${updatedSettlements.length} settlements. ${notMappedSettlements.length} settlements have no matching images.`,
         updated: updatedSettlements.length,
+        not_mapped: notMappedSettlements.length,
         total: settlements.length,
         errors: errors.length > 0 ? errors : null
       }),
