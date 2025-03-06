@@ -4,6 +4,7 @@ import type { Settlement } from "@/types/settlement";
 import SettlementsList from "@/components/manage/SettlementsList";
 import { settlementService } from "@/services/settlementService";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SettlementsSectionProps {
   settlements: Settlement[];
@@ -34,6 +35,25 @@ const SettlementsSection = ({
 
       setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
+      
+      // First, verify that the settlement exists and get its details
+      const { data: settlementData, error: fetchError } = await supabase
+        .from('settlements')
+        .select('id, user_id, attorney_email, temporary_id')
+        .eq('id', settlementId)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching settlement:", fetchError);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Settlement not found. Please refresh the page and try again.",
+        });
+        return;
+      }
+      
+      console.log("Settlement data before deletion:", settlementData);
       
       const result = await settlementService.deleteSettlement(settlementId, userId);
       

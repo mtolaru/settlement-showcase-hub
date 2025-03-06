@@ -44,11 +44,16 @@ export const useSettlements = (user: User | null) => {
           
         if (updateError) {
           console.error('Error claiming settlements:', updateError);
+        } else {
+          console.log('Successfully claimed any unassigned settlements');
         }
       }
       
-      // Fetch settlements by user_id first
-      let { data: userIdData, error: userIdError } = await supabase
+      // Fetch all settlements that might be related to this user
+      let allSettlements: Settlement[] = [];
+      
+      // 1. Fetch by user_id 
+      const { data: userIdData, error: userIdError } = await supabase
         .from('settlements')
         .select('*')
         .not('photo_url', 'is', null)
@@ -57,36 +62,36 @@ export const useSettlements = (user: User | null) => {
       
       if (userIdError) {
         console.error('Error fetching settlements by user_id:', userIdError);
-        throw userIdError;
+      } else if (userIdData) {
+        console.log('Found settlements by user_id:', userIdData.length);
+        allSettlements = [...allSettlements, ...userIdData];
       }
       
-      // Then fetch by email if available
-      let emailData: any[] = [];
+      // 2. Fetch by email if available
       if (user.email) {
-        const { data, error } = await supabase
+        const { data: emailData, error: emailError } = await supabase
           .from('settlements')
           .select('*')
           .not('photo_url', 'is', null)
-          .is('user_id', null) // Only get settlements not yet claimed
           .eq('attorney_email', user.email)
           .eq('payment_completed', true);
         
-        if (error) {
-          console.error('Error fetching settlements by email:', error);
-        } else if (data) {
-          emailData = data;
+        if (emailError) {
+          console.error('Error fetching settlements by email:', emailError);
+        } else if (emailData) {
+          console.log('Found settlements by email:', emailData.length);
+          allSettlements = [...allSettlements, ...emailData];
         }
       }
       
-      // Combine the results, removing duplicates
-      const allData = [...(userIdData || []), ...emailData];
-      const uniqueData = allData.filter((settlement, index, self) => 
+      // Remove duplicates
+      const uniqueSettlements = allSettlements.filter((settlement, index, self) => 
         index === self.findIndex(s => s.id === settlement.id)
       );
       
-      console.log('Found settlements:', uniqueData);
-      const allSettlements = processSettlementData(uniqueData);
-      setSettlements(allSettlements);
+      console.log('Total unique settlements found:', uniqueSettlements.length);
+      const processedSettlements = processSettlementData(uniqueSettlements);
+      setSettlements(processedSettlements);
       setIsLoading(false);
       
     } catch (error) {
