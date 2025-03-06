@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
@@ -12,7 +12,7 @@ export const useSettlements = (user: User | null) => {
   const { toast } = useToast();
   const { subscription } = useSubscription(user);
 
-  const fetchSettlements = async () => {
+  const fetchSettlements = useCallback(async () => {
     try {
       if (!user) {
         console.log('No user found, skipping settlements fetch');
@@ -156,7 +156,7 @@ export const useSettlements = (user: User | null) => {
       });
       setIsLoading(false);
     }
-  };
+  }, [user, subscription, toast]);
 
   // Associate settlements with user based on email or temporary IDs
   const associateSettlementsWithUser = async (user: User) => {
@@ -238,6 +238,7 @@ export const useSettlements = (user: User | null) => {
         user_id: settlement.user_id,
         payment_completed: settlement.payment_completed,
         photo_url: settlement.photo_url,
+        attorney_email: settlement.attorney_email,
         hidden: settlement.hidden
       };
     });
@@ -266,7 +267,7 @@ export const useSettlements = (user: User | null) => {
       setSettlements([]);
       setIsLoading(false);
     }
-  }, [user, subscription]);
+  }, [user, subscription, fetchSettlements]);
 
   return {
     settlements,

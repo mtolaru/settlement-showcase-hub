@@ -24,6 +24,7 @@ const SettlementsSection = ({
 
   const handleDeleteSettlement = async (settlementId: number) => {
     try {
+      // Validate user is logged in
       if (!userId) {
         toast({
           variant: "destructive",
@@ -36,15 +37,23 @@ const SettlementsSection = ({
       setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // First, verify that the settlement exists
+      // First, verify the settlement exists and get its details
       try {
-        const { data: settlementData } = await supabase
+        const { data: settlementData, error: fetchError } = await supabase
           .from('settlements')
           .select('id, user_id, attorney_email, temporary_id')
           .eq('id', settlementId)
           .maybeSingle();
         
-        console.log("Settlement data before deletion:", settlementData);
+        if (fetchError) {
+          console.error('Error fetching settlement:', fetchError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to verify settlement. Please try again.",
+          });
+          return;
+        }
         
         if (!settlementData) {
           toast({
@@ -55,7 +64,9 @@ const SettlementsSection = ({
           return;
         }
         
-        // If the settlement doesn't belong to this user, try to claim it
+        console.log("Settlement data before deletion:", settlementData);
+        
+        // Attempt to associate the settlement with the current user if needed
         if (!settlementData.user_id || settlementData.user_id !== userId) {
           console.log("Settlement doesn't belong to current user, attempting to claim it first");
           
@@ -73,7 +84,7 @@ const SettlementsSection = ({
             if (claimError) {
               console.error("Error claiming settlement by email:", claimError);
             } else {
-              console.log("Successfully claimed settlement before deletion");
+              console.log("Successfully claimed settlement by email match");
             }
           }
         }
@@ -81,6 +92,7 @@ const SettlementsSection = ({
         console.error("Error fetching settlement:", error);
       }
       
+      // Proceed with deletion
       const result = await settlementService.deleteSettlement(settlementId, userId);
       
       if (result.success) {
