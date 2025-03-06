@@ -202,28 +202,31 @@ const AdminImport = () => {
       setUploadPhase('Fetching settlement statistics');
       setProgress(50);
       
-      // Get total number of settlements
-      const { count: totalCount, error: totalError } = await supabase
+      // Get total number of settlements - Fix for count() error
+      const { data: totalData, error: totalError } = await supabase
         .from('settlements')
-        .count();
+        .select('*', { count: 'exact', head: true });
       
       if (totalError) throw totalError;
+      const totalCount = totalData?.count || 0;
       
-      // Get count of settlements with photo_url
-      const { count: withPhotoCount, error: photoError } = await supabase
+      // Get count of settlements with photo_url - Fix for count() error
+      const { data: withPhotoData, error: photoError } = await supabase
         .from('settlements')
-        .select('id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .not('photo_url', 'is', null);
       
       if (photoError) throw photoError;
+      const withPhotoCount = withPhotoData?.count || 0;
       
-      // Get count of settlements without photo_url
-      const { count: withoutPhotoCount, error: withoutPhotoError } = await supabase
+      // Get count of settlements without photo_url - Fix for count() error
+      const { data: withoutPhotoData, error: withoutPhotoError } = await supabase
         .from('settlements')
-        .select('id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .is('photo_url', null);
       
       if (withoutPhotoError) throw withoutPhotoError;
+      const withoutPhotoCount = withoutPhotoData?.count || 0;
       
       setSettlementStats({
         total: totalCount,
@@ -410,7 +413,7 @@ const AdminImport = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Alert className="mb-4" variant="warning">
+              <Alert className="mb-4" variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   This utility will reset all photo URL mappings in the database, then map only existing images to their settlements.
