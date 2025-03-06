@@ -21,7 +21,6 @@ export const useSettlements = (user: User | null) => {
 
       console.log('Fetching settlements for user:', user.id);
       
-      // Check if the user has an active subscription
       const hasActiveSubscription = !!subscription?.is_active;
       console.log('User has active subscription:', hasActiveSubscription);
       
@@ -32,13 +31,30 @@ export const useSettlements = (user: User | null) => {
         return;
       }
       
-      // If user has an active subscription, get only settlements with photos
-      // We don't want to show settlements without photos
+      // First, try to claim any settlements that match the user's email but don't have a user_id
+      if (user.email) {
+        console.log('Attempting to claim unassigned settlements for:', user.email);
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update({ user_id: user.id })
+          .match({ 
+            attorney_email: user.email,
+            user_id: null,
+            payment_completed: true 
+          });
+          
+        if (updateError) {
+          console.error('Error claiming settlements:', updateError);
+        }
+      }
+      
+      // Fetch settlements either by user_id OR matching email
       let query = supabase
         .from('settlements')
         .select('*')
-        .eq('user_id', user.id)
-        .not('photo_url', 'is', null);
+        .not('photo_url', 'is', null)
+        .or(`user_id.eq.${user.id},attorney_email.eq.${user.email}`)
+        .eq('payment_completed', true);
       
       const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -46,51 +62,8 @@ export const useSettlements = (user: User | null) => {
         console.error('Error fetching settlements:', error);
         throw error;
       }
-      
-      if (!data || data.length === 0) {
-        console.log('No settlements found for user_id with photo_url. Checking temporary_id...');
-        
-        // Try to find settlements by temporary ID
-        if (user.user_metadata?.temporaryId) {
-          const tempId = user.user_metadata.temporaryId;
-          
-          const { data: tempData, error: tempError } = await supabase
-            .from('settlements')
-            .select('*')
-            .eq('temporary_id', tempId)
-            .not('photo_url', 'is', null)
-            .order('created_at', { ascending: false });
-            
-          if (tempError) {
-            console.error('Error fetching settlements by temporary_id:', tempError);
-          } else if (tempData && tempData.length > 0) {
-            console.log('Found settlements by temporary_id:', tempData);
-            
-            // Process the data to ensure all required fields exist
-            const allSettlements = processSettlementData(tempData);
-            
-            // Update these settlements with the user_id
-            const { error: updateError } = await supabase
-              .from('settlements')
-              .update({ user_id: user.id })
-              .eq('temporary_id', tempId);
-              
-            if (updateError) {
-              console.error('Error updating settlements with user_id:', updateError);
-            } else {
-              console.log('Updated settlements with user_id');
-            }
-            
-            setSettlements(allSettlements);
-            setIsLoading(false);
-            return;
-          }
-        }
-      }
-      
-      console.log('Found settlements with photos:', data);
-      
-      // Process the data to ensure all required fields exist
+
+      console.log('Found settlements:', data);
       const allSettlements = processSettlementData(data || []);
       setSettlements(allSettlements);
       setIsLoading(false);

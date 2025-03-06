@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const settlementService = {
@@ -170,13 +171,33 @@ export const settlementService = {
 
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // Direct deletion by ID for simplicity and reliability
-      console.log(`Proceeding with direct deletion of settlement ID: ${settlementId}`);
+      // First, try to claim ownership of the settlement if it matches the user's email
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        console.log('Attempting to claim settlement ownership');
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update({ user_id: userId })
+          .match({ 
+            id: settlementId, 
+            attorney_email: session.user.email,
+            user_id: null 
+          });
+
+        if (updateError) {
+          console.error('Error claiming settlement:', updateError);
+        }
+      }
       
+      // Now proceed with deletion
       const { data, error } = await supabase
         .from('settlements')
         .delete()
-        .eq('id', settlementId)
+        .match({ 
+          id: settlementId,
+          // Allow deletion if user owns it OR if their email matches
+          or: `user_id.eq.${userId},attorney_email.eq.${session?.user?.email}`
+        })
         .select();
 
       if (error) {
