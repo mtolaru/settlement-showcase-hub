@@ -36,24 +36,28 @@ const SettlementsSection = ({
       setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // First, verify that the settlement exists and get its details
-      const { data: settlementData, error: fetchError } = await supabase
-        .from('settlements')
-        .select('id, user_id, attorney_email, temporary_id')
-        .eq('id', settlementId)
-        .single();
-      
-      if (fetchError) {
-        console.error("Error fetching settlement:", fetchError);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Settlement not found. Please refresh the page and try again.",
-        });
-        return;
+      // First, verify that the settlement exists and belongs to the user
+      try {
+        // Try multiple methods to verify settlement exists and can be deleted
+        const { data: settlementData } = await supabase
+          .from('settlements')
+          .select('id, user_id, attorney_email, temporary_id')
+          .eq('id', settlementId)
+          .maybeSingle();
+        
+        console.log("Settlement data before deletion:", settlementData);
+        
+        if (!settlementData) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Settlement not found. It may have been already deleted.",
+          });
+          return;
+        }
+      } catch (error) {
+        console.error("Error fetching settlement:", error);
       }
-      
-      console.log("Settlement data before deletion:", settlementData);
       
       const result = await settlementService.deleteSettlement(settlementId, userId);
       

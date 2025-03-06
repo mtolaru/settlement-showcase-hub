@@ -32,27 +32,13 @@ export const useSettlements = (user: User | null) => {
         return;
       }
       
-      // First, try to claim any settlements that match the user's email but don't have a user_id
-      if (user.email) {
-        console.log('Attempting to claim unassigned settlements for:', user.email);
-        const { error: updateError } = await supabase
-          .from('settlements')
-          .update({ user_id: user.id })
-          .is('user_id', null)
-          .eq('attorney_email', user.email)
-          .eq('payment_completed', true);
-          
-        if (updateError) {
-          console.error('Error claiming settlements:', updateError);
-        } else {
-          console.log('Successfully claimed any unassigned settlements');
-        }
-      }
+      // Step 1: Try to associate any unclaimed settlements with this user
+      await associateSettlementsWithUser(user);
       
-      // Fetch all settlements that might be related to this user
+      // Step 2: Fetch all settlements related to this user
       let allSettlements: Settlement[] = [];
       
-      // 1. Fetch by user_id 
+      // 2.1: Fetch by user_id 
       const { data: userIdData, error: userIdError } = await supabase
         .from('settlements')
         .select('*')
@@ -67,7 +53,7 @@ export const useSettlements = (user: User | null) => {
         allSettlements = [...allSettlements, ...userIdData];
       }
       
-      // 2. Fetch by email if available
+      // 2.2: Fetch by email if available
       if (user.email) {
         const { data: emailData, error: emailError } = await supabase
           .from('settlements')
@@ -80,7 +66,74 @@ export const useSettlements = (user: User | null) => {
           console.error('Error fetching settlements by email:', emailError);
         } else if (emailData) {
           console.log('Found settlements by email:', emailData.length);
+          // For settlements found by email but not user_id, try to update their user_id
+          for (const settlement of emailData) {
+            if (!settlement.user_id) {
+              try {
+                await supabase
+                  .from('settlements')
+                  .update({ user_id: user.id })
+                  .eq('id', settlement.id)
+                  .is('user_id', null);
+                  
+                console.log(`Updated user_id for settlement ${settlement.id}`);
+              } catch (error) {
+                console.error(`Failed to update user_id for settlement ${settlement.id}:`, error);
+              }
+            }
+          }
           allSettlements = [...allSettlements, ...emailData];
+        }
+      }
+      
+      // 2.3: Fetch by temporary_id from user's subscriptions
+      const { data: subscriptionsData, error: subscriptionsError } = await supabase
+        .from('subscriptions')
+        .select('temporary_id')
+        .eq('user_id', user.id)
+        .not('temporary_id', 'is', null);
+        
+      if (subscriptionsError) {
+        console.error('Error fetching user subscriptions:', subscriptionsError);
+      } else if (subscriptionsData && subscriptionsData.length > 0) {
+        const temporaryIds = subscriptionsData
+          .map(sub => sub.temporary_id)
+          .filter(Boolean) as string[];
+          
+        if (temporaryIds.length > 0) {
+          console.log('Found temporary IDs from subscriptions:', temporaryIds);
+          
+          // First update any settlements with these temporary IDs to associate with this user
+          for (const tempId of temporaryIds) {
+            try {
+              const { error: updateError } = await supabase
+                .from('settlements')
+                .update({ user_id: user.id })
+                .eq('temporary_id', tempId)
+                .is('user_id', null);
+                
+              if (updateError) {
+                console.error(`Error associating settlement with temporary ID ${tempId}:`, updateError);
+              }
+            } catch (error) {
+              console.error(`Failed to update user_id for temporary ID ${tempId}:`, error);
+            }
+          }
+          
+          // Then fetch settlements with these temporary IDs
+          const { data: tempIdData, error: tempIdError } = await supabase
+            .from('settlements')
+            .select('*')
+            .not('photo_url', 'is', null)
+            .in('temporary_id', temporaryIds)
+            .eq('payment_completed', true);
+            
+          if (tempIdError) {
+            console.error('Error fetching settlements by temporary_id:', tempIdError);
+          } else if (tempIdData) {
+            console.log('Found settlements by temporary_id:', tempIdData.length);
+            allSettlements = [...allSettlements, ...tempIdData];
+          }
         }
       }
       
@@ -102,6 +155,63 @@ export const useSettlements = (user: User | null) => {
         description: "Failed to fetch settlements. Please try again.",
       });
       setIsLoading(false);
+    }
+  };
+
+  // Associate settlements with user based on email or temporary IDs
+  const associateSettlementsWithUser = async (user: User) => {
+    try {
+      // 1. First try to claim unassigned settlements by email
+      if (user.email) {
+        console.log('Attempting to claim unassigned settlements for:', user.email);
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update({ user_id: user.id })
+          .is('user_id', null)
+          .eq('attorney_email', user.email)
+          .eq('payment_completed', true);
+          
+        if (updateError) {
+          console.error('Error claiming settlements by email:', updateError);
+        } else {
+          console.log('Successfully claimed any unassigned settlements by email');
+        }
+      }
+      
+      // 2. Try to claim by temporary_id from the user's subscriptions
+      const { data: subscriptions, error: subError } = await supabase
+        .from('subscriptions')
+        .select('temporary_id')
+        .eq('user_id', user.id)
+        .not('temporary_id', 'is', null);
+        
+      if (subError) {
+        console.error('Error fetching user subscriptions:', subError);
+      } else if (subscriptions && subscriptions.length > 0) {
+        const temporaryIds = subscriptions
+          .map(sub => sub.temporary_id)
+          .filter(Boolean) as string[];
+          
+        if (temporaryIds.length > 0) {
+          console.log('Attempting to claim settlements by temporary IDs:', temporaryIds);
+          
+          for (const tempId of temporaryIds) {
+            const { error: tempIdError } = await supabase
+              .from('settlements')
+              .update({ user_id: user.id })
+              .is('user_id', null)
+              .eq('temporary_id', tempId);
+              
+            if (tempIdError) {
+              console.error(`Error claiming settlement with temporary ID ${tempId}:`, tempIdError);
+            } else {
+              console.log(`Successfully claimed any settlements with temporary ID ${tempId}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in associateSettlementsWithUser:', error);
     }
   };
 
