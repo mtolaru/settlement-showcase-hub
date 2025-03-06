@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -217,6 +216,7 @@ const AdminImport = () => {
       setUploadPhase('Fetching settlement statistics');
       setProgress(50);
       
+      // Fix: Correctly destructure the count property from the Supabase response
       const { count: totalCount, error: totalError } = await supabase
         .from('settlements')
         .select('*', { count: 'exact', head: true });

@@ -23,10 +23,11 @@ serve(async (req) => {
     console.log('Starting complete image remapping process...');
     
     // First, reset all photo_url to null for all settlements
-    // Fix: Instead of using is.not.null filter, use a more direct approach
+    // Fix: Add a WHERE condition that will match all records (id IS NOT NULL)
     const { error: resetError } = await supabase
       .from('settlements')
-      .update({ photo_url: null });
+      .update({ photo_url: null })
+      .filter('id', 'not.is', null); // This will affect all settlements but with a proper WHERE clause
       
     if (resetError) {
       console.error('Error resetting settlement photo URLs:', resetError);
