@@ -171,16 +171,19 @@ export const settlementService = {
 
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // First, try to claim ownership of the settlement if it matches the user's email
+      // Get the current user's email
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        console.log('Attempting to claim settlement ownership');
+      const userEmail = session?.user?.email;
+      
+      if (userEmail) {
+        console.log('Attempting to claim settlement ownership for email:', userEmail);
+        // Try to claim ownership of the settlement if it matches the user's email
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ user_id: userId })
           .match({ 
             id: settlementId, 
-            attorney_email: session.user.email,
+            attorney_email: userEmail,
             user_id: null 
           });
 
@@ -189,24 +192,49 @@ export const settlementService = {
         }
       }
       
-      // Now proceed with deletion
-      const { data, error } = await supabase
+      // Now proceed with deletion using separate queries
+      // First try to delete based on user_id
+      let { data: userIdData, error: userIdError } = await supabase
         .from('settlements')
         .delete()
-        .match({ 
-          id: settlementId,
-          // Allow deletion if user owns it OR if their email matches
-          or: `user_id.eq.${userId},attorney_email.eq.${session?.user?.email}`
-        })
+        .eq('id', settlementId)
+        .eq('user_id', userId)
         .select();
 
-      if (error) {
-        console.error('Error deleting settlement:', error);
-        throw error;
+      // If that failed and we have an email, try deleting based on attorney_email
+      if (userIdError || (userIdData && userIdData.length === 0)) {
+        if (userEmail) {
+          console.log('Attempting to delete by attorney email:', userEmail);
+          const { data: emailData, error: emailError } = await supabase
+            .from('settlements')
+            .delete()
+            .eq('id', settlementId)
+            .eq('attorney_email', userEmail)
+            .select();
+
+          if (emailError) {
+            console.error('Error deleting settlement by email:', emailError);
+            throw emailError;
+          }
+
+          if (emailData && emailData.length > 0) {
+            console.log('Settlement deleted successfully by attorney email');
+            return { success: true, data: emailData };
+          }
+        }
+
+        // If we got here and there was an error with the userId delete, throw that error
+        if (userIdError) {
+          console.error('Error deleting settlement by user ID:', userIdError);
+          throw userIdError;
+        }
+      } else {
+        console.log('Settlement deleted successfully by user ID');
+        return { success: true, data: userIdData };
       }
 
-      console.log('Settlement deleted successfully', data);
-      return { success: true, data };
+      // If we got here and nothing was deleted, return an error
+      throw new Error("Settlement not found or you don't have permission to delete it");
     } catch (error: any) {
       console.error('Delete settlement error:', error);
       throw error;

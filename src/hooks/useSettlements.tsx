@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -37,34 +38,54 @@ export const useSettlements = (user: User | null) => {
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ user_id: user.id })
-          .match({ 
-            attorney_email: user.email,
-            user_id: null,
-            payment_completed: true 
-          });
+          .is('user_id', null)
+          .eq('attorney_email', user.email)
+          .eq('payment_completed', true);
           
         if (updateError) {
           console.error('Error claiming settlements:', updateError);
         }
       }
       
-      // Fetch settlements either by user_id OR matching email
-      let query = supabase
+      // Fetch settlements by user_id first
+      let { data: userIdData, error: userIdError } = await supabase
         .from('settlements')
         .select('*')
         .not('photo_url', 'is', null)
-        .or(`user_id.eq.${user.id},attorney_email.eq.${user.email}`)
+        .eq('user_id', user.id)
         .eq('payment_completed', true);
       
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching settlements:', error);
-        throw error;
+      if (userIdError) {
+        console.error('Error fetching settlements by user_id:', userIdError);
+        throw userIdError;
       }
-
-      console.log('Found settlements:', data);
-      const allSettlements = processSettlementData(data || []);
+      
+      // Then fetch by email if available
+      let emailData: any[] = [];
+      if (user.email) {
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('*')
+          .not('photo_url', 'is', null)
+          .is('user_id', null) // Only get settlements not yet claimed
+          .eq('attorney_email', user.email)
+          .eq('payment_completed', true);
+        
+        if (error) {
+          console.error('Error fetching settlements by email:', error);
+        } else if (data) {
+          emailData = data;
+        }
+      }
+      
+      // Combine the results, removing duplicates
+      const allData = [...(userIdData || []), ...emailData];
+      const uniqueData = allData.filter((settlement, index, self) => 
+        index === self.findIndex(s => s.id === settlement.id)
+      );
+      
+      console.log('Found settlements:', uniqueData);
+      const allSettlements = processSettlementData(uniqueData);
       setSettlements(allSettlements);
       setIsLoading(false);
       
