@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import type { Settlement } from "@/types/settlement";
 import SettlementsList from "@/components/manage/SettlementsList";
 import { settlementService } from "@/services/settlementService";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 interface SettlementsSectionProps {
   settlements: Settlement[];
@@ -28,7 +28,6 @@ const SettlementsSection = ({
       if (!settlements.length) return;
       
       try {
-        // Get more information for debugging purposes
         const { data, error } = await supabase
           .from('settlements')
           .select('id, user_id, temporary_id, created_at, attorney_email, payment_completed')
@@ -56,7 +55,6 @@ const SettlementsSection = ({
           } else {
             console.log(`Last submission (ID: ${data.id}) has NO user ID. Temporary ID: ${data.temporary_id}`);
             
-            // Try to link it now if user is logged in and emails match
             if (userId && data.attorney_email) {
               const { data: userData } = await supabase.auth.getUser();
               const userEmail = userData?.user?.email;
