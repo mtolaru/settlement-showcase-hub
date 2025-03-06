@@ -19,15 +19,13 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
   console.log("Checking if email exists in database (normalized):", normalizedEmail);
   
   try {
-    // Use the Edge Function for a more reliable check
+    // Use the Edge Function for checking email existence
     const { data, error } = await supabase.functions.invoke('check-email', {
       body: { email: normalizedEmail }
     });
     
     if (error) {
       console.error('Edge function error:', error);
-      
-      // Fall back to the old method if the edge function fails
       return fallbackEmailCheck(normalizedEmail);
     }
     
@@ -35,8 +33,6 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
     return data.exists === true;
   } catch (err) {
     console.error('Exception checking email with edge function:', err);
-    
-    // Fall back to the old method if the edge function throws an exception
     return fallbackEmailCheck(normalizedEmail);
   }
 };
