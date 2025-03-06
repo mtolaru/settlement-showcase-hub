@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import type { Settlement } from "@/types/settlement";
 import SettlementsList from "@/components/manage/SettlementsList";
@@ -20,16 +21,17 @@ const SettlementsSection = ({
 }: SettlementsSectionProps) => {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [lastSubmissionInfo, setLastSubmissionInfo] = useState<{hasUserId: boolean, temporaryId?: string, id?: number} | null>(null);
+  const [lastSubmissionInfo, setLastSubmissionInfo] = useState<{hasUserId: boolean, temporaryId?: string, id?: number, attorney_email?: string, payment_completed?: boolean} | null>(null);
 
   useEffect(() => {
     const checkLastSubmission = async () => {
       if (!settlements.length) return;
       
       try {
+        // Get more information for debugging purposes
         const { data, error } = await supabase
           .from('settlements')
-          .select('id, user_id, temporary_id, created_at')
+          .select('id, user_id, temporary_id, created_at, attorney_email, payment_completed')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -44,13 +46,38 @@ const SettlementsSection = ({
           setLastSubmissionInfo({
             hasUserId: !!data.user_id,
             temporaryId: data.temporary_id,
-            id: data.id
+            id: data.id,
+            attorney_email: data.attorney_email,
+            payment_completed: data.payment_completed
           });
           
           if (data.user_id) {
             console.log(`Last submission (ID: ${data.id}) has user ID: ${data.user_id}`);
           } else {
             console.log(`Last submission (ID: ${data.id}) has NO user ID. Temporary ID: ${data.temporary_id}`);
+            
+            // Try to link it now if user is logged in and emails match
+            if (userId && data.attorney_email) {
+              const { data: userData } = await supabase.auth.getUser();
+              const userEmail = userData?.user?.email;
+              
+              if (userEmail && userEmail === data.attorney_email) {
+                console.log(`Found matching email for settlement ${data.id}. Attempting to link to user ${userId}`);
+                
+                const { error: updateError } = await supabase
+                  .from('settlements')
+                  .update({ user_id: userId })
+                  .eq('id', data.id)
+                  .is('user_id', null);
+                  
+                if (updateError) {
+                  console.error('Error linking settlement to user:', updateError);
+                } else {
+                  console.log(`Successfully linked settlement ${data.id} to user ${userId}`);
+                  refreshSettlements();
+                }
+              }
+            }
           }
         }
       } catch (error) {
@@ -59,7 +86,7 @@ const SettlementsSection = ({
     };
     
     checkLastSubmission();
-  }, [settlements]);
+  }, [settlements, userId, refreshSettlements]);
 
   const handleDeleteSettlement = async (settlementId: number) => {
     try {
@@ -178,6 +205,55 @@ const SettlementsSection = ({
             <p className="text-xs text-blue-600">
               Settlement ID: {lastSubmissionInfo.id}
             </p>
+          )}
+          {lastSubmissionInfo.attorney_email && (
+            <p className="text-xs text-blue-600">
+              Attorney Email: {lastSubmissionInfo.attorney_email}
+            </p>
+          )}
+          {lastSubmissionInfo.payment_completed !== undefined && (
+            <p className="text-xs text-blue-600">
+              Payment Status: {lastSubmissionInfo.payment_completed ? "Completed" : "Pending"}
+            </p>
+          )}
+          {userId && !lastSubmissionInfo.hasUserId && (
+            <div className="mt-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  if (!lastSubmissionInfo.id || !userId) return;
+                  
+                  try {
+                    const { error } = await supabase
+                      .from('settlements')
+                      .update({ user_id: userId })
+                      .eq('id', lastSubmissionInfo.id)
+                      .is('user_id', null);
+                      
+                    if (error) {
+                      console.error('Error manually linking settlement:', error);
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Failed to link settlement. Please try again.",
+                      });
+                    } else {
+                      console.log(`Manually linked settlement ${lastSubmissionInfo.id} to user ${userId}`);
+                      toast({
+                        title: "Success",
+                        description: "Settlement has been linked to your account.",
+                      });
+                      refreshSettlements();
+                    }
+                  } catch (error) {
+                    console.error('Error in manual linking:', error);
+                  }
+                }}
+              >
+                Manually Link This Settlement
+              </Button>
+            </div>
           )}
         </div>
       )}
