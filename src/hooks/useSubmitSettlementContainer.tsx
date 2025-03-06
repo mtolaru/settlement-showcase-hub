@@ -22,6 +22,7 @@ export const useSubmitSettlementContainer = () => {
     temporaryId,
     handleInputChange,
     handleImageUpload,
+    clearFormField,
     setErrors,
     setIsLoading,
     setIsSubmitting,
@@ -31,7 +32,8 @@ export const useSubmitSettlementContainer = () => {
     verifyEmail,
     unformatNumber,
     checkSubscriptionStatus,
-    emailStatus
+    emailStatus,
+    clearedFields
   } = useSubmitSettlementForm();
 
   const { handleSubmitWithSubscription, handleCreateCheckout } = useSettlementSubmission({
@@ -79,11 +81,13 @@ export const useSubmitSettlementContainer = () => {
     isSubmitting,
     handleInputChange,
     handleImageUpload,
+    clearFormField,
     handleNextStep,
     handleBackStep,
     handleCreateCheckout,
     handleSubmitWithSubscription,
     emailStatus,
-    isAuthenticated
+    isAuthenticated,
+    clearedFields
   };
 };

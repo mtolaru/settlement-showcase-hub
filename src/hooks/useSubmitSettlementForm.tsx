@@ -26,7 +26,7 @@ export const useSubmitSettlementForm = () => {
     submissionLock, setSubmissionLock,
     temporaryId, setTemporaryId,
     handleInputChange, handleImageUpload,
-    clearFormField
+    clearFormField, clearedFields
   } = useSettlementFormState();
   
   const { validateStep1, validateStep2, unformatNumber, isValidEmail } = useSettlementForm();
@@ -48,22 +48,38 @@ export const useSubmitSettlementForm = () => {
     setTemporaryId(crypto.randomUUID());
     
     if (isAuthenticated && user?.email) {
-      // Set attorney email from user's email
-      setFormData(prev => ({
-        ...prev,
-        attorneyEmail: user.email || ""
-      }));
+      // Set attorney email from user's email only if it hasn't been cleared
+      if (!clearedFields.has('attorneyEmail')) {
+        setFormData(prev => ({
+          ...prev,
+          attorneyEmail: user.email || ""
+        }));
+      }
       
       // If user has existing settlements, pre-populate attorney name and firm details
+      // but only for fields that haven't been explicitly cleared
       const attorneyInfo = getLatestAttorneyInfo();
       if (attorneyInfo) {
         console.log("Pre-populating attorney information from previous settlement", attorneyInfo);
-        setFormData(prev => ({
-          ...prev,
-          attorneyName: attorneyInfo.attorneyName,
-          firmName: attorneyInfo.firmName,
-          firmWebsite: attorneyInfo.firmWebsite
-        }));
+        
+        setFormData(prev => {
+          const newFormData = { ...prev };
+          
+          // Only set these fields if they haven't been explicitly cleared by the user
+          if (!clearedFields.has('attorneyName')) {
+            newFormData.attorneyName = attorneyInfo.attorneyName;
+          }
+          
+          if (!clearedFields.has('firmName')) {
+            newFormData.firmName = attorneyInfo.firmName;
+          }
+          
+          if (!clearedFields.has('firmWebsite')) {
+            newFormData.firmWebsite = attorneyInfo.firmWebsite;
+          }
+          
+          return newFormData;
+        });
       }
     }
     
@@ -75,7 +91,7 @@ export const useSubmitSettlementForm = () => {
     }
   }, [isAuthenticated, user, subscription, isLoadingSubscription, setFormData, 
       setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
-      getLatestAttorneyInfo, settlements]);
+      getLatestAttorneyInfo, settlements, clearedFields]);
 
   // Clear email validation errors for authenticated users using their own email
   useEffect(() => {
@@ -116,6 +132,7 @@ export const useSubmitSettlementForm = () => {
       isValidating: isValidatingEmail,
       alreadyExists
     },
-    isAuthenticated
+    isAuthenticated,
+    clearedFields
   };
 };

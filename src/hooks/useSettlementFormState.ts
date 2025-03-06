@@ -11,6 +11,8 @@ export const useSettlementFormState = () => {
   const [submissionLock, setSubmissionLock] = useState(false);
   const [temporaryId, setTemporaryId] = useState<string>("");
   const [errors, setErrors] = useState<FormErrors>({});
+  // Track which fields have been explicitly cleared by the user
+  const [clearedFields, setClearedFields] = useState<Set<string>>(new Set());
 
   const today = new Date();
   const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -57,6 +59,15 @@ export const useSettlementFormState = () => {
 
   const handleInputChange = (field: string, value: string) => {
     console.log(`Setting field ${field} to: ${value}`);
+    
+    // If this field was previously marked as cleared and we're setting a new value,
+    // remove it from the cleared fields set
+    if (clearedFields.has(field) && value !== "") {
+      const newClearedFields = new Set(clearedFields);
+      newClearedFields.delete(field);
+      setClearedFields(newClearedFields);
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -70,6 +81,10 @@ export const useSettlementFormState = () => {
 
   const clearFormField = (field: string) => {
     console.log(`Explicitly clearing field ${field}`);
+    
+    // Mark this field as explicitly cleared by user
+    setClearedFields(prev => new Set(prev).add(field));
+    
     setFormData(prev => ({
       ...prev,
       [field]: ""
@@ -107,6 +122,7 @@ export const useSettlementFormState = () => {
     setTemporaryId,
     handleInputChange,
     handleImageUpload,
-    clearFormField
+    clearFormField,
+    clearedFields
   };
 };

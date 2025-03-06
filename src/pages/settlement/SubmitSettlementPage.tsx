@@ -27,7 +27,9 @@ const SubmitSettlementPage = () => {
     handleCreateCheckout,
     handleSubmitWithSubscription,
     emailStatus,
-    isAuthenticated
+    isAuthenticated,
+    clearFormField,
+    clearedFields
   } = useSubmitSettlementContainer();
 
   useEffect(() => {
@@ -79,8 +81,10 @@ const SubmitSettlementPage = () => {
                 errors={errors}
                 handleInputChange={handleInputChange}
                 handleImageUpload={handleImageUpload}
+                clearFormField={clearFormField}
                 emailStatus={emailStatus}
                 isAuthenticated={isAuthenticated}
+                clearedFields={clearedFields}
               />
             )}
 

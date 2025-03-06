@@ -24,12 +24,14 @@ interface AttorneyInformationFormProps {
   };
   handleInputChange: (field: string, value: string) => void;
   handleImageUpload: (url: string) => void;
+  clearFormField?: (field: string) => void;
   isValidatingEmail?: boolean;
   emailStatus?: {
     isValidating: boolean;
     alreadyExists: boolean;
   };
   isAuthenticated?: boolean;
+  clearedFields?: Set<string>;
 }
 
 export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = ({
@@ -37,18 +39,24 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   errors,
   handleInputChange,
   handleImageUpload,
+  clearFormField,
   emailStatus = { isValidating: false, alreadyExists: false },
-  isAuthenticated = false
+  isAuthenticated = false,
+  clearedFields = new Set()
 }) => {
   const { user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
-  const isNameDisabled = isAuthenticated && Boolean(formData.attorneyName);
+  const isNameDisabled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
   const hasErrors = Object.values(errors).some(error => error !== undefined);
 
   // Reset firm information fields
-  const handleResetFirmInfo = (field: 'firmName' | 'firmWebsite') => {
+  const handleResetFirmInfo = (field: 'firmName' | 'firmWebsite' | 'attorneyName') => {
     console.log(`Clearing ${field} field`);
-    handleInputChange(field, '');
+    if (clearFormField) {
+      clearFormField(field);
+    } else {
+      handleInputChange(field, '');
+    }
   };
 
   // Prevent event propagation to avoid step navigation issues
@@ -81,9 +89,21 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               value={formData.attorneyName}
               onChange={(e) => handleInputChange("attorneyName", e.target.value)}
               placeholder="John Doe"
-              className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""} ${isNameDisabled ? "pr-10" : ""}`}
+              className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""} ${isNameDisabled ? "pr-10" : "pr-10"}`}
               disabled={isNameDisabled}
             />
+            {formData.attorneyName && !isNameDisabled && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => handleResetFirmInfo('attorneyName')}
+                aria-label="Clear attorney name"
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </Button>
+            )}
             {isNameDisabled && (
               <Lock className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />
             )}
@@ -92,7 +112,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
           )}
           {isNameDisabled && (
-            <p className="text-gray-500 text-sm mt-1">Using name from your account</p>
+            <p className="text-gray-500 text-sm mt-1">Using name from your account (click to edit)</p>
           )}
         </div>
 
@@ -158,7 +178,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           {errors.firmName && (
             <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
           )}
-          {isAuthenticated && formData.firmName && (
+          {isAuthenticated && formData.firmName && !clearedFields.has('firmName') && (
             <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission (you can edit or clear)</p>
           )}
         </div>
@@ -191,7 +211,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           {errors.firmWebsite && (
             <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
           )}
-          {isAuthenticated && formData.firmWebsite && (
+          {isAuthenticated && formData.firmWebsite && !clearedFields.has('firmWebsite') && (
             <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission (you can edit or clear)</p>
           )}
         </div>
