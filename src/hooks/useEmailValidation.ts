@@ -14,6 +14,17 @@ export const useEmailValidation = (
   const [alreadyExists, setAlreadyExists] = useState(false);
 
   const handleEmailChange = async (email: string) => {
+    console.log("handleEmailChange called with:", email);
+    
+    // Clear any existing email errors first
+    setErrors((prev: FormErrors) => {
+      const newErrors = { ...prev };
+      if (newErrors.attorneyEmail) {
+        delete newErrors.attorneyEmail;
+      }
+      return newErrors;
+    });
+    
     // Check if the email belongs to the currently logged-in user
     const isCurrentUserEmail = user?.email === email;
     
@@ -28,18 +39,22 @@ export const useEmailValidation = (
         return;
       }
 
+      console.log("Starting email validation for:", email);
       setIsValidatingEmail(true);
       try {
         const emailExists = await verifyEmail(email, user?.email);
+        console.log("Email exists check result:", emailExists, "for email:", email);
         setAlreadyExists(emailExists);
         
         if (emailExists) {
+          console.log("Setting email exists error for:", email);
           setErrors((prev: FormErrors) => ({
             ...prev,
             attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
           }));
         } else {
           // Clear the error if email doesn't exist
+          console.log("Clearing email exists error for:", email);
           setErrors((prev: FormErrors) => {
             const newErrors = { ...prev };
             if (newErrors.attorneyEmail && newErrors.attorneyEmail.includes("already associated")) {
@@ -55,6 +70,7 @@ export const useEmailValidation = (
       }
     } else if (isCurrentUserEmail) {
       // Clear any existing errors for the email if it belongs to the current user
+      console.log("Using current user's email, clearing any errors");
       setErrors((prev: FormErrors) => {
         const newErrors = { ...prev };
         if (newErrors.attorneyEmail) {
@@ -69,6 +85,7 @@ export const useEmailValidation = (
 
   useEffect(() => {
     if (email) {
+      console.log("Email changed in useEmailValidation:", email);
       const timer = setTimeout(() => {
         handleEmailChange(email);
       }, 500); // Debounce email validation

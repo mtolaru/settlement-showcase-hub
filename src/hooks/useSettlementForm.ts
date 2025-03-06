@@ -116,6 +116,9 @@ export const useSettlementForm = () => {
         newErrors.attorneyEmail = "Valid email is required";
         isValid = false;
       }
+      
+      // We don't check for existing email here as this is handled by the useEmailValidation hook
+      // The hook will update errors.attorneyEmail if the email already exists
     }
 
     // Validate firm name
