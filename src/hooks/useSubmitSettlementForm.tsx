@@ -31,9 +31,9 @@ export const useSubmitSettlementForm = () => {
   const { user, isAuthenticated } = useAuth();
   const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
 
-  // Use our new hooks
+  // Use our hooks
   useValidateDollarInput(formData, handleInputChange);
-  useEmailValidation(formData.attorneyEmail, isValidEmail, setErrors);
+  const { handleEmailChange, isValidatingEmail, alreadyExists } = useEmailValidation(formData.attorneyEmail, isValidEmail, setErrors);
   useSubscriptionStatus(setHasActiveSubscription, setIsCheckingSubscription);
 
   // Debug log - always show current errors
@@ -80,6 +80,10 @@ export const useSubmitSettlementForm = () => {
     validateStep2,
     verifyEmail: (email: string) => verifyEmail(email, user?.email),
     unformatNumber,
-    checkSubscriptionStatus: null // This is now handled by useSubscriptionStatus
+    checkSubscriptionStatus: null, // This is now handled by useSubscriptionStatus
+    emailStatus: {
+      isValidating: isValidatingEmail,
+      alreadyExists
+    }
   };
 };

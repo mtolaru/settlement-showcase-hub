@@ -30,7 +30,8 @@ export const useSubmitSettlementContainer = () => {
     validateStep2,
     verifyEmail,
     unformatNumber,
-    checkSubscriptionStatus
+    checkSubscriptionStatus,
+    emailStatus
   } = useSubmitSettlementForm();
 
   const { handleSubmitWithSubscription, handleCreateCheckout } = useSettlementSubmission({
@@ -49,7 +50,8 @@ export const useSubmitSettlementContainer = () => {
     setErrors,
     validateStep1,
     validateStep2,
-    verifyEmail
+    verifyEmail,
+    emailStatus
   });
 
   // Update the navigation step whenever the form step changes
@@ -80,6 +82,7 @@ export const useSubmitSettlementContainer = () => {
     handleNextStep,
     handleBackStep,
     handleCreateCheckout,
-    handleSubmitWithSubscription
+    handleSubmitWithSubscription,
+    emailStatus
   };
 };

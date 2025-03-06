@@ -10,6 +10,10 @@ interface UseSettlementNavigationProps {
   validateStep1: (formData: FormData) => boolean;
   validateStep2: (formData: FormData, skipEmailValidation?: boolean) => boolean;
   verifyEmail: (email: string) => Promise<boolean>;
+  emailStatus?: {
+    isValidating: boolean;
+    alreadyExists: boolean;
+  };
 }
 
 export const useSettlementNavigation = ({
@@ -18,7 +22,8 @@ export const useSettlementNavigation = ({
   setErrors,
   validateStep1,
   validateStep2,
-  verifyEmail
+  verifyEmail,
+  emailStatus = { isValidating: false, alreadyExists: false }
 }: UseSettlementNavigationProps) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,10 +63,47 @@ export const useSettlementNavigation = ({
       }
     } 
     else if (currentStep === 2) {
+      // Check if email validation is still in progress
+      if (emailStatus.isValidating) {
+        console.log("Email validation in progress, waiting...");
+        setErrors(prev => ({
+          ...prev,
+          attorneyEmail: "Please wait for email validation to complete"
+        }));
+        return false;
+      }
+      
+      // Check if email already exists before proceeding
+      if (emailStatus.alreadyExists) {
+        console.log("Email already exists, cannot proceed");
+        setErrors(prev => ({
+          ...prev,
+          attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
+        }));
+        return false;
+      }
+      
       // Always run validation - this will set errors via setErrors inside validateStep2
       const isValid = validateStep2(formData);
       
       if (isValid) {
+        // Final email verification before proceeding to step 3
+        if (formData.attorneyEmail && !emailStatus.isValidating) {
+          try {
+            const emailExists = await verifyEmail(formData.attorneyEmail);
+            if (emailExists) {
+              console.log("Final check - email already exists, cannot proceed");
+              setErrors(prev => ({
+                ...prev,
+                attorneyEmail: "This email is already associated with settlements. Please log in or use a different email."
+              }));
+              return false;
+            }
+          } catch (error) {
+            console.error("Error in final email verification:", error);
+          }
+        }
+        
         saveFormState();
         setStep(3);
         return true;

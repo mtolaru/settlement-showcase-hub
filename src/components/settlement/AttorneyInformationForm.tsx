@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOCATIONS } from "@/lib/locations";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle } from "lucide-react";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -23,6 +22,11 @@ interface AttorneyInformationFormProps {
   };
   handleInputChange: (field: string, value: string) => void;
   handleImageUpload: (url: string) => void;
+  isValidatingEmail?: boolean;
+  emailStatus?: {
+    isValidating: boolean;
+    alreadyExists: boolean;
+  };
 }
 
 export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = ({
@@ -30,6 +34,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   errors,
   handleInputChange,
   handleImageUpload,
+  emailStatus = { isValidating: false, alreadyExists: false }
 }) => {
   const { isAuthenticated, user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
@@ -75,14 +80,22 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="attorneyEmail">
             Attorney Email <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="attorneyEmail"
-            value={formData.attorneyEmail}
-            onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
-            placeholder="john.doe@lawfirm.com"
-            className={`mt-1 ${errors.attorneyEmail ? "border-red-500" : ""}`}
-            disabled={isEmailDisabled}
-          />
+          <div className="relative">
+            <Input
+              id="attorneyEmail"
+              value={formData.attorneyEmail}
+              onChange={(e) => handleInputChange("attorneyEmail", e.target.value)}
+              placeholder="john.doe@lawfirm.com"
+              className={`mt-1 ${errors.attorneyEmail ? "border-red-500" : ""} pr-10`}
+              disabled={isEmailDisabled}
+            />
+            {emailStatus.isValidating && (
+              <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />
+            )}
+            {!emailStatus.isValidating && formData.attorneyEmail && !errors.attorneyEmail && (
+              <CheckCircle className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-green-500" />
+            )}
+          </div>
           {errors.attorneyEmail && (
             <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
           )}
