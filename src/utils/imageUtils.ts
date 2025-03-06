@@ -17,6 +17,26 @@ export const resolveSettlementImageUrl = async (photoUrl?: string | null, settle
         const predictablePhotoUrl = `settlement_${settlementId}.jpg`;
         
         // First, verify the file exists by checking its metadata
+        const { data: metadataData, error: metadataError } = await supabase.storage
+          .from('processed_images')
+          .getPublicUrl(predictablePhotoUrl);
+          
+        if (metadataData?.publicUrl) {
+          // Try a HEAD request to check if the URL is accessible
+          try {
+            const response = await fetch(metadataData.publicUrl, { method: 'HEAD' });
+            if (response.ok) {
+              console.log(`Image file exists at public URL: ${metadataData.publicUrl}`);
+              return metadataData.publicUrl;
+            } else {
+              console.log(`Public URL exists but returned status ${response.status}: ${metadataData.publicUrl}`);
+            }
+          } catch (err) {
+            console.log(`Error checking public URL: ${err}`);
+          }
+        }
+        
+        // If public URL didn't work, try signed URL
         const { data: fileData, error: fileError } = await supabase.storage
           .from('processed_images')
           .createSignedUrl(predictablePhotoUrl, 60);
@@ -48,7 +68,7 @@ export const resolveSettlementImageUrl = async (photoUrl?: string | null, settle
         if (response.ok) {
           return photoUrl;
         }
-        console.log(`Direct URL is not accessible: ${photoUrl}`);
+        console.log(`Direct URL is not accessible: ${photoUrl} - Status: ${response.status}`);
       } catch (err) {
         console.error(`Error checking URL accessibility: ${photoUrl}`, err);
       }
@@ -62,7 +82,30 @@ export const resolveSettlementImageUrl = async (photoUrl?: string | null, settle
 
     console.log(`Extracted file path: ${filePath}`);
     
-    // Create a signed URL for the file path to verify it exists and is accessible
+    // Try getting a public URL first - this is faster
+    const { data: publicUrlData } = supabase.storage
+      .from('processed_images')
+      .getPublicUrl(filePath);
+      
+    if (publicUrlData?.publicUrl) {
+      console.log(`Generated public URL: ${publicUrlData.publicUrl}`);
+      
+      // Verify the public URL works
+      try {
+        const response = await fetch(publicUrlData.publicUrl, { method: 'HEAD' });
+        if (response.ok) {
+          console.log(`Verified public URL is accessible`);
+          return publicUrlData.publicUrl;
+        } else {
+          console.log(`Public URL exists but returned status ${response.status}`);
+        }
+      } catch (err) {
+        console.log(`Error checking public URL: ${err}`);
+      }
+    }
+    
+    // If public URL didn't work, try a signed URL
+    console.log(`Trying to create signed URL for: ${filePath}`);
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('processed_images')
       .createSignedUrl(filePath, 60);
@@ -79,12 +122,42 @@ export const resolveSettlementImageUrl = async (photoUrl?: string | null, settle
       const standardPath = `settlement_${settlementId}.jpg`;
       console.log(`Trying standard naming pattern: ${standardPath}`);
       
+      // Try public URL first
+      const { data: standardPublicData } = supabase.storage
+        .from('processed_images')
+        .getPublicUrl(standardPath);
+        
+      if (standardPublicData?.publicUrl) {
+        try {
+          const response = await fetch(standardPublicData.publicUrl, { method: 'HEAD' });
+          if (response.ok) {
+            console.log(`Found matching file with standard pattern (public): ${standardPublicData.publicUrl}`);
+            
+            // Update the database if needed
+            if (photoUrl !== standardPath) {
+              updateSettlementPhotoUrl(settlementId, standardPath)
+                .then(success => {
+                  console.log(`Updated settlement ${settlementId} photo_url to ${standardPath}: ${success ? 'success' : 'failed'}`);
+                })
+                .catch(err => {
+                  console.error(`Error updating settlement ${settlementId} photo_url:`, err);
+                });
+            }
+            
+            return standardPublicData.publicUrl;
+          }
+        } catch (err) {
+          console.log(`Error checking standard pattern public URL: ${err}`);
+        }
+      }
+      
+      // Try signed URL if public URL didn't work
       const { data: standardSignedData, error: standardSignedError } = await supabase.storage
         .from('processed_images')
         .createSignedUrl(standardPath, 60);
         
       if (!standardSignedError && standardSignedData?.signedUrl) {
-        console.log(`Found matching file with standard pattern: ${standardSignedData.signedUrl}`);
+        console.log(`Found matching file with standard pattern (signed): ${standardSignedData.signedUrl}`);
         
         // If we found a working URL but the database has something different,
         // update the database to have the correct URL for next time
@@ -99,6 +172,8 @@ export const resolveSettlementImageUrl = async (photoUrl?: string | null, settle
         }
         
         return standardSignedData.signedUrl;
+      } else {
+        console.log(`Error getting signed URL for standard pattern: ${standardSignedError?.message || 'Unknown error'}`);
       }
     }
     

@@ -1,161 +1,273 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
-interface TestImageAccessProps {
-  fileName?: string;
-  defaultFileName?: string;
-}
+const TestImageAccess = () => {
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [settlementId, setSettlementId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [publicResult, setPublicResult] = useState<{success: boolean; url?: string; error?: string} | null>(null);
+  const [signedResult, setSignedResult] = useState<{success: boolean; url?: string; error?: string} | null>(null);
+  const [headResult, setHeadResult] = useState<{success: boolean; status?: number; error?: string} | null>(null);
 
-const TestImageAccess = ({ fileName, defaultFileName = 'settlement_1.jpg' }: TestImageAccessProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<{success: boolean; url?: string; error?: string} | null>(null);
-  
-  const testFile = fileName || defaultFileName;
-  
-  const checkFileAccess = async () => {
+  const testAccess = async () => {
     setIsLoading(true);
-    try {
-      setResult(null);
-      
-      console.log(`Testing access to file: ${testFile}`);
-      
-      // First, check if the file exists in the bucket
-      const { data: exists, error: existsError } = await supabase.storage
-        .from('processed_images')
-        .list('', {
-          search: testFile,
-        });
-      
-      // Get public URL regardless of file existence check
-      const { data: urlData } = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(testFile);
-        
-      // Try to fetch the image to verify it's actually accessible
-      let accessible = false;
-      if (urlData?.publicUrl) {
-        try {
-          const response = await fetch(urlData.publicUrl, { method: 'HEAD' });
-          accessible = response.ok;
-        } catch (err) {
-          console.error("Error checking URL accessibility:", err);
-        }
-      }
-      
-      if (existsError) {
-        setResult({
-          success: false,
-          error: `Error checking if file exists: ${existsError.message}`
-        });
-        return;
-      }
-      
-      if (!exists || exists.length === 0) {
-        setResult({
-          success: false,
-          error: `File "${testFile}" not found in bucket`
-        });
-        return;
-      }
-      
-      if (!urlData?.publicUrl) {
-        setResult({
-          success: false,
-          error: `Could not generate public URL for file "${testFile}"`
-        });
-        return;
-      }
-      
-      if (!accessible) {
-        setResult({
-          success: false,
-          url: urlData.publicUrl,
-          error: `Generated URL exists but file is not accessible. This may be a permissions issue.`
-        });
-        return;
-      }
-      
-      setResult({
-        success: true,
-        url: urlData.publicUrl
-      });
-      
-    } catch (error) {
-      console.error("Error testing file access:", error);
-      setResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    } finally {
-      setIsLoading(false);
+    setPublicResult(null);
+    setSignedResult(null);
+    setHeadResult(null);
+    
+    let filePath = imageUrl;
+    
+    if (settlementId && !imageUrl) {
+      filePath = `settlement_${settlementId}.jpg`;
     }
+    
+    if (filePath.startsWith('http')) {
+      try {
+        const url = new URL(filePath);
+        const pathParts = url.pathname.split('/');
+        filePath = pathParts[pathParts.length - 1];
+      } catch (err) {
+      }
+    }
+    
+    if (filePath.startsWith('processed_images/')) {
+      filePath = filePath.substring('processed_images/'.length);
+    }
+    
+    try {
+      const { data } = supabase.storage
+        .from('processed_images')
+        .getPublicUrl(filePath);
+      
+      if (data?.publicUrl) {
+        setPublicResult({
+          success: true,
+          url: data.publicUrl
+        });
+        
+        try {
+          const response = await fetch(data.publicUrl, { method: 'HEAD' });
+          setHeadResult({
+            success: response.ok,
+            status: response.status
+          });
+        } catch (err: any) {
+          setHeadResult({
+            success: false,
+            error: err.message || 'Network error'
+          });
+        }
+      } else {
+        setPublicResult({
+          success: false,
+          error: 'No public URL returned'
+        });
+      }
+    } catch (err: any) {
+      setPublicResult({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('processed_images')
+        .createSignedUrl(filePath, 60);
+        
+      if (error) {
+        setSignedResult({
+          success: false,
+          error: error.message
+        });
+      } else if (data?.signedUrl) {
+        setSignedResult({
+          success: true,
+          url: data.signedUrl
+        });
+      } else {
+        setSignedResult({
+          success: false,
+          error: 'No signed URL returned'
+        });
+      }
+    } catch (err: any) {
+      setSignedResult({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+    
+    setIsLoading(false);
   };
-  
+
   return (
-    <div className="p-4 border rounded-lg bg-gray-50">
-      <h3 className="font-medium mb-2">Test Image Access</h3>
-      <p className="text-sm text-gray-500 mb-4">
-        Test if a file in the processed_images bucket is accessible
-      </p>
-      
-      <div className="flex gap-2 mb-4">
-        <Button 
-          onClick={checkFileAccess} 
-          disabled={isLoading}
-          size="sm"
-        >
-          {isLoading ? 'Checking...' : 'Test file access'}
-        </Button>
-        <div className="text-sm text-gray-500 flex items-center">
-          Testing: <span className="font-mono ml-1">{testFile}</span>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Test Image Access</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Settlement ID or Image Path:</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">
+                  Settlement ID
+                </label>
+                <Input
+                  value={settlementId}
+                  onChange={(e) => setSettlementId(e.target.value)}
+                  placeholder="e.g. 91"
+                  className="mb-2"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">
+                  Image Path/URL (overrides ID)
+                </label>
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="e.g. settlement_91.jpg"
+                  className="mb-2"
+                />
+              </div>
+            </div>
+            <Button 
+              onClick={testAccess} 
+              disabled={isLoading || (!settlementId && !imageUrl)}
+              className="mt-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing...
+                </>
+              ) : (
+                'Test Access'
+              )}
+            </Button>
+          </div>
+          
+          {publicResult && (
+            <Alert variant={publicResult.success ? "default" : "destructive"}>
+              <div className="flex items-start gap-2">
+                {publicResult.success ? (
+                  <CheckCircle className="h-4 w-4 mt-0.5" />
+                ) : (
+                  <XCircle className="h-4 w-4 mt-0.5" />
+                )}
+                <AlertDescription className="break-all">
+                  <strong>Public URL:</strong> {publicResult.success ? (
+                    <>
+                      <span className="block mb-2">{publicResult.url}</span>
+                      <a 
+                        href={publicResult.url} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline text-sm"
+                      >
+                        Open in New Tab
+                      </a>
+                    </>
+                  ) : (
+                    publicResult.error
+                  )}
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+          
+          {headResult && (
+            <Alert variant={headResult.success ? "default" : "destructive"}>
+              <div className="flex items-start gap-2">
+                {headResult.success ? (
+                  <CheckCircle className="h-4 w-4 mt-0.5" />
+                ) : (
+                  <XCircle className="h-4 w-4 mt-0.5" />
+                )}
+                <AlertDescription>
+                  <strong>HTTP HEAD Test:</strong> {headResult.success ? (
+                    <>Status: {headResult.status} OK</>
+                  ) : (
+                    headResult.error ? headResult.error : `Status: ${headResult.status}`
+                  )}
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+          
+          {signedResult && (
+            <Alert variant={signedResult.success ? "default" : "destructive"}>
+              <div className="flex items-start gap-2">
+                {signedResult.success ? (
+                  <CheckCircle className="h-4 w-4 mt-0.5" />
+                ) : (
+                  <XCircle className="h-4 w-4 mt-0.5" />
+                )}
+                <AlertDescription className="break-all">
+                  <strong>Signed URL:</strong> {signedResult.success ? (
+                    <>
+                      <span className="block mb-2">{signedResult.url}</span>
+                      <a 
+                        href={signedResult.url} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline text-sm"
+                      >
+                        Open in New Tab
+                      </a>
+                    </>
+                  ) : (
+                    signedResult.error
+                  )}
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+
+          {publicResult?.success && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium mb-2">Preview:</h3>
+              <div className="relative h-48 bg-neutral-100 rounded-md overflow-hidden">
+                <img 
+                  src={publicResult.url} 
+                  alt="Image preview" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling!.style.display = 'flex';
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center hidden">
+                  <div className="text-sm text-neutral-600 bg-white px-4 py-2 rounded-md shadow-sm">
+                    Image failed to load
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {(publicResult?.success || signedResult?.success) && (
+            <div className="mt-4 p-3 bg-neutral-50 rounded-md text-sm text-neutral-700">
+              <p className="font-medium mb-1">Tips for debugging:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>If public URL works but HEAD request fails, you might have CORS issues</li>
+                <li>If signed URL works but public URL fails, check bucket permissions</li>
+                <li>Try opening the URLs directly in a new browser tab</li>
+                <li>Check the network tab for more error details</li>
+              </ul>
+            </div>
+          )}
         </div>
-      </div>
-      
-      {result && (
-        <Alert className={result.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
-          {result.success ? 
-            <CheckCircle className="h-4 w-4 text-green-600" /> : 
-            <AlertCircle className="h-4 w-4 text-red-600" />
-          }
-          <AlertDescription>
-            {result.success ? (
-              <div>
-                <p className="text-green-700">File is accessible!</p>
-                {result.url && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-600 mb-1">URL:</p>
-                    <a 
-                      href={result.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline break-all"
-                    >
-                      {result.url}
-                    </a>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <p className="text-red-700">{result.error}</p>
-                {result.url && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-600 mb-1">Generated URL (inaccessible):</p>
-                    <span className="text-xs font-mono break-all text-gray-500">
-                      {result.url}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

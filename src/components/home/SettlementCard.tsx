@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { useState, useEffect } from "react";
 import { resolveSettlementImageUrlSync, resolveSettlementImageUrl } from "@/utils/imageUtils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Settlement {
   id: number;
@@ -29,18 +30,28 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const { toast } = useToast();
 
   useEffect(() => {
+    // Reset states when settlement changes
+    setImageLoaded(false);
+    setLoadError(false);
+    
     // Get a sync URL immediately for fast initial render
     const initialUrl = resolveSettlementImageUrlSync(settlement.photo_url, settlement.id);
     if (initialUrl !== imageUrl) {
+      console.log(`Initial image URL for settlement ${settlement.id}: ${initialUrl}`);
       setImageUrl(initialUrl);
     }
     
     // Then get the verified URL asynchronously
     const loadVerifiedImage = async () => {
       try {
+        console.log(`Loading verified image for settlement ${settlement.id} (${settlement.photo_url})`);
         const verifiedUrl = await resolveSettlementImageUrl(settlement.photo_url, settlement.id);
+        console.log(`Verified image URL for settlement ${settlement.id}: ${verifiedUrl}`);
+        
         if (verifiedUrl !== imageUrl) {
           setImageUrl(verifiedUrl);
         }
@@ -60,13 +71,36 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
     console.error(`Error loading image for settlement ${settlement.id} (${imageUrl})`);
     setLoadError(true);
     
-    // If we haven't already tried the placeholder, use it now
-    if (imageUrl !== "/placeholder.svg") {
+    // Retry with a different approach if we haven't exceeded retry limit
+    if (retryCount < 2) {
+      setRetryCount(prevCount => prevCount + 1);
+      
+      // Force a reload with async method
+      resolveSettlementImageUrl(settlement.photo_url, settlement.id)
+        .then(newUrl => {
+          if (newUrl !== imageUrl && newUrl !== "/placeholder.svg") {
+            console.log(`Retry found new URL for settlement ${settlement.id}: ${newUrl}`);
+            setImageUrl(newUrl);
+          } else if (imageUrl !== "/placeholder.svg") {
+            // If no better URL was found, fall back to placeholder
+            console.log(`No better URL found for settlement ${settlement.id}, using placeholder`);
+            setImageUrl("/placeholder.svg");
+          }
+        })
+        .catch(() => {
+          // On error, use placeholder
+          if (imageUrl !== "/placeholder.svg") {
+            setImageUrl("/placeholder.svg");
+          }
+        });
+    } else if (imageUrl !== "/placeholder.svg") {
+      // If we've exceeded retry limit, use placeholder
       setImageUrl("/placeholder.svg");
     }
   };
   
   const handleImageLoad = () => {
+    console.log(`Image loaded successfully for settlement ${settlement.id}: ${imageUrl}`);
     setImageLoaded(true);
     setLoadError(false);
   };
