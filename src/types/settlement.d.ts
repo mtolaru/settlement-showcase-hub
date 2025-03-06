@@ -20,4 +20,5 @@ export interface Settlement {
   payment_completed?: boolean;
   photo_url?: string;
   attorney_email?: string;
+  hidden?: boolean;
 }
