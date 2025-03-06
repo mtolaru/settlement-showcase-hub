@@ -58,28 +58,30 @@ export const useSubmitSettlementForm = () => {
       
       // If user has existing settlements, pre-populate attorney name and firm details
       // but only for fields that haven't been explicitly cleared
-      const attorneyInfo = getLatestAttorneyInfo();
-      if (attorneyInfo) {
-        console.log("Pre-populating attorney information from previous settlement", attorneyInfo);
-        
-        setFormData(prev => {
-          const newFormData = { ...prev };
+      if (settlements && settlements.length > 0) {
+        const attorneyInfo = getLatestAttorneyInfo();
+        if (attorneyInfo) {
+          console.log("Pre-populating attorney information from previous settlement", attorneyInfo);
           
-          // Only set these fields if they haven't been explicitly cleared by the user
-          if (!clearedFields.has('attorneyName')) {
-            newFormData.attorneyName = attorneyInfo.attorneyName;
-          }
-          
-          if (!clearedFields.has('firmName')) {
-            newFormData.firmName = attorneyInfo.firmName;
-          }
-          
-          if (!clearedFields.has('firmWebsite')) {
-            newFormData.firmWebsite = attorneyInfo.firmWebsite;
-          }
-          
-          return newFormData;
-        });
+          setFormData(prev => {
+            const newFormData = { ...prev };
+            
+            // Only set these fields if they haven't been explicitly cleared by the user
+            if (!clearedFields.has('attorneyName') && !newFormData.attorneyName) {
+              newFormData.attorneyName = attorneyInfo.attorneyName;
+            }
+            
+            if (!clearedFields.has('firmName') && !newFormData.firmName) {
+              newFormData.firmName = attorneyInfo.firmName;
+            }
+            
+            if (!clearedFields.has('firmWebsite') && !newFormData.firmWebsite) {
+              newFormData.firmWebsite = attorneyInfo.firmWebsite;
+            }
+            
+            return newFormData;
+          });
+        }
       }
     }
     

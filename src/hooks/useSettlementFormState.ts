@@ -83,7 +83,11 @@ export const useSettlementFormState = () => {
     console.log(`Explicitly clearing field ${field}`);
     
     // Mark this field as explicitly cleared by user
-    setClearedFields(prev => new Set(prev).add(field));
+    setClearedFields(prev => {
+      const newSet = new Set(prev);
+      newSet.add(field);
+      return newSet;
+    });
     
     setFormData(prev => ({
       ...prev,

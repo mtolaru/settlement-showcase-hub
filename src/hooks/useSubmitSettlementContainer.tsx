@@ -31,7 +31,6 @@ export const useSubmitSettlementContainer = () => {
     validateStep2,
     verifyEmail,
     unformatNumber,
-    checkSubscriptionStatus,
     emailStatus,
     clearedFields
   } = useSubmitSettlementForm();

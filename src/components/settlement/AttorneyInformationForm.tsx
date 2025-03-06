@@ -46,7 +46,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 }) => {
   const { user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
-  const isNameDisabled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
+  const isNamePreFilled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
   const hasErrors = Object.values(errors).some(error => error !== undefined);
 
   // Reset firm information fields
@@ -89,10 +89,9 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               value={formData.attorneyName}
               onChange={(e) => handleInputChange("attorneyName", e.target.value)}
               placeholder="John Doe"
-              className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""} ${isNameDisabled ? "pr-10" : "pr-10"}`}
-              disabled={isNameDisabled}
+              className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""} ${isNamePreFilled ? "pr-10" : "pr-10"}`}
             />
-            {formData.attorneyName && !isNameDisabled && (
+            {formData.attorneyName && (
               <Button
                 type="button"
                 variant="ghost"
@@ -104,15 +103,12 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
                 <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </Button>
             )}
-            {isNameDisabled && (
-              <Lock className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />
+            {isNamePreFilled && (
+              <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission</p>
             )}
           </div>
           {errors.attorneyName && (
             <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
-          )}
-          {isNameDisabled && (
-            <p className="text-gray-500 text-sm mt-1">Using name from your account (click to edit)</p>
           )}
         </div>
 
@@ -179,7 +175,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
           )}
           {isAuthenticated && formData.firmName && !clearedFields.has('firmName') && (
-            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission (you can edit or clear)</p>
+            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission</p>
           )}
         </div>
 
@@ -212,7 +208,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
           )}
           {isAuthenticated && formData.firmWebsite && !clearedFields.has('firmWebsite') && (
-            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission (you can edit or clear)</p>
+            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission</p>
           )}
         </div>
 
