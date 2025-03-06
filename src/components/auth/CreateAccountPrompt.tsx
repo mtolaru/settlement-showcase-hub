@@ -173,22 +173,12 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
 
       if (updateError) {
         console.error("Error updating settlement:", updateError);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to link your settlement to your account. Please contact support.",
-        });
       } else {
         console.log("Settlement updated with user_id");
-        toast({
-          title: "Settlement Linked",
-          description: "Your settlement has been successfully linked to your account.",
-        });
       }
       
       // Also try to link any other settlements with the same email but no user_id
       if (email) {
-        console.log(`Checking for additional settlements with email ${email}`);
         const { data: emailSettlements, error: emailError } = await supabase
           .from('settlements')
           .update({ user_id: userId })
