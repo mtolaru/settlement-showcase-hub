@@ -40,23 +40,40 @@ serve(async (req) => {
       )
     }
     
-    // Get all files directly - we'll do a very simple approach that has been proven to work
+    // First, get a list of all files in the processed_images bucket to have a complete reference
+    const { data: allBucketFiles, error: bucketError } = await supabase.storage
+      .from('processed_images')
+      .list('');
+      
+    if (bucketError) {
+      console.error('Error listing bucket files:', bucketError);
+      throw bucketError;
+    }
+    
+    console.log(`Found ${allBucketFiles?.length || 0} files in the processed_images bucket`);
+    if (allBucketFiles && allBucketFiles.length > 0) {
+      console.log('Sample files:', allBucketFiles.slice(0, 5).map(f => f.name));
+    }
+    
+    // Process settlements one by one
     const updatedSettlements = [];
     const errors = [];
     
     for (const settlement of settlements) {
       try {
+        console.log(`Processing settlement ID: ${settlement.id}, Temporary ID: ${settlement.temporary_id || 'none'}`);
+        
         // Try the standard pattern with settlement ID
         const fileName = `settlement_${settlement.id}.jpg`;
+        console.log(`Trying standard naming pattern: ${fileName}`);
         
-        // Check if the file exists by trying to get its metadata
-        const { data: fileMetadata, error: fileError } = await supabase.storage
-          .from('processed_images')
-          .getPublicUrl(fileName);
+        // First, verify the file exists in the bucket
+        const fileExists = allBucketFiles?.some(file => file.name === fileName);
+        
+        if (fileExists) {
+          console.log(`File ${fileName} exists in bucket`);
           
-        if (fileMetadata && fileMetadata.publicUrl) {
-          // If we can get a public URL, the file should exist and be accessible
-          // Update the settlement with the simple path
+          // Update the settlement with just the filename (not full path)
           const { error: updateError } = await supabase
             .from('settlements')
             .update({ photo_url: fileName })
@@ -75,11 +92,13 @@ serve(async (req) => {
           // Try alternative with temporary ID if available
           if (settlement.temporary_id) {
             const tempFileName = `settlement_${settlement.temporary_id}.jpg`;
-            const { data: tempFileMetadata } = await supabase.storage
-              .from('processed_images')
-              .getPublicUrl(tempFileName);
+            console.log(`Trying temporary ID pattern: ${tempFileName}`);
+            
+            const tempFileExists = allBucketFiles?.some(file => file.name === tempFileName);
+            
+            if (tempFileExists) {
+              console.log(`File ${tempFileName} exists in bucket`);
               
-            if (tempFileMetadata && tempFileMetadata.publicUrl) {
               const { error: updateError } = await supabase
                 .from('settlements')
                 .update({ photo_url: tempFileName })
@@ -94,6 +113,53 @@ serve(async (req) => {
               }
             } else {
               console.log(`No file found for settlement ${settlement.id} with temp ID filename ${tempFileName}`);
+              
+              // Try a broader search - look for any file containing the settlement ID
+              const matchingFile = allBucketFiles?.find(file => 
+                file.name.includes(String(settlement.id)) ||
+                (settlement.temporary_id && file.name.includes(String(settlement.temporary_id)))
+              );
+              
+              if (matchingFile) {
+                console.log(`Found matching file via partial search: ${matchingFile.name}`);
+                
+                const { error: updateError } = await supabase
+                  .from('settlements')
+                  .update({ photo_url: matchingFile.name })
+                  .eq('id', settlement.id);
+                  
+                if (updateError) {
+                  console.error(`Error updating settlement ${settlement.id} with partial match:`, updateError);
+                  errors.push(`Settlement ${settlement.id} (partial): ${updateError.message}`);
+                } else {
+                  console.log(`Mapped settlement ${settlement.id} to photo: ${matchingFile.name} (partial match)`);
+                  updatedSettlements.push(settlement.id);
+                }
+              } else {
+                console.log(`No matching file found for settlement ${settlement.id} using any pattern`);
+              }
+            }
+          } else {
+            // No temporary ID, but still try partial matching
+            const matchingFile = allBucketFiles?.find(file => file.name.includes(String(settlement.id)));
+            
+            if (matchingFile) {
+              console.log(`Found matching file via partial search: ${matchingFile.name}`);
+              
+              const { error: updateError } = await supabase
+                .from('settlements')
+                .update({ photo_url: matchingFile.name })
+                .eq('id', settlement.id);
+                
+              if (updateError) {
+                console.error(`Error updating settlement ${settlement.id} with partial match:`, updateError);
+                errors.push(`Settlement ${settlement.id} (partial): ${updateError.message}`);
+              } else {
+                console.log(`Mapped settlement ${settlement.id} to photo: ${matchingFile.name} (partial match)`);
+                updatedSettlements.push(settlement.id);
+              }
+            } else {
+              console.log(`No matching file found for settlement ${settlement.id}`);
             }
           }
         }

@@ -6,13 +6,15 @@ import { ShareButton } from "@/components/sharing/ShareButton";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Settlement } from "@/types/settlement";
-import { resolveSettlementImageUrl } from "@/utils/imageUtils";
+import { resolveSettlementImageUrl, resolveSettlementImageUrlSync } from "@/utils/imageUtils";
 
 const SettlementDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [settlement, setSettlement] = useState<Settlement | null>(null);
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
   const [isLoading, setIsLoading] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -68,7 +70,13 @@ const SettlementDetail = () => {
         console.log('Processed settlement data:', processedData);
         setSettlement(processedData);
         
-        setImageUrl(resolveSettlementImageUrl(processedData.photo_url, processedData.id));
+        const initialUrl = resolveSettlementImageUrlSync(processedData.photo_url, processedData.id);
+        setImageUrl(initialUrl);
+        
+        const verifiedUrl = await resolveSettlementImageUrl(processedData.photo_url, processedData.id);
+        if (verifiedUrl !== initialUrl) {
+          setImageUrl(verifiedUrl);
+        }
       } catch (error) {
         console.error('Error:', error);
         toast({
@@ -84,6 +92,20 @@ const SettlementDetail = () => {
 
     fetchSettlement();
   }, [id, toast, navigate]);
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setLoadError(false);
+  };
+  
+  const handleImageError = () => {
+    console.error(`Error loading image for detail page:`, imageUrl);
+    setLoadError(true);
+    
+    if (imageUrl !== "/placeholder.svg") {
+      setImageUrl("/placeholder.svg");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -187,18 +209,17 @@ const SettlementDetail = () => {
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="aspect-w-16 aspect-h-9 bg-neutral-100 relative" style={{ height: "400px" }}>
+                {!imageLoaded && !loadError && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-12 w-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
+                  </div>
+                )}
                 <img
                   src={imageUrl}
                   alt={`${settlement.type} case`}
-                  className="w-full h-full object-cover absolute inset-0"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    console.error(`Error loading image for detail page:`, target.src);
-                    
-                    if (target.src !== `${window.location.origin}/placeholder.svg`) {
-                      target.src = "/placeholder.svg";
-                    }
-                  }}
+                  className={`w-full h-full object-cover absolute inset-0 ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
                 />
               </div>
               <div className="p-6">

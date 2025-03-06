@@ -7,24 +7,29 @@ import { supabase } from "@/integrations/supabase/client";
  * @param settlementId The settlement ID, used for fallback patterns
  * @returns A fully qualified URL to the image or a placeholder
  */
-export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId?: number | null): string => {
+export const resolveSettlementImageUrl = async (photoUrl?: string | null, settlementId?: number | null): Promise<string> => {
   if (!photoUrl || photoUrl === "") {
     // If no photoUrl provided and we have a settlementId, try the predictable pattern
     if (settlementId) {
-      // Try generating URL using predictable pattern: settlement_ID.jpg
-      console.log(`No photo_url provided for settlement ${settlementId}, trying predictable pattern`);
-      const predictablePhotoUrl = `settlement_${settlementId}.jpg`;
-      
-      // Directly get the public URL for this predictable pattern
-      const { data } = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(predictablePhotoUrl);
-      
-      if (data?.publicUrl) {
-        console.log(`Generated public URL for predictable pattern: ${data.publicUrl}`);
-        return data.publicUrl;
+      try {
+        // Try generating URL using predictable pattern: settlement_ID.jpg
+        console.log(`No photo_url provided for settlement ${settlementId}, trying predictable pattern`);
+        const predictablePhotoUrl = `settlement_${settlementId}.jpg`;
+        
+        // First, verify the file exists by checking its metadata
+        const { data: fileData, error: fileError } = await supabase.storage
+          .from('processed_images')
+          .createSignedUrl(predictablePhotoUrl, 60);
+          
+        if (!fileError && fileData?.signedUrl) {
+          console.log(`Generated signed URL for predictable pattern: ${fileData.signedUrl}`);
+          return fileData.signedUrl;
+        }
+        
+        console.log(`Could not generate URL using settlement ID pattern: ${fileError?.message || 'File not found'}`);
+      } catch (err) {
+        console.error(`Error trying to access file for settlement ${settlementId}:`, err);
       }
-      console.log(`Could not generate URL using settlement ID pattern, using placeholder`);
     }
     
     console.log(`No photo_url provided${settlementId ? ` for settlement ${settlementId}` : ''}, using placeholder`);
@@ -34,88 +39,66 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
   console.log(`Resolving image URL ${photoUrl}${settlementId ? ` for settlement ${settlementId}` : ''}`);
   
   try {
-    // If it's already a full URL, use it directly
+    // If it's already a full URL, verify it's accessible before using it
     if (photoUrl.startsWith('http')) {
       console.log(`Using direct URL: ${photoUrl}`);
-      return photoUrl;
-    }
-    
-    // Simple case: just the filename like "settlement_123.jpg"
-    // This is now our preferred format from the mapping function
-    if (!photoUrl.includes('/')) {
-      const { data } = supabase.storage
-        .from('processed_images')
-        .getPublicUrl(photoUrl);
-        
-      if (data?.publicUrl) {
-        console.log(`Generated public URL from simple filename: ${data.publicUrl}`);
-        return data.publicUrl;
+      try {
+        // Quick check to see if URL is responsive
+        const response = await fetch(photoUrl, { method: 'HEAD' });
+        if (response.ok) {
+          return photoUrl;
+        }
+        console.log(`Direct URL is not accessible: ${photoUrl}`);
+      } catch (err) {
+        console.error(`Error checking URL accessibility: ${photoUrl}`, err);
       }
     }
     
-    // Handle special case: if the path starts with processed_images/
-    // The correct structure should be processed_images/filename.ext
-    // But sometimes we might have processed_images/processed_images/filename.ext
-    // Let's normalize this
-    let normalizedPath = photoUrl;
-    
-    // Check if path has duplicate "processed_images/" prefix
-    if (photoUrl.startsWith('processed_images/processed_images/')) {
-      normalizedPath = photoUrl.replace('processed_images/processed_images/', 'processed_images/');
-      console.log(`Normalized duplicated path: ${normalizedPath}`);
+    // Extract the file path - if it includes "processed_images/" prefix, remove it
+    let filePath = photoUrl;
+    if (photoUrl.startsWith('processed_images/')) {
+      filePath = photoUrl.substring('processed_images/'.length);
     }
+
+    console.log(`Extracted file path: ${filePath}`);
     
-    // Get the bucket and path parts
-    let bucket = 'processed_images';
-    let path = normalizedPath;
-    
-    // If the path starts with the bucket name, extract just the path part
-    if (normalizedPath.startsWith(`${bucket}/`)) {
-      path = normalizedPath.substring(bucket.length + 1);
-      console.log(`Extracted path from bucket prefix: ${path}`);
-    }
-    
-    // Use Supabase's getPublicUrl to get the full URL for the file
-    const { data } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
-    
-    if (data?.publicUrl) {
-      console.log(`Generated public URL: ${data.publicUrl}`);
-      return data.publicUrl;
-    }
-    
-    // If that doesn't work, try with the original path
-    const originalData = supabase.storage
-      .from(bucket)
-      .getPublicUrl(normalizedPath);
+    // Create a signed URL for the file path to verify it exists and is accessible
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('processed_images')
+      .createSignedUrl(filePath, 60);
       
-    if (originalData.data?.publicUrl) {
-      console.log(`Generated public URL using original path: ${originalData.data.publicUrl}`);
-      return originalData.data.publicUrl;
+    if (!signedUrlError && signedUrlData?.signedUrl) {
+      console.log(`Generated signed URL: ${signedUrlData.signedUrl}`);
+      return signedUrlData.signedUrl;
     }
     
-    // Additional fallback: try using the path directly without the bucket name
-    if (!path.startsWith('processed_images/') && !path.startsWith('/')) {
-      const directData = supabase.storage
-        .from(bucket)
-        .getPublicUrl(path);
-        
-      if (directData.data?.publicUrl) {
-        console.log(`Generated public URL using direct path: ${directData.data.publicUrl}`);
-        return directData.data.publicUrl;
-      }
-    }
+    console.log(`Error getting signed URL: ${signedUrlError?.message || 'Unknown error'}`);
     
-    // If we still can't get a URL and we have a settlement ID, try a pattern with settlement ID
+    // If direct path doesn't work, and we have a settlement ID, try with standard naming pattern
     if (settlementId) {
-      const { data: alternativeData } = supabase.storage
+      const standardPath = `settlement_${settlementId}.jpg`;
+      console.log(`Trying standard naming pattern: ${standardPath}`);
+      
+      const { data: standardSignedData, error: standardSignedError } = await supabase.storage
         .from('processed_images')
-        .getPublicUrl(`settlement_${settlementId}.jpg`);
+        .createSignedUrl(standardPath, 60);
         
-      if (alternativeData?.publicUrl) {
-        console.log(`Generated public URL using ID pattern: ${alternativeData.publicUrl}`);
-        return alternativeData.publicUrl;
+      if (!standardSignedError && standardSignedData?.signedUrl) {
+        console.log(`Found matching file with standard pattern: ${standardSignedData.signedUrl}`);
+        
+        // If we found a working URL but the database has something different,
+        // update the database to have the correct URL for next time
+        if (photoUrl !== standardPath) {
+          updateSettlementPhotoUrl(settlementId, standardPath)
+            .then(success => {
+              console.log(`Updated settlement ${settlementId} photo_url to ${standardPath}: ${success ? 'success' : 'failed'}`);
+            })
+            .catch(err => {
+              console.error(`Error updating settlement ${settlementId} photo_url:`, err);
+            });
+        }
+        
+        return standardSignedData.signedUrl;
       }
     }
     
@@ -125,6 +108,50 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
     console.error(`Error processing image URL:`, error);
     return "/placeholder.svg";
   }
+};
+
+/**
+ * Synchronous version that returns a public URL immediately and updates async
+ * For components that need to render without waiting for async operations
+ */
+export const resolveSettlementImageUrlSync = (photoUrl?: string | null, settlementId?: number | null): string => {
+  if (!photoUrl || photoUrl === "") {
+    return "/placeholder.svg";
+  }
+  
+  // If it's already a full URL, use it directly
+  if (photoUrl.startsWith('http')) {
+    return photoUrl;
+  }
+  
+  // Extract the file path - if it includes "processed_images/" prefix, remove it
+  let filePath = photoUrl;
+  if (photoUrl.startsWith('processed_images/')) {
+    filePath = photoUrl.substring('processed_images/'.length);
+  }
+  
+  // Get a public URL synchronously
+  const { data } = supabase.storage
+    .from('processed_images')
+    .getPublicUrl(filePath);
+    
+  if (data?.publicUrl) {
+    // In the background, check if this URL works and update with signed URL if needed
+    resolveSettlementImageUrl(photoUrl, settlementId)
+      .then(verifiedUrl => {
+        // Only log if the URLs are different (likely placeholder vs real image)
+        if (verifiedUrl !== data.publicUrl && verifiedUrl !== "/placeholder.svg") {
+          console.log(`Async verification found better URL: ${verifiedUrl}`);
+        }
+      })
+      .catch(err => {
+        console.error('Error in async image verification:', err);
+      });
+      
+    return data.publicUrl;
+  }
+  
+  return "/placeholder.svg";
 };
 
 /**
@@ -153,14 +180,14 @@ export const generateSettlementImageUrl = (settlementId: number): string => {
 /**
  * Updates the photo_url field in the settlements table for a specific settlement
  * @param settlementId The ID of the settlement to update
- * @param publicUrl The public URL to set for the settlement's photo_url
+ * @param photoUrl The photo URL or path to set for the settlement's photo_url
  * @returns True if the update was successful, false otherwise
  */
-export const updateSettlementPhotoUrl = async (settlementId: number, publicUrl: string): Promise<boolean> => {
+export const updateSettlementPhotoUrl = async (settlementId: number, photoUrl: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('settlements')
-      .update({ photo_url: publicUrl })
+      .update({ photo_url: photoUrl })
       .eq('id', settlementId);
     
     if (error) {
@@ -171,6 +198,25 @@ export const updateSettlementPhotoUrl = async (settlementId: number, publicUrl: 
     return true;
   } catch (error) {
     console.error(`Error updating settlement photo URL:`, error);
+    return false;
+  }
+};
+
+/**
+ * Verifies if a file exists in the storage bucket
+ * @param filePath The path to the file in the bucket
+ * @returns True if the file exists and is accessible, false otherwise
+ */
+export const verifyFileExists = async (filePath: string): Promise<boolean> => {
+  try {
+    // Try to create a signed URL - this will fail if the file doesn't exist
+    const { data, error } = await supabase.storage
+      .from('processed_images')
+      .createSignedUrl(filePath, 60);
+      
+    return !error && !!data?.signedUrl;
+  } catch (error) {
+    console.error(`Error verifying file existence:`, error);
     return false;
   }
 };

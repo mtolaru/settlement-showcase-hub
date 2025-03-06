@@ -1,10 +1,11 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { useState, useEffect } from "react";
-import { resolveSettlementImageUrl } from "@/utils/imageUtils";
+import { resolveSettlementImageUrlSync, resolveSettlementImageUrl } from "@/utils/imageUtils";
 
 interface Settlement {
   id: number;
@@ -26,14 +27,48 @@ interface SettlementCardProps {
 const SettlementCard = ({ settlement }: SettlementCardProps) => {
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
 
   useEffect(() => {
-    // Use our utility function to resolve the image URL
-    setImageUrl(resolveSettlementImageUrl(settlement.photo_url, settlement.id));
+    // Get a sync URL immediately for fast initial render
+    const initialUrl = resolveSettlementImageUrlSync(settlement.photo_url, settlement.id);
+    if (initialUrl !== imageUrl) {
+      setImageUrl(initialUrl);
+    }
+    
+    // Then get the verified URL asynchronously
+    const loadVerifiedImage = async () => {
+      try {
+        const verifiedUrl = await resolveSettlementImageUrl(settlement.photo_url, settlement.id);
+        if (verifiedUrl !== imageUrl) {
+          setImageUrl(verifiedUrl);
+        }
+      } catch (err) {
+        console.error(`Error loading verified image for settlement ${settlement.id}:`, err);
+      }
+    };
+    
+    loadVerifiedImage();
   }, [settlement.photo_url, settlement.id]);
 
   const handleSettlementClick = (id: number) => {
     navigate(`/settlements/${id}`);
+  };
+  
+  const handleImageError = () => {
+    console.error(`Error loading image for settlement ${settlement.id} (${imageUrl})`);
+    setLoadError(true);
+    
+    // If we haven't already tried the placeholder, use it now
+    if (imageUrl !== "/placeholder.svg") {
+      setImageUrl("/placeholder.svg");
+    }
+  };
+  
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setLoadError(false);
   };
 
   return (
@@ -44,19 +79,17 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
       onClick={() => handleSettlementClick(settlement.id)}
     >
       <div className="relative h-48 bg-neutral-100">
+        {!imageLoaded && !loadError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-8 w-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
+          </div>
+        )}
         <img
           src={imageUrl}
           alt={`${settlement.type} case`}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            console.error(`Error loading image for settlement ${settlement.id} (${target.src})`);
-            
-            // If the current src is not the placeholder, try the placeholder
-            if (target.src !== `${window.location.origin}/placeholder.svg`) {
-              target.src = "/placeholder.svg";
-            }
-          }}
+          className={`w-full h-full object-cover ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
         />
         <div className="absolute top-4 left-4">
           <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
@@ -64,6 +97,7 @@ const SettlementCard = ({ settlement }: SettlementCardProps) => {
           </span>
         </div>
       </div>
+      
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
