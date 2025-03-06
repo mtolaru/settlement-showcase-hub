@@ -117,6 +117,9 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             {!isEmailDisabled && !emailStatus.isValidating && formData.attorneyEmail && !errors.attorneyEmail && (
               <CheckCircle className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-green-500" />
             )}
+            {isEmailDisabled && (
+              <CheckCircle className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-green-500" />
+            )}
           </div>
           {errors.attorneyEmail && (
             <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>

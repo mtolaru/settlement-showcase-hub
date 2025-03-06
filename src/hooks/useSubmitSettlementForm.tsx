@@ -76,6 +76,18 @@ export const useSubmitSettlementForm = () => {
       setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
       getLatestAttorneyInfo, settlements]);
 
+  // Clear email validation errors for authenticated users using their own email
+  useEffect(() => {
+    if (isAuthenticated && user?.email === formData.attorneyEmail && errors.attorneyEmail) {
+      console.log("Clearing email error for authenticated user using their own email");
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.attorneyEmail;
+        return newErrors;
+      });
+    }
+  }, [formData.attorneyEmail, isAuthenticated, user?.email, errors.attorneyEmail, setErrors]);
+
   return {
     step,
     setStep,
