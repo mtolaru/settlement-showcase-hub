@@ -19,20 +19,45 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
   console.log("Checking if email exists in database (normalized):", normalizedEmail);
   
   try {
-    // First check settlements table
-    console.log("Checking settlements table for email:", normalizedEmail);
+    // Use the Edge Function for a more reliable check
+    const { data, error } = await supabase.functions.invoke('check-email', {
+      body: { email: normalizedEmail }
+    });
+    
+    if (error) {
+      console.error('Edge function error:', error);
+      
+      // Fall back to the old method if the edge function fails
+      return fallbackEmailCheck(normalizedEmail);
+    }
+    
+    console.log("Edge function response:", data);
+    return data.exists === true;
+  } catch (err) {
+    console.error('Exception checking email with edge function:', err);
+    
+    // Fall back to the old method if the edge function throws an exception
+    return fallbackEmailCheck(normalizedEmail);
+  }
+};
+
+// Fallback method using direct database queries
+async function fallbackEmailCheck(normalizedEmail: string): Promise<boolean> {
+  try {
+    console.log("Using fallback email check method");
+    
+    // Check settlements table
     const { data: settlementData, error: settlementError } = await supabase
       .from('settlements')
       .select('attorney_email')
       .ilike('attorney_email', normalizedEmail)
-      .maybeSingle();
+      .limit(1);
 
     if (settlementError) {
       console.error('Error checking email in settlements:', settlementError);
     }
 
-    // Also check auth.users table for existing users (this is a less direct way)
-    console.log("Checking if user exists with this email");
+    // Check auth using OTP method as a fallback
     const { data: authData, error: authError } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
@@ -40,7 +65,7 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
       }
     });
     
-    // If there's no error with OTP check, the email exists in auth
+    // If there's no error with OTP check or the error doesn't contain "User not found", the email exists
     const emailExistsInAuth = !authError || (authError.message && !authError.message.includes("User not found"));
     
     if (authError && !authError.message.includes("User not found")) {
@@ -48,18 +73,18 @@ export const verifyEmail = async (email: string, userEmail: string | undefined |
     }
     
     // Email exists if found in either settlements or auth
-    const emailExists = !!settlementData || emailExistsInAuth;
+    const emailExists = !!settlementData?.length || emailExistsInAuth;
     
-    console.log("Email verification results:", {
+    console.log("Email verification results (fallback):", {
       emailExists,
-      inSettlements: !!settlementData,
+      inSettlements: !!settlementData?.length,
       inAuth: emailExistsInAuth,
       authErrorMsg: authError?.message
     });
     
     return emailExists;
   } catch (err) {
-    console.error('Exception checking email:', err);
+    console.error('Exception in fallback email check:', err);
     return false;
   }
-};
+}
