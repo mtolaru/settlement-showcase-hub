@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { Settlement } from "@/types/settlement";
 import SettlementsList from "@/components/manage/SettlementsList";
 import { settlementService } from "@/services/settlementService";
@@ -21,10 +20,49 @@ const SettlementsSection = ({
 }: SettlementsSectionProps) => {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [lastSubmissionInfo, setLastSubmissionInfo] = useState<{hasUserId: boolean, temporaryId?: string, id?: number} | null>(null);
+
+  useEffect(() => {
+    const checkLastSubmission = async () => {
+      if (!settlements.length) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('settlements')
+          .select('id, user_id, temporary_id, created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error checking last submission:', error);
+          return;
+        }
+        
+        if (data) {
+          console.log('Last submission info:', data);
+          setLastSubmissionInfo({
+            hasUserId: !!data.user_id,
+            temporaryId: data.temporary_id,
+            id: data.id
+          });
+          
+          if (data.user_id) {
+            console.log(`Last submission (ID: ${data.id}) has user ID: ${data.user_id}`);
+          } else {
+            console.log(`Last submission (ID: ${data.id}) has NO user ID. Temporary ID: ${data.temporary_id}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error in checkLastSubmission:', error);
+      }
+    };
+    
+    checkLastSubmission();
+  }, [settlements]);
 
   const handleDeleteSettlement = async (settlementId: number) => {
     try {
-      // Validate user is logged in
       if (!userId) {
         toast({
           variant: "destructive",
@@ -37,7 +75,6 @@ const SettlementsSection = ({
       setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
-      // First, verify the settlement exists and get its details
       const { data: settlementData, error: fetchError } = await supabase
         .from('settlements')
         .select('id, user_id, attorney_email, temporary_id')
@@ -65,11 +102,9 @@ const SettlementsSection = ({
       
       console.log("Settlement data before deletion:", settlementData);
       
-      // Get user email for claiming/verification
       const { data: { user } } = await supabase.auth.getUser();
       const userEmail = user?.email;
       
-      // Enhanced association check before deletion
       if (!settlementData.user_id || settlementData.user_id !== userId) {
         console.log(`Settlement doesn't belong to current user. 
           Settlement user_id: ${settlementData.user_id || 'null'}, 
@@ -77,7 +112,6 @@ const SettlementsSection = ({
           Settlement attorney_email: ${settlementData.attorney_email || 'null'},
           User email: ${userEmail || 'null'}`);
         
-        // Try to claim by email match
         if (userEmail && settlementData.attorney_email === userEmail) {
           console.log("User's email matches settlement attorney_email, attempting to claim");
           
@@ -94,7 +128,6 @@ const SettlementsSection = ({
         }
       }
       
-      // Proceed with deletion using service
       const result = await settlementService.deleteSettlement(settlementId, userId);
       
       if (result.success) {
@@ -127,6 +160,28 @@ const SettlementsSection = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-semibold mb-6">My Settlements</h2>
+      
+      {lastSubmissionInfo && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-100">
+          <h3 className="font-medium text-blue-800">Last Submission Status:</h3>
+          <p className="text-sm text-blue-700">
+            {lastSubmissionInfo.hasUserId 
+              ? "✅ User ID is attached to the last settlement." 
+              : "❌ No user ID attached to the last settlement."}
+          </p>
+          {!lastSubmissionInfo.hasUserId && lastSubmissionInfo.temporaryId && (
+            <p className="text-xs text-blue-600 mt-1">
+              Temporary ID: {lastSubmissionInfo.temporaryId}
+            </p>
+          )}
+          {lastSubmissionInfo.id && (
+            <p className="text-xs text-blue-600">
+              Settlement ID: {lastSubmissionInfo.id}
+            </p>
+          )}
+        </div>
+      )}
+      
       <SettlementsList 
         settlements={settlements} 
         isLoading={isLoading} 
