@@ -30,7 +30,7 @@ serve(async (req) => {
       
     if (resetError) {
       console.error('Error resetting settlement photo URLs:', resetError);
-      throw resetError;
+      throw new Error(`Failed to reset photo URLs: ${resetError.message}`);
     }
     
     console.log('Reset all settlement photo_url fields to null');
@@ -42,14 +42,20 @@ serve(async (req) => {
       
     if (fetchError) {
       console.error('Error fetching settlements:', fetchError);
-      throw fetchError;
+      throw new Error(`Failed to fetch settlements: ${fetchError.message}`);
     }
     
     console.log(`Found ${settlements?.length || 0} settlements to process`);
     
     if (!settlements || settlements.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No settlements found to process' }),
+        JSON.stringify({ 
+          message: 'No settlements found to process',
+          updated: 0,
+          not_mapped: 0,
+          total: 0,
+          errors: null
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
@@ -61,7 +67,7 @@ serve(async (req) => {
       
     if (bucketError) {
       console.error('Error listing bucket files:', bucketError);
-      throw bucketError;
+      throw new Error(`Failed to list bucket files: ${bucketError.message}`);
     }
     
     console.log(`Found ${allBucketFiles?.length || 0} files in the processed_images bucket`);
@@ -177,10 +183,14 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to map settlement images', 
-        details: error.message,
-        stack: error.stack 
+        details: error.message || "Unknown error",
+        message: `Error: ${error.message || "Unknown error"}`,
+        updated: 0,
+        not_mapped: 0,
+        total: 0,
+        errors: [error.message || "Unknown error"]
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   }
 })

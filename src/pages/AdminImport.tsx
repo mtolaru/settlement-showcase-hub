@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -170,10 +171,20 @@ const AdminImport = () => {
       setUploadPhase('Completely remapping all settlement images');
       setProgress(30);
       
+      console.log("Calling map-settlement-images function...");
       const { data, error } = await supabase.functions.invoke('map-settlement-images');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error calling map-settlement-images function:', error);
+        throw error;
+      }
       
+      if (!data) {
+        console.error('No data returned from map-settlement-images function');
+        throw new Error('No data returned from function');
+      }
+      
+      console.log("Function response:", data);
       setMappingResults(data);
       setProgress(100);
       
@@ -185,11 +196,17 @@ const AdminImport = () => {
       fetchSettlementStats();
     } catch (error: any) {
       console.error('Error mapping settlement images:', error);
+      setProgress(0);
       toast({
         title: "Mapping Failed",
         description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
+      
+      // Set mapping results even in error case if we have some data
+      if (error.data) {
+        setMappingResults(error.data);
+      }
     } finally {
       setIsMappingImages(false);
     }
