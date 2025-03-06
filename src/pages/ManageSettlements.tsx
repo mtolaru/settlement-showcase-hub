@@ -6,7 +6,6 @@ import { useSettlements } from "@/hooks/useSettlements";
 import AccountHeader from "@/components/manage/AccountHeader";
 import SubscriptionSection from "@/components/manage/SubscriptionSection";
 import SettlementsSection from "@/components/manage/SettlementsSection";
-import SettlementDiagnostic from "@/components/manage/SettlementDiagnostic";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +16,6 @@ const ManageSettlements = () => {
   const { subscription, isLoading: isLoadingSubscription, isVerified, refreshSubscription } = useSubscription(user);
   const { settlements, isLoading: isLoadingSettlements, refreshSettlements } = useSettlements(user);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,7 +36,6 @@ const ManageSettlements = () => {
           .update({ user_id: user.id })
           .is('user_id', null)
           .eq('attorney_email', user.email)
-          .eq('payment_completed', true)
           .select('id');
           
         if (emailError) {
@@ -72,7 +69,6 @@ const ManageSettlements = () => {
           .update({ user_id: user.id })
           .is('user_id', null)
           .eq('attorney_email', user.email)
-          .eq('payment_completed', true)
           .select('id');
           
         if (linkError) {
@@ -107,32 +103,16 @@ const ManageSettlements = () => {
 
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-semibold">My Settlements</h2>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowDiagnostics(!showDiagnostics)}
-            >
-              {showDiagnostics ? "Hide Diagnostics" : "Diagnostics"}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefresh}
-              disabled={isRefreshing || isLoadingSettlements}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoadingSettlements}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
-
-        {showDiagnostics && (
-          <SettlementDiagnostic 
-            userId={user?.id} 
-            refreshSettlements={refreshSettlements} 
-          />
-        )}
 
         <SettlementsSection 
           settlements={settlements} 

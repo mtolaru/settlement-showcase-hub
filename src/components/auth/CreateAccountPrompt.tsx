@@ -28,10 +28,9 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       if (!temporaryId) return;
       
       try {
-        console.log("Fetching settlement email for temporaryId:", temporaryId);
         const { data, error } = await supabase
           .from('settlements')
-          .select('attorney_email, payment_completed')
+          .select('attorney_email')
           .eq('temporary_id', temporaryId)
           .maybeSingle();
           
@@ -39,8 +38,6 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           console.error("Error fetching attorney email:", error);
           return;
         }
-        
-        console.log("Settlement data for temporaryId:", data);
         
         if (data?.attorney_email) {
           console.log("Pre-populating email from settlement:", data.attorney_email);
@@ -76,7 +73,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     setErrorMessage(""); // Clear any previous errors
 
     try {
-      console.log("Creating/signing in account for temporaryId:", temporaryId);
+      console.log("Creating account for temporaryId:", temporaryId);
       
       // Check if email exists by attempting to sign in with magic link (but not sending the email)
       const { error: checkError } = await supabase.auth.signInWithOtp({
@@ -88,7 +85,6 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       
       // If there's no error, the email exists; if there's an error about user not found, it doesn't exist
       const emailExists = !checkError;
-      console.log("Email exists check:", emailExists);
       
       if (emailExists) {
         console.log("Email already exists, attempting sign in");
@@ -108,7 +104,6 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         // If sign in successful, update the settlement with the user ID
         const { data: session } = await supabase.auth.getSession();
         if (session?.session?.user) {
-          console.log("Successfully signed in with user ID:", session.session.user.id);
           await updateSettlementWithUserId(session.session.user.id);
           toast({
             title: "Signed in successfully!",
@@ -139,7 +134,6 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         }
 
         if (signUpData.user) {
-          console.log("Successfully created account with user ID:", signUpData.user.id);
           await updateSettlementWithUserId(signUpData.user.id);
           
           if (signUpData.session) {
@@ -171,67 +165,35 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     try {
       console.log(`Linking settlement ${temporaryId} to user ${userId}`);
       
-      // First check if this settlement already has a user_id assigned
-      const { data: checkData, error: checkError } = await supabase
+      // Update the settlement with the user ID
+      const { error: updateError } = await supabase
         .from('settlements')
-        .select('id, user_id, payment_completed')
-        .eq('temporary_id', temporaryId)
-        .maybeSingle();
-        
-      if (checkError) {
-        console.error("Error checking settlement:", checkError);
-        return;
-      }
-      
-      console.log("Current settlement data:", checkData);
-      
-      // Only update the user_id if it's null or different from the current user
-      if (!checkData?.user_id || checkData.user_id !== userId) {
-        // Update the settlement with the user ID
-        const { error: updateError } = await supabase
-          .from('settlements')
-          .update({ user_id: userId })
-          .eq('temporary_id', temporaryId);
+        .update({ user_id: userId })
+        .eq('temporary_id', temporaryId);
 
-        if (updateError) {
-          console.error("Error updating settlement:", updateError);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not link your settlement. Please try refreshing the page.",
-          });
-        } else {
-          console.log("Settlement updated with user_id");
-          toast({
-            title: "Settlement Linked",
-            description: "Your settlement has been linked to your account.",
-          });
-        }
+      if (updateError) {
+        console.error("Error updating settlement:", updateError);
       } else {
-        console.log("Settlement already has the correct user_id");
+        console.log("Settlement updated with user_id");
       }
       
       // Also try to link any other settlements with the same email but no user_id
       if (email) {
-        console.log(`Attempting to find and link settlements with email ${email}`);
         const { data: emailSettlements, error: emailError } = await supabase
           .from('settlements')
           .update({ user_id: userId })
           .is('user_id', null)
           .eq('attorney_email', email)
-          .eq('payment_completed', true)
           .select('id');
           
         if (emailError) {
           console.error("Error linking additional settlements by email:", emailError);
         } else if (emailSettlements && emailSettlements.length > 0) {
-          console.log(`Linked ${emailSettlements.length} additional settlement(s) by email:`, emailSettlements);
+          console.log(`Linked ${emailSettlements.length} additional settlement(s) by email`);
           toast({
             title: "Additional Settlements Linked",
             description: `${emailSettlements.length} additional settlement(s) have been linked to your account.`,
           });
-        } else {
-          console.log("No additional settlements found to link by email");
         }
       }
       
@@ -239,48 +201,12 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
         .update({ user_id: userId })
-        .eq('temporary_id', temporaryId)
-        .is('user_id', null);
+        .eq('temporary_id', temporaryId);
 
       if (subscriptionError) {
         console.error("Error updating subscription:", subscriptionError);
       } else {
         console.log("Subscription updated with user_id");
-      }
-      
-      // Important: Also check if there are any subscriptions already associated with this user
-      // that don't have a temporary_id, but do have a customer_id
-      const { data: userSubs, error: userSubsError } = await supabase
-        .from('subscriptions')
-        .select('id, customer_id')
-        .eq('user_id', userId)
-        .is('temporary_id', null)
-        .not('customer_id', 'is', null);
-        
-      if (userSubsError) {
-        console.error("Error checking user subscriptions:", userSubsError);
-      } else if (userSubs && userSubs.length > 0) {
-        console.log("Found existing user subscriptions:", userSubs);
-        
-        // Try to link settlements with this temporary_id to the existing subscription's customer_id
-        for (const sub of userSubs) {
-          if (sub.customer_id) {
-            const { error: linkError } = await supabase
-              .from('settlements')
-              .update({ 
-                user_id: userId,
-                payment_completed: true
-              })
-              .is('user_id', null)
-              .eq('temporary_id', temporaryId);
-              
-            if (linkError) {
-              console.error(`Error linking settlement to subscription ${sub.id}:`, linkError);
-            } else {
-              console.log(`Linked settlement to existing subscription ${sub.id}`);
-            }
-          }
-        }
       }
     } catch (error) {
       console.error("Error in updateSettlementWithUserId:", error);
