@@ -5,12 +5,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import type { Settlement } from "@/types/settlement";
 import { useSubscription } from "@/hooks/useSubscription";
+import { verifySettlementImageExists } from "@/utils/imageHelpers";
 
 export const useSettlements = (user: User | null) => {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { subscription } = useSubscription(user);
+  const [processingImages, setProcessingImages] = useState(false);
 
   const fetchSettlements = async () => {
     try {
@@ -65,31 +67,8 @@ export const useSettlements = (user: User | null) => {
             console.log('Found settlements by temporary_id:', tempData);
             
             // Process the data to ensure all required fields exist
-            const processedData: Settlement[] = tempData.map(settlement => {
-              return {
-                id: settlement.id,
-                amount: settlement.amount,
-                type: settlement.type,
-                firm: settlement.firm,
-                firmWebsite: settlement.firm_website,
-                attorney: settlement.attorney,
-                location: settlement.location,
-                created_at: settlement.created_at,
-                settlement_date: settlement.settlement_date || settlement.created_at,
-                description: settlement.description,
-                case_description: settlement.case_description,
-                initial_offer: settlement.initial_offer,
-                policy_limit: settlement.policy_limit,
-                medical_expenses: settlement.medical_expenses,
-                settlement_phase: settlement.settlement_phase,
-                temporary_id: settlement.temporary_id,
-                user_id: settlement.user_id,
-                payment_completed: settlement.payment_completed,
-                photo_url: settlement.photo_url
-              };
-            });
-            
-            setSettlements(processedData);
+            const allSettlements = processSettlementData(tempData);
+            await filterSettlementsWithMissingImages(allSettlements);
             
             // Update these settlements with the user_id
             const { error: updateError } = await supabase
@@ -103,7 +82,6 @@ export const useSettlements = (user: User | null) => {
               console.log('Updated settlements with user_id');
             }
             
-            setIsLoading(false);
             return;
           }
         }
@@ -112,32 +90,9 @@ export const useSettlements = (user: User | null) => {
       console.log('Found settlements:', data);
       
       // Process the data to ensure all required fields exist
-      const processedData: Settlement[] = (data || []).map(settlement => {
-        return {
-          id: settlement.id,
-          amount: settlement.amount,
-          type: settlement.type,
-          firm: settlement.firm,
-          firmWebsite: settlement.firm_website,
-          attorney: settlement.attorney,
-          location: settlement.location,
-          created_at: settlement.created_at,
-          settlement_date: settlement.settlement_date || settlement.created_at,
-          description: settlement.description,
-          case_description: settlement.case_description,
-          initial_offer: settlement.initial_offer,
-          policy_limit: settlement.policy_limit,
-          medical_expenses: settlement.medical_expenses,
-          settlement_phase: settlement.settlement_phase,
-          temporary_id: settlement.temporary_id,
-          user_id: settlement.user_id,
-          payment_completed: settlement.payment_completed,
-          photo_url: settlement.photo_url
-        };
-      });
+      const allSettlements = processSettlementData(data || []);
+      await filterSettlementsWithMissingImages(allSettlements);
       
-      setSettlements(processedData);
-      setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
       toast({
@@ -147,6 +102,75 @@ export const useSettlements = (user: User | null) => {
       });
       setIsLoading(false);
     }
+  };
+
+  // Process settlement data from the database into the required format
+  const processSettlementData = (data: any[]): Settlement[] => {
+    return data.map(settlement => {
+      return {
+        id: settlement.id,
+        amount: settlement.amount,
+        type: settlement.type,
+        firm: settlement.firm,
+        firmWebsite: settlement.firm_website,
+        attorney: settlement.attorney,
+        location: settlement.location,
+        created_at: settlement.created_at,
+        settlement_date: settlement.settlement_date || settlement.created_at,
+        description: settlement.description,
+        case_description: settlement.case_description,
+        initial_offer: settlement.initial_offer,
+        policy_limit: settlement.policy_limit,
+        medical_expenses: settlement.medical_expenses,
+        settlement_phase: settlement.settlement_phase,
+        temporary_id: settlement.temporary_id,
+        user_id: settlement.user_id,
+        payment_completed: settlement.payment_completed,
+        photo_url: settlement.photo_url,
+        hidden: settlement.hidden
+      };
+    });
+  };
+  
+  // Filter out settlements with missing images
+  const filterSettlementsWithMissingImages = async (allSettlements: Settlement[]) => {
+    setProcessingImages(true);
+    console.log('Checking image availability for', allSettlements.length, 'settlements');
+    
+    const filteredSettlements: Settlement[] = [];
+    
+    for (const settlement of allSettlements) {
+      try {
+        // Skip if the settlement is explicitly marked as hidden
+        if (settlement.hidden) {
+          console.log(`Skipping hidden settlement ${settlement.id}`);
+          continue;
+        }
+        
+        // Check if the image exists
+        const imageExists = await verifySettlementImageExists(settlement.id, settlement.photo_url);
+        
+        if (imageExists) {
+          filteredSettlements.push(settlement);
+        } else {
+          console.log(`Hiding settlement ${settlement.id} due to missing image`);
+          
+          // Optionally update the hidden flag in the database
+          await supabase
+            .from('settlements')
+            .update({ hidden: true })
+            .eq('id', settlement.id);
+        }
+      } catch (error) {
+        console.error(`Error processing settlement ${settlement.id}:`, error);
+        // If there's an error, skip this settlement
+      }
+    }
+    
+    console.log(`Showing ${filteredSettlements.length} of ${allSettlements.length} settlements (${allSettlements.length - filteredSettlements.length} hidden due to missing images)`);
+    setSettlements(filteredSettlements);
+    setProcessingImages(false);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -160,7 +184,7 @@ export const useSettlements = (user: User | null) => {
 
   return {
     settlements,
-    isLoading,
+    isLoading: isLoading || processingImages,
     refreshSettlements: fetchSettlements
   };
 };
