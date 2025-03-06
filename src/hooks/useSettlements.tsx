@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -135,6 +134,24 @@ export const useSettlements = (user: User | null) => {
     });
   };
 
+  // New function to get the most recent attorney information for pre-populating fields
+  const getLatestAttorneyInfo = () => {
+    if (settlements.length === 0) return null;
+    
+    // Sort by created_at in descending order and get the first (most recent) settlement
+    const sortedSettlements = [...settlements].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    
+    const latestSettlement = sortedSettlements[0];
+    
+    return {
+      attorneyName: latestSettlement.attorney,
+      firmName: latestSettlement.firm,
+      firmWebsite: latestSettlement.firmWebsite
+    };
+  };
+
   useEffect(() => {
     if (user) {
       fetchSettlements();
@@ -147,6 +164,7 @@ export const useSettlements = (user: User | null) => {
   return {
     settlements,
     isLoading,
-    refreshSettlements: fetchSettlements
+    refreshSettlements: fetchSettlements,
+    getLatestAttorneyInfo
   };
 };

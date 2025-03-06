@@ -10,6 +10,7 @@ import { useSettlementFormState } from "@/hooks/useSettlementFormState";
 import { useValidateDollarInput } from "@/hooks/useValidateDollarInput";
 import { useEmailValidation } from "@/hooks/useEmailValidation";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { useSettlements } from "@/hooks/useSettlements";
 
 export const useSubmitSettlementForm = () => {
   const { toast } = useToast();
@@ -30,6 +31,7 @@ export const useSubmitSettlementForm = () => {
   const { validateStep1, validateStep2, unformatNumber, isValidEmail } = useSettlementForm();
   const { user, isAuthenticated } = useAuth();
   const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
+  const { settlements, getLatestAttorneyInfo } = useSettlements(user);
 
   // Use our hooks
   useValidateDollarInput(formData, handleInputChange);
@@ -45,10 +47,23 @@ export const useSubmitSettlementForm = () => {
     setTemporaryId(crypto.randomUUID());
     
     if (isAuthenticated && user?.email) {
+      // Set attorney email from user's email
       setFormData(prev => ({
         ...prev,
         attorneyEmail: user.email || ""
       }));
+      
+      // If user has existing settlements, pre-populate attorney name and firm details
+      const attorneyInfo = getLatestAttorneyInfo();
+      if (attorneyInfo) {
+        console.log("Pre-populating attorney information from previous settlement", attorneyInfo);
+        setFormData(prev => ({
+          ...prev,
+          attorneyName: attorneyInfo.attorneyName,
+          firmName: attorneyInfo.firmName,
+          firmWebsite: attorneyInfo.firmWebsite
+        }));
+      }
     }
     
     if (!isLoadingSubscription) {
@@ -57,7 +72,9 @@ export const useSubmitSettlementForm = () => {
       setHasActiveSubscription(hasActiveSub);
       setIsCheckingSubscription(false);
     }
-  }, [isAuthenticated, user, subscription, isLoadingSubscription, setFormData, setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId]);
+  }, [isAuthenticated, user, subscription, isLoadingSubscription, setFormData, 
+      setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
+      getLatestAttorneyInfo, settlements]);
 
   return {
     step,
@@ -84,6 +101,7 @@ export const useSubmitSettlementForm = () => {
     emailStatus: {
       isValidating: isValidatingEmail,
       alreadyExists
-    }
+    },
+    isAuthenticated
   };
 };

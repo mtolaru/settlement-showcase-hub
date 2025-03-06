@@ -26,7 +26,8 @@ const SubmitSettlementPage = () => {
     handleBackStep,
     handleCreateCheckout,
     handleSubmitWithSubscription,
-    emailStatus
+    emailStatus,
+    isAuthenticated
   } = useSubmitSettlementContainer();
 
   useEffect(() => {
@@ -79,6 +80,7 @@ const SubmitSettlementPage = () => {
                 handleInputChange={handleInputChange}
                 handleImageUpload={handleImageUpload}
                 emailStatus={emailStatus}
+                isAuthenticated={isAuthenticated}
               />
             )}
 

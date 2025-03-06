@@ -7,7 +7,8 @@ import ImageUpload from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOCATIONS } from "@/lib/locations";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, CheckCircle, Lock } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle, Lock, RefreshCw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface AttorneyInformationFormProps {
   formData: {
@@ -28,6 +29,7 @@ interface AttorneyInformationFormProps {
     isValidating: boolean;
     alreadyExists: boolean;
   };
+  isAuthenticated?: boolean;
 }
 
 export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = ({
@@ -35,11 +37,18 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   errors,
   handleInputChange,
   handleImageUpload,
-  emailStatus = { isValidating: false, alreadyExists: false }
+  emailStatus = { isValidating: false, alreadyExists: false },
+  isAuthenticated = false
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
+  const isNameDisabled = isAuthenticated && formData.attorneyName;
   const hasErrors = Object.values(errors).some(error => error !== undefined);
+
+  // Reset firm information fields
+  const handleResetFirmInfo = (field: 'firmName' | 'firmWebsite') => {
+    handleInputChange(field, '');
+  };
 
   // Prevent event propagation to avoid step navigation issues
   const handleSelectClick = (e: React.MouseEvent) => {
@@ -65,15 +74,24 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="attorneyName">
             Attorney Name <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="attorneyName"
-            value={formData.attorneyName}
-            onChange={(e) => handleInputChange("attorneyName", e.target.value)}
-            placeholder="John Doe"
-            className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""}`}
-          />
+          <div className="relative">
+            <Input
+              id="attorneyName"
+              value={formData.attorneyName}
+              onChange={(e) => handleInputChange("attorneyName", e.target.value)}
+              placeholder="John Doe"
+              className={`mt-1 ${errors.attorneyName ? "border-red-500" : ""} ${isNameDisabled ? "pr-10" : ""}`}
+              disabled={isNameDisabled}
+            />
+            {isNameDisabled && (
+              <Lock className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400" />
+            )}
+          </div>
           {errors.attorneyName && (
             <p className="text-red-500 text-sm mt-1">{errors.attorneyName}</p>
+          )}
+          {isNameDisabled && (
+            <p className="text-gray-500 text-sm mt-1">Using name from your account</p>
           )}
         </div>
 
@@ -112,15 +130,27 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="firmName">
             Firm Name <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="firmName"
-            value={formData.firmName}
-            onChange={(e) => handleInputChange("firmName", e.target.value)}
-            placeholder="Law Firm LLC"
-            className={`mt-1 ${errors.firmName ? "border-red-500" : ""}`}
-          />
+          <div className="relative">
+            <Input
+              id="firmName"
+              value={formData.firmName}
+              onChange={(e) => handleInputChange("firmName", e.target.value)}
+              placeholder="Law Firm LLC"
+              className={`mt-1 ${errors.firmName ? "border-red-500" : ""} pr-10`}
+            />
+            {formData.firmName && (
+              <X 
+                className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400 cursor-pointer hover:text-gray-600"
+                onClick={() => handleResetFirmInfo('firmName')}
+                title="Clear firm name"
+              />
+            )}
+          </div>
           {errors.firmName && (
             <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
+          )}
+          {isAuthenticated && formData.firmName && (
+            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission (you can edit or clear)</p>
           )}
         </div>
 
@@ -128,15 +158,27 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
           <Label htmlFor="firmWebsite">
             Firm Website <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="firmWebsite"
-            value={formData.firmWebsite}
-            onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
-            placeholder="https://lawfirm.com"
-            className={`mt-1 ${errors.firmWebsite ? "border-red-500" : ""}`}
-          />
+          <div className="relative">
+            <Input
+              id="firmWebsite"
+              value={formData.firmWebsite}
+              onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
+              placeholder="https://lawfirm.com"
+              className={`mt-1 ${errors.firmWebsite ? "border-red-500" : ""} pr-10`}
+            />
+            {formData.firmWebsite && (
+              <X 
+                className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400 cursor-pointer hover:text-gray-600"
+                onClick={() => handleResetFirmInfo('firmWebsite')}
+                title="Clear firm website"
+              />
+            )}
+          </div>
           {errors.firmWebsite && (
             <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
+          )}
+          {isAuthenticated && formData.firmWebsite && (
+            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission (you can edit or clear)</p>
           )}
         </div>
 

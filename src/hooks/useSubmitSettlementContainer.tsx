@@ -83,6 +83,7 @@ export const useSubmitSettlementContainer = () => {
     handleBackStep,
     handleCreateCheckout,
     handleSubmitWithSubscription,
-    emailStatus
+    emailStatus,
+    isAuthenticated
   };
 };
