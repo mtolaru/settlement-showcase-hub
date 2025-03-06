@@ -53,32 +53,36 @@ async function fallbackEmailCheck(normalizedEmail: string): Promise<boolean> {
       console.error('Error checking email in settlements:', settlementError);
     }
 
-    // Check auth using OTP method as a fallback
-    const { data: authData, error: authError } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        shouldCreateUser: false // Just check if user exists, don't send email
-      }
-    });
-    
-    // If there's no error with OTP check or the error doesn't contain "User not found", the email exists
-    const emailExistsInAuth = !authError || (authError.message && !authError.message.includes("User not found"));
-    
-    if (authError && !authError.message.includes("User not found")) {
-      console.error('Error checking email in auth:', authError);
+    // If found in settlements, no need to check auth
+    if (settlementData && settlementData.length > 0) {
+      console.log("Email found in settlements table");
+      return true;
     }
-    
-    // Email exists if found in either settlements or auth
-    const emailExists = !!settlementData?.length || emailExistsInAuth;
-    
-    console.log("Email verification results (fallback):", {
-      emailExists,
-      inSettlements: !!settlementData?.length,
-      inAuth: emailExistsInAuth,
-      authErrorMsg: authError?.message
-    });
-    
-    return emailExists;
+
+    // Check auth using signInWithOTP as a way to verify if user exists
+    // This is a workaround since we can't directly query auth.users
+    try {
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          shouldCreateUser: false // Just check if user exists, don't send email
+        }
+      });
+      
+      // If there's no error or the error doesn't contain "User not found", the email exists
+      const emailExistsInAuth = !authError || (authError.message && !authError.message.includes("User not found"));
+      
+      if (authError && !authError.message.includes("User not found")) {
+        console.error('Error checking email in auth:', authError);
+      } else {
+        console.log("Email check in auth result:", emailExistsInAuth ? "exists" : "not found");
+      }
+      
+      return emailExistsInAuth;
+    } catch (authCheckError) {
+      console.error("Error during auth check:", authCheckError);
+      return false;
+    }
   } catch (err) {
     console.error('Exception in fallback email check:', err);
     return false;

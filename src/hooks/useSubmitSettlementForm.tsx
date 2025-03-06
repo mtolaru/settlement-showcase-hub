@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -42,10 +43,13 @@ export const useSubmitSettlementForm = () => {
   }, [errors]);
 
   useEffect(() => {
+    console.log("Auth state in useSubmitSettlementForm:", { isAuthenticated, user });
     setTemporaryId(crypto.randomUUID());
     
+    // Only pre-populate fields if user is actually authenticated
     if (isAuthenticated && user?.email) {
       if (!clearedFields.has('attorneyEmail')) {
+        console.log("Setting email from authenticated user:", user.email);
         setFormData(prev => ({
           ...prev,
           attorneyEmail: user.email || ""
@@ -68,6 +72,15 @@ export const useSubmitSettlementForm = () => {
           });
         }
       }
+    } else {
+      // User is not authenticated, make sure fields are clearable
+      console.log("User not authenticated, ensuring email field is editable");
+      if (formData.attorneyEmail && !clearedFields.has('attorneyEmail')) {
+        setFormData(prev => ({
+          ...prev,
+          attorneyEmail: ""
+        }));
+      }
     }
     
     if (!isLoadingSubscription) {
@@ -78,7 +91,7 @@ export const useSubmitSettlementForm = () => {
     }
   }, [isAuthenticated, user, subscription, isLoadingSubscription, setFormData, 
       setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
-      getLatestAttorneyInfo, settlements, clearedFields]);
+      getLatestAttorneyInfo, settlements, clearedFields, formData.attorneyEmail]);
 
   useEffect(() => {
     if (isAuthenticated && user?.email === formData.attorneyEmail && errors.attorneyEmail) {

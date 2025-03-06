@@ -29,6 +29,8 @@ export const useAuth = (): AuthReturn => {
         setUser(session?.user ?? null);
       } catch (error) {
         console.error('Error getting session:', error);
+        // Ensure user is set to null on error
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -63,13 +65,23 @@ export const useAuth = (): AuthReturn => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    navigate('/');
-    toast({
-      title: "Signed out successfully",
-      description: "You have been logged out of your account.",
-    });
+    try {
+      await supabase.auth.signOut();
+      console.log("Sign out completed");
+      setUser(null);
+      navigate('/');
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of your account.",
+      });
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        variant: "destructive",
+        title: "Error signing out",
+        description: "Please try again.",
+      });
+    }
   };
 
   return { 

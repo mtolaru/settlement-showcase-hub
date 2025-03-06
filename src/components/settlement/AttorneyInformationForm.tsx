@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,11 +44,20 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   clearedFields = new Set()
 }) => {
   const { user } = useAuth();
+  
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
   const isNamePreFilled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
   
-  // Check if there are any errors in the form
   const hasFormErrors = Object.keys(errors).length > 0;
+
+  useEffect(() => {
+    console.log("AttorneyInformationForm render:", { 
+      isAuthenticated, 
+      userEmail: user?.email, 
+      formEmail: formData.attorneyEmail,
+      isEmailDisabled
+    });
+  }, [isAuthenticated, user, formData.attorneyEmail, isEmailDisabled]);
 
   return (
     <div>
@@ -120,15 +128,15 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
             {!isEmailDisabled && !emailStatus.isValidating && formData.attorneyEmail && !errors.attorneyEmail && (
               <CheckCircle className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-green-500" />
             )}
-            {isEmailDisabled && (
-              <CheckCircle className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-green-500" />
-            )}
           </div>
           {errors.attorneyEmail && (
             <p className="text-red-500 text-sm mt-1">{errors.attorneyEmail}</p>
           )}
           {isEmailDisabled && (
             <p className="text-gray-500 text-sm mt-1">Using email from your account</p>
+          )}
+          {!isEmailDisabled && emailStatus.alreadyExists && (
+            <p className="text-amber-500 text-sm mt-1">This email is already registered. Consider signing in.</p>
           )}
         </div>
 

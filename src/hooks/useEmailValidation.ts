@@ -13,7 +13,7 @@ export const useEmailValidation = (
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
   const [alreadyExists, setAlreadyExists] = useState(false);
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastCheckedEmailRef = useRef(email);
+  const lastCheckedEmailRef = useRef<string>("");
 
   const handleEmailChange = async (email: string) => {
     // Clear any previous timeout
@@ -22,7 +22,7 @@ export const useEmailValidation = (
     }
 
     // Skip validation if email is empty or belongs to current user
-    if (!email || user?.email === email) {
+    if (!email || (user?.email === email)) {
       setAlreadyExists(false);
       setIsValidatingEmail(false);
       
