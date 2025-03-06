@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -34,43 +33,9 @@ const Pricing = () => {
       navigate('/submit');
       return;
     }
-
-    setIsLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const temporaryId = crypto.randomUUID();
-      
-      console.log('Creating checkout session...');
-      
-      const response = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          priceId: 'price_1QwpUFDEE7vEKM2KYdBYUIq6',
-          userId: session?.user?.id || temporaryId,
-          returnUrl: `${window.location.origin}/confirmation?temporaryId=${temporaryId}`,
-          isAnonymous: !session?.user,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      const { url } = response.data;
-      if (!url) {
-        throw new Error('No checkout URL received');
-      }
-
-      window.open(url, '_blank'); // Open in new tab
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to initiate subscription. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    
+    // If user is logged in, take them to their account page
+    navigate('/manage');
   };
 
   // Determine button text based on authentication status
@@ -80,7 +45,7 @@ const Pricing = () => {
     }
     
     if (isAuthenticated) {
-      return "Subscribe Now";
+      return "View My Account";
     }
     
     return "Submit Your Settlement";
