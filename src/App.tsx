@@ -16,10 +16,12 @@ import FAQ from "./pages/FAQ";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Pricing from "./pages/Pricing";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop /> {/* Add the ScrollToTop component here */}
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100">
         <Navbar />
         <Routes>
