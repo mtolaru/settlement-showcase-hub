@@ -208,18 +208,19 @@ const SettlementDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="aspect-w-16 aspect-h-9 bg-neutral-100 relative" style={{ height: "400px" }}>
+              <div className="bg-neutral-100 flex items-center justify-center p-4" style={{ minHeight: "400px" }}>
                 {!imageLoaded && !loadError && (
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex items-center justify-center h-full w-full">
                     <div className="h-12 w-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
                   </div>
                 )}
                 <img
                   src={imageUrl}
                   alt={`${settlement.type} case`}
-                  className={`w-full h-full object-cover absolute inset-0 ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                  className={`max-w-full max-h-[500px] ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
                   onLoad={handleImageLoad}
                   onError={handleImageError}
+                  style={{ objectFit: 'contain' }}
                 />
               </div>
               <div className="p-6">
