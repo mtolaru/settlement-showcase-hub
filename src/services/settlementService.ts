@@ -148,6 +148,8 @@ export const settlementService = {
         throw new Error("User ID is required to delete a settlement");
       }
 
+      console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
+      
       // First, try to find the settlement to confirm it exists and get its details
       const { data: settlement, error: findError } = await supabase
         .from('settlements')
@@ -176,8 +178,8 @@ export const settlementService = {
       
       // Allow deletion if either:
       // 1. The settlement's user_id matches the current user's ID
-      // 2. The settlement has a temporary_id that matches the temporaryId in the user's metadata
-      // 3. The settlement has no user_id yet (which means it was created before the account)
+      // 2. The settlement has no user_id yet (which means it was created before the account)
+      // 3. The settlement has a temporary_id that matches the temporaryId in the user's metadata
       const isOwner = 
         settlement.user_id === userId || 
         settlement.user_id === null ||
@@ -188,20 +190,23 @@ export const settlementService = {
         throw new Error("You don't have permission to delete this settlement");
       }
 
-      // Proceed with deletion - remove the user_id condition to allow deletion of settlements
-      // that were created before the account was created
-      const { error } = await supabase
+      // Force deletion regardless of conditions by only using the id
+      // This ensures we're not adding any additional conditions that might prevent deletion
+      console.log(`Proceeding with deletion of settlement ID: ${settlementId}`);
+      
+      const { data, error } = await supabase
         .from('settlements')
         .delete()
-        .eq('id', settlementId);
+        .eq('id', settlementId)
+        .select();
 
       if (error) {
         console.error('Error deleting settlement:', error);
         throw error;
       }
 
-      console.log('Settlement deleted successfully');
-      return { success: true };
+      console.log('Settlement deleted successfully', data);
+      return { success: true, data };
     } catch (error: any) {
       console.error('Delete settlement error:', error);
       throw error;

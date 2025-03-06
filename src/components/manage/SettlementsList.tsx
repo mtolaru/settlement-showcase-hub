@@ -12,9 +12,15 @@ interface SettlementsListProps {
   settlements: Settlement[];
   isLoading: boolean;
   onDeleteSettlement: (id: number) => Promise<void>;
+  deletingId?: number | null;
 }
 
-const SettlementsList = ({ settlements, isLoading, onDeleteSettlement }: SettlementsListProps) => {
+const SettlementsList = ({ 
+  settlements, 
+  isLoading, 
+  onDeleteSettlement,
+  deletingId 
+}: SettlementsListProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [settlementToDelete, setSettlementToDelete] = useState<{id: number, type: string} | null>(null);
@@ -103,8 +109,13 @@ const SettlementsList = ({ settlements, isLoading, onDeleteSettlement }: Settlem
                   size="icon" 
                   className="text-neutral-600 hover:text-red-500 h-8 w-8"
                   onClick={(e) => openDeleteDialog(e, settlement)}
+                  disabled={deletingId === settlement.id}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {deletingId === settlement.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
                   <span className="sr-only">Delete settlement</span>
                 </Button>
               </div>

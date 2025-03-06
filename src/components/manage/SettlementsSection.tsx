@@ -19,6 +19,7 @@ const SettlementsSection = ({
   userId
 }: SettlementsSectionProps) => {
   const { toast } = useToast();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleDeleteSettlement = async (settlementId: number) => {
     try {
@@ -31,20 +32,35 @@ const SettlementsSection = ({
         return;
       }
 
+      setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
-      await settlementService.deleteSettlement(settlementId, userId);
-      refreshSettlements();
-      toast({
-        title: "Settlement deleted",
-        description: "Your settlement has been successfully deleted.",
-      });
+      
+      const result = await settlementService.deleteSettlement(settlementId, userId);
+      
+      if (result.success) {
+        console.log("Delete operation succeeded:", result);
+        refreshSettlements();
+        toast({
+          title: "Settlement deleted",
+          description: "Your settlement has been successfully deleted.",
+        });
+      } else {
+        console.error("Delete operation did not return success=true");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete settlement. Please try again.",
+        });
+      }
     } catch (error) {
       console.error("Error deleting settlement:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete settlement. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to delete settlement. Please try again.",
       });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -55,6 +71,7 @@ const SettlementsSection = ({
         settlements={settlements} 
         isLoading={isLoading} 
         onDeleteSettlement={handleDeleteSettlement}
+        deletingId={deletingId}
       />
     </div>
   );
