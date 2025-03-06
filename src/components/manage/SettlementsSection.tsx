@@ -109,7 +109,7 @@ const SettlementsSection = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: result.error || "Failed to delete settlement. Please try again.",
+          description: "Failed to delete settlement. Please try again.",
         });
       }
     } catch (error) {
