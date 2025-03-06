@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Trash2, AlertCircle, FileUp, ImageUp, Link, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import TestImageAccess from '@/components/admin/TestImageAccess';
+import ImageMappingFixer from '@/components/admin/ImageMappingFixer';
 
 const AdminImport = () => {
   const { toast } = useToast();
@@ -350,9 +352,11 @@ const AdminImport = () => {
                 </AlertDescription>
               </Alert>
               
+              <ImageMappingFixer />
+              
               <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
                 <Link className="h-12 w-12 text-blue-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Map Settlement Images</h3>
+                <h3 className="text-lg font-semibold mb-2">Legacy Mapping Tool</h3>
                 <p className="text-gray-500 text-center mb-4">
                   Click the button below to map settlement images to their corresponding records in the database.
                 </p>

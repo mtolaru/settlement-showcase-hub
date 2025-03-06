@@ -20,28 +20,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
     
-    // Get all settlements with empty photo_url, including temporary_id which might be useful for matching
-    const { data: settlements, error: fetchError } = await supabase
-      .from('settlements')
-      .select('id, temporary_id')
-      .is('photo_url', null);
-      
-    if (fetchError) {
-      console.error('Error fetching settlements:', fetchError);
-      throw fetchError;
-    }
-    
-    console.log(`Found ${settlements?.length || 0} settlements with empty photo_url`);
-    
-    if (!settlements || settlements.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No settlements with empty photo_url found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      )
-    }
-    
-    // First, get a list of all files in the processed_images bucket to have a complete reference
-    const { data: allBucketFiles, error: bucketError } = await supabase.storage
+    // First, check what files actually exist in the processed_images bucket
+    const { data: existingFiles, error: bucketError } = await supabase.storage
       .from('processed_images')
       .list('');
       
@@ -50,132 +30,92 @@ serve(async (req) => {
       throw bucketError;
     }
     
-    console.log(`Found ${allBucketFiles?.length || 0} files in the processed_images bucket`);
-    if (allBucketFiles && allBucketFiles.length > 0) {
-      console.log('Sample files:', allBucketFiles.slice(0, 5).map(f => f.name));
+    if (!existingFiles || existingFiles.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: 'No files found in the processed_images bucket',
+          action: 'Please upload images before trying to map them to settlements'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
+    console.log(`Found ${existingFiles.length} files in the processed_images bucket`);
+    
+    // Extract valid settlement IDs from filenames (assuming format: settlement_ID.jpg)
+    const validSettlementIds = new Set();
+    const fileMap = new Map();
+    
+    existingFiles.forEach(file => {
+      const match = file.name.match(/settlement_(\d+)\.jpg/i);
+      if (match && match[1]) {
+        const id = parseInt(match[1], 10);
+        validSettlementIds.add(id);
+        fileMap.set(id, file.name);
+      }
+    });
+    
+    console.log(`Found ${validSettlementIds.size} valid settlement ID patterns in filenames`);
+    
+    if (validSettlementIds.size === 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: 'No valid settlement_ID.jpg patterns found in the bucket',
+          files: existingFiles.map(f => f.name) 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
     }
     
-    // Process settlements one by one
-    const updatedSettlements = [];
-    const errors = [];
+    // 1. First, reset all incorrect photo_url mappings to null
+    const { error: resetError } = await supabase
+      .from('settlements')
+      .update({ photo_url: null })
+      .is('hidden', null); // Only reset non-hidden settlements
+      
+    if (resetError) {
+      console.error('Error resetting photo URLs:', resetError);
+      throw resetError;
+    }
     
-    for (const settlement of settlements) {
-      try {
-        console.log(`Processing settlement ID: ${settlement.id}, Temporary ID: ${settlement.temporary_id || 'none'}`);
-        
-        // Try the standard pattern with settlement ID
-        const fileName = `settlement_${settlement.id}.jpg`;
-        console.log(`Trying standard naming pattern: ${fileName}`);
-        
-        // First, verify the file exists in the bucket
-        const fileExists = allBucketFiles?.some(file => file.name === fileName);
-        
-        if (fileExists) {
-          console.log(`File ${fileName} exists in bucket`);
+    // 2. Update only the settlements that have matching images in the bucket
+    const updates = [];
+    const validIdsArray = Array.from(validSettlementIds);
+    
+    for (const id of validIdsArray) {
+      const fileName = fileMap.get(id);
+      
+      if (fileName) {
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update({ photo_url: fileName, hidden: false })
+          .eq('id', id);
           
-          // Update the settlement with just the filename (not full path)
-          const { error: updateError } = await supabase
-            .from('settlements')
-            .update({ photo_url: fileName })
-            .eq('id', settlement.id);
-            
-          if (updateError) {
-            console.error(`Error updating settlement ${settlement.id}:`, updateError);
-            errors.push(`Settlement ${settlement.id}: ${updateError.message}`);
-          } else {
-            console.log(`Mapped settlement ${settlement.id} to photo: ${fileName}`);
-            updatedSettlements.push(settlement.id);
-          }
+        if (updateError) {
+          console.error(`Error updating settlement ${id}:`, updateError);
         } else {
-          console.log(`No file found for settlement ${settlement.id} with filename ${fileName}`);
-          
-          // Try alternative with temporary ID if available
-          if (settlement.temporary_id) {
-            const tempFileName = `settlement_${settlement.temporary_id}.jpg`;
-            console.log(`Trying temporary ID pattern: ${tempFileName}`);
-            
-            const tempFileExists = allBucketFiles?.some(file => file.name === tempFileName);
-            
-            if (tempFileExists) {
-              console.log(`File ${tempFileName} exists in bucket`);
-              
-              const { error: updateError } = await supabase
-                .from('settlements')
-                .update({ photo_url: tempFileName })
-                .eq('id', settlement.id);
-                
-              if (updateError) {
-                console.error(`Error updating settlement ${settlement.id} with temp ID:`, updateError);
-                errors.push(`Settlement ${settlement.id} (temp): ${updateError.message}`);
-              } else {
-                console.log(`Mapped settlement ${settlement.id} to photo: ${tempFileName} (using temp ID)`);
-                updatedSettlements.push(settlement.id);
-              }
-            } else {
-              console.log(`No file found for settlement ${settlement.id} with temp ID filename ${tempFileName}`);
-              
-              // Try a broader search - look for any file containing the settlement ID
-              const matchingFile = allBucketFiles?.find(file => 
-                file.name.includes(String(settlement.id)) ||
-                (settlement.temporary_id && file.name.includes(String(settlement.temporary_id)))
-              );
-              
-              if (matchingFile) {
-                console.log(`Found matching file via partial search: ${matchingFile.name}`);
-                
-                const { error: updateError } = await supabase
-                  .from('settlements')
-                  .update({ photo_url: matchingFile.name })
-                  .eq('id', settlement.id);
-                  
-                if (updateError) {
-                  console.error(`Error updating settlement ${settlement.id} with partial match:`, updateError);
-                  errors.push(`Settlement ${settlement.id} (partial): ${updateError.message}`);
-                } else {
-                  console.log(`Mapped settlement ${settlement.id} to photo: ${matchingFile.name} (partial match)`);
-                  updatedSettlements.push(settlement.id);
-                }
-              } else {
-                console.log(`No matching file found for settlement ${settlement.id} using any pattern`);
-              }
-            }
-          } else {
-            // No temporary ID, but still try partial matching
-            const matchingFile = allBucketFiles?.find(file => file.name.includes(String(settlement.id)));
-            
-            if (matchingFile) {
-              console.log(`Found matching file via partial search: ${matchingFile.name}`);
-              
-              const { error: updateError } = await supabase
-                .from('settlements')
-                .update({ photo_url: matchingFile.name })
-                .eq('id', settlement.id);
-                
-              if (updateError) {
-                console.error(`Error updating settlement ${settlement.id} with partial match:`, updateError);
-                errors.push(`Settlement ${settlement.id} (partial): ${updateError.message}`);
-              } else {
-                console.log(`Mapped settlement ${settlement.id} to photo: ${matchingFile.name} (partial match)`);
-                updatedSettlements.push(settlement.id);
-              }
-            } else {
-              console.log(`No matching file found for settlement ${settlement.id}`);
-            }
-          }
+          updates.push({ id, fileName });
         }
-      } catch (err) {
-        console.error(`Error processing settlement ${settlement.id}:`, err);
-        errors.push(`Settlement ${settlement.id}: ${err.message}`);
       }
+    }
+    
+    // 3. Mark all other settlements as hidden
+    const { error: hideError } = await supabase
+      .from('settlements')
+      .update({ hidden: true })
+      .is('photo_url', null);
+      
+    if (hideError) {
+      console.error('Error hiding settlements without images:', hideError);
     }
     
     // Return the results
     return new Response(
       JSON.stringify({ 
-        message: `Mapped ${updatedSettlements.length} settlements to their photos`,
-        updated: updatedSettlements.length,
-        total: settlements.length,
-        errors: errors.length > 0 ? errors : null
+        message: `Updated ${updates.length} settlements with actual images in the bucket`,
+        updated: updates,
+        total_files: existingFiles.length,
+        valid_patterns: validSettlementIds.size
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
