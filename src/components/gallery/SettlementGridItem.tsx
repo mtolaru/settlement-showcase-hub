@@ -22,11 +22,13 @@ const SettlementGridItem = ({
   // Check if settlement is already marked as hidden
   useEffect(() => {
     if (settlement.hidden) {
+      console.log(`Settlement ${settlement.id} is marked as hidden in the database`);
       setShouldHide(true);
     }
-  }, [settlement.hidden]);
+  }, [settlement.hidden, settlement.id]);
 
-  const handleImageStatus = ({ shouldHide: hideImage }: { loaded: boolean, shouldHide: boolean }) => {
+  const handleImageStatus = ({ shouldHide: hideImage, loaded }: { loaded: boolean, shouldHide: boolean }) => {
+    console.log(`Image status for settlement ${settlement.id}: loaded=${loaded}, shouldHide=${hideImage}`);
     setShouldHide(hideImage);
   };
 

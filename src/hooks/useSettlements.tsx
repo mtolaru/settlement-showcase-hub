@@ -5,7 +5,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import type { Settlement } from "@/types/settlement";
 import { useSubscription } from "@/hooks/useSubscription";
-import { verifySettlementImageExists } from "@/utils/imageHelpers";
 
 export const useSettlements = (user: User | null) => {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -36,12 +35,13 @@ export const useSettlements = (user: User | null) => {
       }
       
       // If user has an active subscription, get all their settlements
-      // Only get non-hidden settlements
+      // Only get non-hidden settlements that have a photo_url
       let query = supabase
         .from('settlements')
         .select('*')
         .eq('user_id', user.id)
-        .eq('hidden', false);
+        .eq('hidden', false)
+        .not('photo_url', 'is', null);
       
       const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -62,6 +62,7 @@ export const useSettlements = (user: User | null) => {
             .select('*')
             .eq('temporary_id', tempId)
             .eq('hidden', false) // Only get non-hidden settlements
+            .not('photo_url', 'is', null) // Only get settlements with a photo_url
             .order('created_at', { ascending: false });
             
           if (tempError) {

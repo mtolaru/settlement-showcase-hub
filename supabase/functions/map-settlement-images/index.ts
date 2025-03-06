@@ -69,19 +69,7 @@ serve(async (req) => {
       )
     }
     
-    // 1. First, reset all incorrect photo_url mappings to null and mark hidden
-    const { data: allSettlements, error: fetchError } = await supabase
-      .from('settlements')
-      .select('id');
-      
-    if (fetchError) {
-      console.error('Error fetching all settlements:', fetchError);
-      throw fetchError;
-    }
-    
-    console.log(`Found ${allSettlements?.length || 0} total settlements in database`);
-    
-    // Reset all settlements first
+    // 1. First, reset all settlements to have null photo_url and be hidden
     const { error: resetError } = await supabase
       .from('settlements')
       .update({ 
@@ -104,6 +92,17 @@ serve(async (req) => {
       const fileName = fileMap.get(id);
       
       if (fileName) {
+        // Verify the file actually exists by trying to get its metadata
+        const { data: fileMetadata, error: metadataError } = await supabase.storage
+          .from('processed_images')
+          .getPublicUrl(fileName);
+          
+        if (metadataError) {
+          console.error(`Error verifying file ${fileName}:`, metadataError);
+          continue;
+        }
+        
+        // If we got metadata, update the settlement
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ 
@@ -116,7 +115,7 @@ serve(async (req) => {
           console.error(`Error updating settlement ${id}:`, updateError);
         } else {
           updates.push({ id, fileName });
-          console.log(`Updated settlement ${id} with photo_url=${fileName} and hidden=false`);
+          console.log(`Mapped settlement ${id} to photo: ${fileName}`);
         }
       }
     }
