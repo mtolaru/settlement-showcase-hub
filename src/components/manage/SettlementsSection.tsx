@@ -66,7 +66,7 @@ const SettlementsSection = ({
         
         console.log("Settlement data before deletion:", settlementData);
         
-        // Attempt to associate the settlement with the current user if needed
+        // Enhanced: Attempt to associate the settlement with the current user if needed
         if (!settlementData.user_id || settlementData.user_id !== userId) {
           console.log("Settlement doesn't belong to current user, attempting to claim it first");
           

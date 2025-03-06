@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -70,13 +69,17 @@ export const useSettlements = (user: User | null) => {
           for (const settlement of emailData) {
             if (!settlement.user_id) {
               try {
-                await supabase
+                const { error: updateError } = await supabase
                   .from('settlements')
                   .update({ user_id: user.id })
                   .eq('id', settlement.id)
                   .is('user_id', null);
                   
-                console.log(`Updated user_id for settlement ${settlement.id}`);
+                if (updateError) {
+                  console.error(`Error updating user_id for settlement ${settlement.id}:`, updateError);
+                } else {
+                  console.log(`Updated user_id for settlement ${settlement.id}`);
+                }
               } catch (error) {
                 console.error(`Failed to update user_id for settlement ${settlement.id}:`, error);
               }
@@ -161,20 +164,38 @@ export const useSettlements = (user: User | null) => {
   // Associate settlements with user based on email or temporary IDs
   const associateSettlementsWithUser = async (user: User) => {
     try {
-      // 1. First try to claim unassigned settlements by email
+      // 1. Enhanced: Actively claim unassigned settlements by email with more detailed logging
       if (user.email) {
-        console.log('Attempting to claim unassigned settlements for:', user.email);
-        const { error: updateError } = await supabase
+        console.log('Attempting to claim unassigned settlements for email:', user.email);
+        const { data: claimedByEmail, error: updateError } = await supabase
           .from('settlements')
           .update({ user_id: user.id })
           .is('user_id', null)
           .eq('attorney_email', user.email)
-          .eq('payment_completed', true);
+          .eq('payment_completed', true)
+          .select('id');
           
         if (updateError) {
           console.error('Error claiming settlements by email:', updateError);
         } else {
-          console.log('Successfully claimed any unassigned settlements by email');
+          const claimCount = claimedByEmail?.length || 0;
+          console.log(`Successfully claimed ${claimCount} unassigned settlements by email`);
+          
+          // If settlements were claimed, notify the user
+          if (claimCount > 0) {
+            toast({
+              title: "Settlements Linked",
+              description: `We found ${claimCount} settlements associated with your email and linked them to your account.`,
+            });
+            
+            // Get details about the claimed settlements for better user feedback
+            const { data: claimedDetails } = await supabase
+              .from('settlements')
+              .select('id, amount, attorney, firm, type')
+              .in('id', claimedByEmail?.map(s => s.id) || []);
+              
+            console.log('Claimed settlement details:', claimedDetails);
+          }
         }
       }
       
@@ -195,18 +216,27 @@ export const useSettlements = (user: User | null) => {
         if (temporaryIds.length > 0) {
           console.log('Attempting to claim settlements by temporary IDs:', temporaryIds);
           
+          let totalClaimed = 0;
+          
           for (const tempId of temporaryIds) {
-            const { error: tempIdError } = await supabase
+            const { data: claimed, error: tempIdError } = await supabase
               .from('settlements')
               .update({ user_id: user.id })
               .is('user_id', null)
-              .eq('temporary_id', tempId);
+              .eq('temporary_id', tempId)
+              .select('id');
               
             if (tempIdError) {
               console.error(`Error claiming settlement with temporary ID ${tempId}:`, tempIdError);
             } else {
-              console.log(`Successfully claimed any settlements with temporary ID ${tempId}`);
+              const claimCount = claimed?.length || 0;
+              totalClaimed += claimCount;
+              console.log(`Successfully claimed ${claimCount} settlements with temporary ID ${tempId}`);
             }
+          }
+          
+          if (totalClaimed > 0) {
+            console.log(`Total settlements claimed by temporary IDs: ${totalClaimed}`);
           }
         }
       }
