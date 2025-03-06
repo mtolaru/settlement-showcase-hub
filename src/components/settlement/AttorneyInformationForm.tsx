@@ -7,7 +7,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOCATIONS } from "@/lib/locations";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, CheckCircle, Lock, RefreshCw, X } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AttorneyInformationFormProps {
@@ -42,7 +42,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
 }) => {
   const { user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
-  const isNameDisabled = isAuthenticated && formData.attorneyName;
+  const isNameDisabled = isAuthenticated && Boolean(formData.attorneyName);
   const hasErrors = Object.values(errors).some(error => error !== undefined);
 
   // Reset firm information fields
@@ -142,7 +142,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               <X 
                 className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400 cursor-pointer hover:text-gray-600"
                 onClick={() => handleResetFirmInfo('firmName')}
-                title="Clear firm name"
+                aria-label="Clear firm name"
               />
             )}
           </div>
@@ -170,7 +170,7 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               <X 
                 className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/3 text-gray-400 cursor-pointer hover:text-gray-600"
                 onClick={() => handleResetFirmInfo('firmWebsite')}
-                title="Clear firm website"
+                aria-label="Clear firm website"
               />
             )}
           </div>
