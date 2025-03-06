@@ -17,6 +17,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -52,11 +53,59 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(""); // Clear any previous errors
 
     try {
       console.log("Creating account for temporaryId:", temporaryId);
       
-      // Sign up with the provided email and password
+      // First, try to sign in with the provided credentials
+      // This handles the case where the user has already registered
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (!signInError && signInData.user) {
+        console.log("User signed in successfully:", signInData.user.id);
+        
+        // Update the settlement with the user ID
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update({ user_id: signInData.user.id })
+          .eq('temporary_id', temporaryId);
+
+        if (updateError) {
+          console.error("Error updating settlement:", updateError);
+        } else {
+          console.log("Settlement updated with user_id");
+        }
+        
+        toast({
+          title: "Signed in successfully!",
+          description: "You have been logged in to your existing account.",
+        });
+        
+        navigate("/manage");
+        onClose();
+        return;
+      }
+      
+      // If sign in failed, it could be because:
+      // 1. User doesn't exist - try to sign up
+      // 2. Password is incorrect - show error
+      
+      if (signInError) {
+        console.log("Sign in error:", signInError.message);
+        
+        // If the error is about incorrect password, show specific message
+        if (signInError.message?.toLowerCase().includes('invalid login credentials')) {
+          setErrorMessage("Incorrect password. If you already have an account, please use the correct password.");
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Try to sign up (this will fail if email is already registered)
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -68,55 +117,12 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       });
 
       if (signUpError) {
-        // Handle the case where email is already registered
+        // Email already registered but password was incorrect
         if (signUpError.message?.toLowerCase().includes('email already registered')) {
-          // If the email is already registered, try to sign in instead
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
-          
-          if (signInError) {
-            toast({
-              variant: "destructive",
-              title: "Error signing in",
-              description: "Invalid credentials. If you already have an account, please use the correct password.",
-            });
-            setIsLoading(false);
-            return;
-          }
-          
-          if (signInData.user) {
-            console.log("User signed in successfully:", signInData.user.id);
-            
-            // Update the settlement with the user ID
-            const { error: updateError } = await supabase
-              .from('settlements')
-              .update({ user_id: signInData.user.id })
-              .eq('temporary_id', temporaryId);
-
-            if (updateError) {
-              console.error("Error updating settlement:", updateError);
-            } else {
-              console.log("Settlement updated with user_id");
-            }
-            
-            toast({
-              title: "Signed in successfully!",
-              description: "You have been logged in to your existing account.",
-            });
-            
-            navigate("/manage");
-            onClose();
-            return;
-          }
+          setErrorMessage("This email is already registered. Please use the correct password to sign in.");
+        } else {
+          setErrorMessage(signUpError.message || "An unexpected error occurred. Please try again.");
         }
-        
-        toast({
-          variant: "destructive",
-          title: "Error creating account",
-          description: signUpError.message || "An unexpected error occurred. Please try again.",
-        });
         setIsLoading(false);
         return;
       }
@@ -174,11 +180,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       }
     } catch (error: any) {
       console.error('Account creation error:', error);
-      toast({
-        variant: "destructive",
-        title: "Error creating account",
-        description: error.message || "An unexpected error occurred. Please try again.",
-      });
+      setErrorMessage(error.message || "An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -236,12 +238,18 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           <p className="text-xs text-neutral-500 mt-1">Password must be at least 6 characters</p>
         </div>
 
+        {errorMessage && (
+          <div className="text-red-500 text-sm bg-red-50 p-3 rounded-md border border-red-100">
+            {errorMessage}
+          </div>
+        )}
+
         <Button
           type="submit"
           className="w-full bg-primary-600 hover:bg-primary-700 text-lg py-6"
           disabled={isLoading}
         >
-          {isLoading ? "Creating Account..." : "Create Account"} {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
+          {isLoading ? "Processing..." : "Create Account"} {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
         </Button>
 
         <div className="text-center">
