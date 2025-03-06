@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -47,23 +46,6 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
   const { user } = useAuth();
   const isEmailDisabled = isAuthenticated && user?.email === formData.attorneyEmail;
   const isNamePreFilled = isAuthenticated && Boolean(formData.attorneyName) && !clearedFields.has('attorneyName');
-  const hasErrors = Object.values(errors).some(error => error !== undefined);
-
-  // Reset firm information fields
-  const handleResetFirmInfo = (field: 'firmName' | 'firmWebsite' | 'attorneyName') => {
-    console.log(`Clearing ${field} field`);
-    if (clearFormField) {
-      clearFormField(field);
-    } else {
-      handleInputChange(field, '');
-    }
-  };
-
-  // Prevent event propagation to avoid step navigation issues
-  const handleSelectClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
 
   return (
     <div>
@@ -156,26 +138,11 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               value={formData.firmName}
               onChange={(e) => handleInputChange("firmName", e.target.value)}
               placeholder="Law Firm LLC"
-              className={`mt-1 ${errors.firmName ? "border-red-500" : ""} pr-10`}
+              className={`mt-1 ${errors.firmName ? "border-red-500" : ""}`}
             />
-            {formData.firmName && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                onClick={() => handleResetFirmInfo('firmName')}
-                aria-label="Clear firm name"
-              >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-              </Button>
-            )}
           </div>
           {errors.firmName && (
             <p className="text-red-500 text-sm mt-1">{errors.firmName}</p>
-          )}
-          {isAuthenticated && formData.firmName && !clearedFields.has('firmName') && (
-            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission</p>
           )}
         </div>
 
@@ -189,26 +156,11 @@ export const AttorneyInformationForm: React.FC<AttorneyInformationFormProps> = (
               value={formData.firmWebsite}
               onChange={(e) => handleInputChange("firmWebsite", e.target.value)}
               placeholder="https://lawfirm.com"
-              className={`mt-1 ${errors.firmWebsite ? "border-red-500" : ""} pr-10`}
+              className={`mt-1 ${errors.firmWebsite ? "border-red-500" : ""}`}
             />
-            {formData.firmWebsite && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                onClick={() => handleResetFirmInfo('firmWebsite')}
-                aria-label="Clear firm website"
-              >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-              </Button>
-            )}
           </div>
           {errors.firmWebsite && (
             <p className="text-red-500 text-sm mt-1">{errors.firmWebsite}</p>
-          )}
-          {isAuthenticated && formData.firmWebsite && !clearedFields.has('firmWebsite') && (
-            <p className="text-gray-500 text-sm mt-1">Pre-filled from your previous submission</p>
           )}
         </div>
 

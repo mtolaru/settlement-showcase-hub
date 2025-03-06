@@ -146,9 +146,7 @@ export const useSettlements = (user: User | null) => {
     const latestSettlement = sortedSettlements[0];
     
     return {
-      attorneyName: latestSettlement.attorney,
-      firmName: latestSettlement.firm,
-      firmWebsite: latestSettlement.firmWebsite
+      attorneyName: latestSettlement.attorney
     };
   };
 

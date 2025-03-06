@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -34,12 +33,10 @@ export const useSubmitSettlementForm = () => {
   const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
   const { settlements, getLatestAttorneyInfo } = useSettlements(user);
 
-  // Use our hooks
   useValidateDollarInput(formData, handleInputChange);
   const { handleEmailChange, isValidatingEmail, alreadyExists } = useEmailValidation(formData.attorneyEmail, isValidEmail, setErrors);
   useSubscriptionStatus(setHasActiveSubscription, setIsCheckingSubscription);
 
-  // Debug log - always show current errors
   useEffect(() => {
     console.log("Current form errors state:", errors);
   }, [errors]);
@@ -48,7 +45,6 @@ export const useSubmitSettlementForm = () => {
     setTemporaryId(crypto.randomUUID());
     
     if (isAuthenticated && user?.email) {
-      // Set attorney email from user's email only if it hasn't been cleared
       if (!clearedFields.has('attorneyEmail')) {
         setFormData(prev => ({
           ...prev,
@@ -56,27 +52,16 @@ export const useSubmitSettlementForm = () => {
         }));
       }
       
-      // If user has existing settlements, pre-populate attorney name and firm details
-      // but only for fields that haven't been explicitly cleared
       if (settlements && settlements.length > 0) {
         const attorneyInfo = getLatestAttorneyInfo();
         if (attorneyInfo) {
-          console.log("Pre-populating attorney information from previous settlement", attorneyInfo);
+          console.log("Pre-populating attorney name from previous settlement", attorneyInfo);
           
           setFormData(prev => {
             const newFormData = { ...prev };
             
-            // Only set these fields if they haven't been explicitly cleared by the user
             if (!clearedFields.has('attorneyName') && !newFormData.attorneyName) {
               newFormData.attorneyName = attorneyInfo.attorneyName;
-            }
-            
-            if (!clearedFields.has('firmName') && !newFormData.firmName) {
-              newFormData.firmName = attorneyInfo.firmName;
-            }
-            
-            if (!clearedFields.has('firmWebsite') && !newFormData.firmWebsite) {
-              newFormData.firmWebsite = attorneyInfo.firmWebsite;
             }
             
             return newFormData;
@@ -95,7 +80,6 @@ export const useSubmitSettlementForm = () => {
       setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
       getLatestAttorneyInfo, settlements, clearedFields]);
 
-  // Clear email validation errors for authenticated users using their own email
   useEffect(() => {
     if (isAuthenticated && user?.email === formData.attorneyEmail && errors.attorneyEmail) {
       console.log("Clearing email error for authenticated user using their own email");
@@ -129,7 +113,7 @@ export const useSubmitSettlementForm = () => {
     validateStep2,
     verifyEmail: (email: string) => verifyEmail(email, user?.email),
     unformatNumber,
-    checkSubscriptionStatus: null, // This is now handled by useSubscriptionStatus
+    checkSubscriptionStatus: null,
     emailStatus: {
       isValidating: isValidatingEmail,
       alreadyExists
