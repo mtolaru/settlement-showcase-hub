@@ -71,7 +71,8 @@ export const useSettlements = (user: User | null) => {
             
             // Process the data to ensure all required fields exist
             const allSettlements = processSettlementData(tempData);
-            await verifySettlementImages(allSettlements);
+            setSettlements(allSettlements);
+            setIsLoading(false);
             
             // Update these settlements with the user_id
             const { error: updateError } = await supabase
@@ -94,8 +95,8 @@ export const useSettlements = (user: User | null) => {
       
       // Process the data to ensure all required fields exist
       const allSettlements = processSettlementData(data || []);
-      await verifySettlementImages(allSettlements);
-      
+      setSettlements(allSettlements);
+      setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
       toast({
@@ -134,61 +135,6 @@ export const useSettlements = (user: User | null) => {
         attorney_email: settlement.attorney_email
       };
     });
-  };
-  
-  // Verify settlement images and filter out ones with missing images
-  const verifySettlementImages = async (allSettlements: Settlement[]) => {
-    setProcessingImages(true);
-    console.log('Checking image availability for', allSettlements.length, 'settlements');
-    
-    const filteredSettlements: Settlement[] = [];
-    const settlementsToHide: number[] = [];
-    
-    for (const settlement of allSettlements) {
-      try {
-        // Skip if the settlement is explicitly marked as hidden
-        if (settlement.hidden) {
-          console.log(`Skipping hidden settlement ${settlement.id}`);
-          continue;
-        }
-        
-        // Check if the image exists
-        const imageExists = await verifySettlementImageExists(settlement.id, settlement.photo_url);
-        
-        if (imageExists) {
-          filteredSettlements.push(settlement);
-        } else {
-          console.log(`Hiding settlement ${settlement.id} due to missing image`);
-          settlementsToHide.push(settlement.id);
-        }
-      } catch (error) {
-        console.error(`Error processing settlement ${settlement.id}:`, error);
-        // If there's an error, mark the settlement to be hidden
-        settlementsToHide.push(settlement.id);
-      }
-    }
-    
-    // Update hidden flag for settlements with missing images
-    if (settlementsToHide.length > 0) {
-      try {
-        console.log(`Updating hidden flag for ${settlementsToHide.length} settlements:`, settlementsToHide);
-        const { error } = await supabase
-          .from('settlements')
-          .update({ hidden: true })
-          .in('id', settlementsToHide);
-          
-        if (error) {
-          console.error('Error updating hidden flag:', error);
-        }
-      } catch (updateError) {
-        console.error('Error batch updating hidden flag:', updateError);
-      }
-    }
-    
-    console.log(`Showing ${filteredSettlements.length} of ${allSettlements.length} settlements (${allSettlements.length - filteredSettlements.length} hidden due to missing images)`);
-    setSettlements(filteredSettlements);
-    setProcessingImages(false);
-    setIsLoading(false);
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SettlementImage from "./SettlementImage";
 import SettlementDetails from "./SettlementDetails";
 import type { Settlement } from "@/types/settlement";
@@ -18,12 +18,20 @@ const SettlementGridItem = ({
   onCardClick
 }: SettlementGridItemProps) => {
   const [shouldHide, setShouldHide] = useState<boolean>(false);
+  
+  // Check if settlement is already marked as hidden
+  useEffect(() => {
+    if (settlement.hidden) {
+      setShouldHide(true);
+    }
+  }, [settlement.hidden]);
 
-  const handleImageStatus = ({ shouldHide }: { loaded: boolean, shouldHide: boolean }) => {
-    setShouldHide(shouldHide);
+  const handleImageStatus = ({ shouldHide: hideImage }: { loaded: boolean, shouldHide: boolean }) => {
+    setShouldHide(hideImage);
   };
 
   if (shouldHide) {
+    console.log(`Settlement ${settlement.id} hidden from view (marked as hidden or image missing)`);
     return null;
   }
 

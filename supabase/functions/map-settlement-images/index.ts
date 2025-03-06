@@ -20,6 +20,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
     
+    console.log("Starting settlement image mapping process...");
+    
     // First, check what files actually exist in the processed_images bucket
     const { data: existingFiles, error: bucketError } = await supabase.storage
       .from('processed_images')
@@ -67,16 +69,32 @@ serve(async (req) => {
       )
     }
     
-    // 1. First, reset all incorrect photo_url mappings to null
+    // 1. First, reset all incorrect photo_url mappings to null and mark hidden
+    const { data: allSettlements, error: fetchError } = await supabase
+      .from('settlements')
+      .select('id');
+      
+    if (fetchError) {
+      console.error('Error fetching all settlements:', fetchError);
+      throw fetchError;
+    }
+    
+    console.log(`Found ${allSettlements?.length || 0} total settlements in database`);
+    
+    // Reset all settlements first
     const { error: resetError } = await supabase
       .from('settlements')
-      .update({ photo_url: null })
-      .is('hidden', null); // Only reset non-hidden settlements
+      .update({ 
+        photo_url: null,
+        hidden: true 
+      });
       
     if (resetError) {
-      console.error('Error resetting photo URLs:', resetError);
+      console.error('Error resetting photo URLs and hidden status:', resetError);
       throw resetError;
     }
+    
+    console.log('Reset all settlements to hidden=true and photo_url=null');
     
     // 2. Update only the settlements that have matching images in the bucket
     const updates = [];
@@ -88,25 +106,19 @@ serve(async (req) => {
       if (fileName) {
         const { error: updateError } = await supabase
           .from('settlements')
-          .update({ photo_url: fileName, hidden: false })
+          .update({ 
+            photo_url: fileName, 
+            hidden: false // Mark as visible since it has an image
+          })
           .eq('id', id);
           
         if (updateError) {
           console.error(`Error updating settlement ${id}:`, updateError);
         } else {
           updates.push({ id, fileName });
+          console.log(`Updated settlement ${id} with photo_url=${fileName} and hidden=false`);
         }
       }
-    }
-    
-    // 3. Mark all other settlements as hidden
-    const { error: hideError } = await supabase
-      .from('settlements')
-      .update({ hidden: true })
-      .is('photo_url', null);
-      
-    if (hideError) {
-      console.error('Error hiding settlements without images:', hideError);
     }
     
     // Return the results
