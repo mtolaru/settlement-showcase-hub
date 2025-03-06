@@ -112,7 +112,7 @@ const FAQ = () => {
                 <AccordionTrigger>Can I cancel my subscription?</AccordionTrigger>
                 <AccordionContent className="text-left">
                   Yes, you can cancel your monthly subscription at any time. Your existing settlements will 
-                  remain on the platform.
+                  be delisted when your billing cycle ends.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
