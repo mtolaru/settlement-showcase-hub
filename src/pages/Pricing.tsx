@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,9 +10,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Pricing = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   const isSubmissionFlow = location.pathname === '/submit';
 
   const features = [
@@ -28,11 +29,9 @@ const Pricing = () => {
   ];
 
   const handleSubscribe = async () => {
-    if (!isAuthenticated && !isSubmissionFlow) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to subscribe to our Professional Plan.",
-      });
+    if (!isAuthenticated) {
+      // If user is not logged in, direct them to the submit flow
+      navigate('/submit');
       return;
     }
 
@@ -74,6 +73,19 @@ const Pricing = () => {
     }
   };
 
+  // Determine button text based on authentication status
+  const getButtonText = () => {
+    if (isLoading) {
+      return "Processing...";
+    }
+    
+    if (isAuthenticated) {
+      return "Subscribe Now";
+    }
+    
+    return "Submit Your Settlement";
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="bg-primary-900 text-white py-16">
@@ -109,23 +121,22 @@ const Pricing = () => {
                 </li>
               ))}
             </ul>
-            <Link to="/payment-selection">
-              <Button 
-                className="w-full bg-primary-500 hover:bg-primary-600"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </Link>
+            <Button 
+              className="w-full bg-primary-500 hover:bg-primary-600"
+              disabled={isLoading}
+              onClick={handleSubscribe}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {getButtonText()} <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
           </motion.div>
         </div>
 
