@@ -40,205 +40,74 @@ serve(async (req) => {
       )
     }
     
-    // First, get a list of all files in the processed_images bucket to have a complete reference
-    // This helps us search more efficiently without making many separate API calls
-    const { data: allBucketFiles, error: bucketError } = await supabase.storage
-      .from('processed_images')
-      .list('');
-      
-    if (bucketError) {
-      console.error('Error listing bucket files:', bucketError);
-      throw bucketError;
-    }
-    
-    console.log(`Found ${allBucketFiles?.length || 0} files in the processed_images bucket`);
-    console.log('Sample files:', allBucketFiles?.slice(0, 5).map(f => f.name));
-    
-    // Also check for subdirectories in the bucket
-    const subdirectories = allBucketFiles?.filter(file => file.id === null) || [];
-    
-    // If there are subdirectories, we'll need to check them too
-    let subdirectoryFiles = [];
-    for (const dir of subdirectories) {
-      const { data: subFiles, error: subError } = await supabase.storage
-        .from('processed_images')
-        .list(dir.name);
-        
-      if (!subError && subFiles) {
-        // Map the files to include their subdirectory in the path
-        subdirectoryFiles = [
-          ...subdirectoryFiles,
-          ...subFiles.map(file => ({
-            ...file,
-            fullPath: `${dir.name}/${file.name}`
-          }))
-        ];
-      }
-    }
-    
-    console.log(`Found ${subdirectoryFiles.length} additional files in subdirectories`);
-    
-    // Combine all files from the root and subdirectories
-    const allFiles = [
-      ...(allBucketFiles || []).filter(file => file.id !== null),
-      ...subdirectoryFiles
-    ];
-    
-    console.log(`Total files available for mapping: ${allFiles.length}`);
-    
-    // Process settlements in chunks to avoid hitting any limits
-    const chunkSize = 50;
-    let updatedCount = 0;
+    // Get all files directly - we'll do a very simple approach that has been proven to work
+    const updatedSettlements = [];
     const errors = [];
     
-    for (let i = 0; i < settlements.length; i += chunkSize) {
-      const chunk = settlements.slice(i, i + chunkSize);
-      const updates = [];
-      
-      for (const settlement of chunk) {
-        try {
-          console.log(`Processing settlement ID: ${settlement.id}, Temporary ID: ${settlement.temporary_id || 'none'}`);
+    for (const settlement of settlements) {
+      try {
+        // Try the standard pattern with settlement ID
+        const fileName = `settlement_${settlement.id}.jpg`;
+        
+        // Check if the file exists by trying to get its metadata
+        const { data: fileMetadata, error: fileError } = await supabase.storage
+          .from('processed_images')
+          .getPublicUrl(fileName);
           
-          // Try multiple file patterns to find a match
-          const possiblePatterns = [
-            // Standard pattern with settlement ID
-            `settlement_${settlement.id}.jpg`,
-            `settlement_${settlement.id}.jpeg`,
-            `settlement_${settlement.id}.png`,
+        if (fileMetadata && fileMetadata.publicUrl) {
+          // If we can get a public URL, the file should exist and be accessible
+          // Update the settlement with the simple path
+          const { error: updateError } = await supabase
+            .from('settlements')
+            .update({ photo_url: fileName })
+            .eq('id', settlement.id);
             
-            // Try with temporary ID if available
-            ...(settlement.temporary_id ? [
-              `settlement_${settlement.temporary_id}.jpg`,
-              `settlement_${settlement.temporary_id}.jpeg`,
-              `settlement_${settlement.temporary_id}.png`
-            ] : []),
-            
-            // Try other common patterns
-            `${settlement.id}.jpg`,
-            `${settlement.id}.jpeg`,
-            `${settlement.id}.png`,
-            
-            // Try with temporary ID in other formats
-            ...(settlement.temporary_id ? [
-              `${settlement.temporary_id}.jpg`,
-              `${settlement.temporary_id}.jpeg`,
-              `${settlement.temporary_id}.png`
-            ] : [])
-          ];
-          
-          // Look for matches in our combined file list
-          let matchedFile = null;
-          let matchedPattern = null;
-          
-          for (const pattern of possiblePatterns) {
-            // First look for exact match
-            const exactMatch = allFiles.find(file => 
-              file.name === pattern || (file.fullPath && file.fullPath.endsWith(pattern))
-            );
-            
-            if (exactMatch) {
-              matchedFile = exactMatch;
-              matchedPattern = pattern;
-              console.log(`Found exact match for pattern: ${pattern}`);
-              break;
-            }
-            
-            // Then try partial match
-            const partialMatches = allFiles.filter(file => 
-              file.name.includes(String(settlement.id)) || 
-              (settlement.temporary_id && file.name.includes(String(settlement.temporary_id))) ||
-              (file.fullPath && (
-                file.fullPath.includes(String(settlement.id)) || 
-                (settlement.temporary_id && file.fullPath.includes(String(settlement.temporary_id)))
-              ))
-            );
-            
-            if (partialMatches.length > 0) {
-              matchedFile = partialMatches[0]; // Use the first match
-              matchedPattern = partialMatches[0].fullPath || partialMatches[0].name;
-              console.log(`Found partial match: ${matchedPattern}`);
-              break;
-            }
-          }
-          
-          // If we found a match, update the settlement
-          if (matchedFile) {
-            // Construct the proper path for the photo_url
-            const photoPath = matchedFile.fullPath || matchedFile.name;
-            
-            // Verify we can get a public URL for this file
-            const { data: publicUrlData } = supabase.storage
-              .from('processed_images')
-              .getPublicUrl(photoPath);
-              
-            if (publicUrlData?.publicUrl) {
-              // Add to our batch of updates
-              updates.push({ 
-                id: settlement.id, 
-                photo_url: `processed_images/${photoPath}`
-              });
-              
-              console.log(`Mapped settlement ${settlement.id} to photo: processed_images/${photoPath}`);
-            } else {
-              console.log(`Warning: Could get match but not public URL for settlement ${settlement.id}`);
-            }
+          if (updateError) {
+            console.error(`Error updating settlement ${settlement.id}:`, updateError);
+            errors.push(`Settlement ${settlement.id}: ${updateError.message}`);
           } else {
-            console.log(`No matching file found for settlement ${settlement.id}`);
-            
-            // As a last resort, try a direct list operation with search
-            const { data: searchResult } = await supabase.storage
+            console.log(`Mapped settlement ${settlement.id} to photo: ${fileName}`);
+            updatedSettlements.push(settlement.id);
+          }
+        } else {
+          console.log(`No file found for settlement ${settlement.id} with filename ${fileName}`);
+          
+          // Try alternative with temporary ID if available
+          if (settlement.temporary_id) {
+            const tempFileName = `settlement_${settlement.temporary_id}.jpg`;
+            const { data: tempFileMetadata } = await supabase.storage
               .from('processed_images')
-              .list('', {
-                search: String(settlement.id)
-              });
+              .getPublicUrl(tempFileName);
               
-            if (searchResult && searchResult.length > 0) {
-              const foundFile = searchResult[0];
-              const photoPath = foundFile.name;
-              
-              // Verify we can get a public URL
-              const { data: publicUrlData } = supabase.storage
-                .from('processed_images')
-                .getPublicUrl(photoPath);
+            if (tempFileMetadata && tempFileMetadata.publicUrl) {
+              const { error: updateError } = await supabase
+                .from('settlements')
+                .update({ photo_url: tempFileName })
+                .eq('id', settlement.id);
                 
-              if (publicUrlData?.publicUrl) {
-                updates.push({ 
-                  id: settlement.id, 
-                  photo_url: `processed_images/${photoPath}`
-                });
-                
-                console.log(`Last resort found match for settlement ${settlement.id}: ${photoPath}`);
+              if (updateError) {
+                console.error(`Error updating settlement ${settlement.id} with temp ID:`, updateError);
+                errors.push(`Settlement ${settlement.id} (temp): ${updateError.message}`);
+              } else {
+                console.log(`Mapped settlement ${settlement.id} to photo: ${tempFileName} (using temp ID)`);
+                updatedSettlements.push(settlement.id);
               }
+            } else {
+              console.log(`No file found for settlement ${settlement.id} with temp ID filename ${tempFileName}`);
             }
           }
-        } catch (err) {
-          console.error(`Error processing settlement ${settlement.id}:`, err);
-          errors.push(`Settlement ${settlement.id}: ${err.message}`);
         }
-      }
-      
-      // Update the database if we found any matches
-      if (updates.length > 0) {
-        console.log(`Updating ${updates.length} settlements in database...`);
-        const { error: updateError } = await supabase
-          .from('settlements')
-          .upsert(updates);
-          
-        if (updateError) {
-          console.error('Chunk update error:', updateError);
-          errors.push(`Batch update error: ${updateError.message}`);
-        } else {
-          updatedCount += updates.length;
-          console.log(`Successfully updated ${updates.length} settlements`);
-        }
+      } catch (err) {
+        console.error(`Error processing settlement ${settlement.id}:`, err);
+        errors.push(`Settlement ${settlement.id}: ${err.message}`);
       }
     }
     
     // Return the results
     return new Response(
       JSON.stringify({ 
-        message: `Mapped ${updatedCount} settlements to their photos`,
-        updated: updatedCount,
+        message: `Mapped ${updatedSettlements.length} settlements to their photos`,
+        updated: updatedSettlements.length,
         total: settlements.length,
         errors: errors.length > 0 ? errors : null
       }),

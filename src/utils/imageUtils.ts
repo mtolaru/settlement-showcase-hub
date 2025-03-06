@@ -13,7 +13,18 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
     if (settlementId) {
       // Try generating URL using predictable pattern: settlement_ID.jpg
       console.log(`No photo_url provided for settlement ${settlementId}, trying predictable pattern`);
-      return generateSettlementImageUrl(settlementId);
+      const predictablePhotoUrl = `settlement_${settlementId}.jpg`;
+      
+      // Directly get the public URL for this predictable pattern
+      const { data } = supabase.storage
+        .from('processed_images')
+        .getPublicUrl(predictablePhotoUrl);
+      
+      if (data?.publicUrl) {
+        console.log(`Generated public URL for predictable pattern: ${data.publicUrl}`);
+        return data.publicUrl;
+      }
+      console.log(`Could not generate URL using settlement ID pattern, using placeholder`);
     }
     
     console.log(`No photo_url provided${settlementId ? ` for settlement ${settlementId}` : ''}, using placeholder`);
@@ -27,6 +38,19 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
     if (photoUrl.startsWith('http')) {
       console.log(`Using direct URL: ${photoUrl}`);
       return photoUrl;
+    }
+    
+    // Simple case: just the filename like "settlement_123.jpg"
+    // This is now our preferred format from the mapping function
+    if (!photoUrl.includes('/')) {
+      const { data } = supabase.storage
+        .from('processed_images')
+        .getPublicUrl(photoUrl);
+        
+      if (data?.publicUrl) {
+        console.log(`Generated public URL from simple filename: ${data.publicUrl}`);
+        return data.publicUrl;
+      }
     }
     
     // Handle special case: if the path starts with processed_images/
@@ -85,7 +109,14 @@ export const resolveSettlementImageUrl = (photoUrl?: string | null, settlementId
     
     // If we still can't get a URL and we have a settlement ID, try a pattern with settlement ID
     if (settlementId) {
-      return generateSettlementImageUrl(settlementId);
+      const { data: alternativeData } = supabase.storage
+        .from('processed_images')
+        .getPublicUrl(`settlement_${settlementId}.jpg`);
+        
+      if (alternativeData?.publicUrl) {
+        console.log(`Generated public URL using ID pattern: ${alternativeData.publicUrl}`);
+        return alternativeData.publicUrl;
+      }
     }
     
     console.log(`Could not generate a valid URL, using placeholder`);
@@ -106,13 +137,13 @@ export const generateSettlementImageUrl = (settlementId: number): string => {
   const alternativeFilename = `settlement_${settlementId}.jpg`;
   console.log(`Trying alternative filename pattern: ${alternativeFilename}`);
   
-  const altData = supabase.storage
+  const { data } = supabase.storage
     .from('processed_images')
     .getPublicUrl(alternativeFilename);
     
-  if (altData.data?.publicUrl) {
-    console.log(`Generated public URL using ID pattern: ${altData.data.publicUrl}`);
-    return altData.data.publicUrl;
+  if (data?.publicUrl) {
+    console.log(`Generated public URL using ID pattern: ${data.publicUrl}`);
+    return data.publicUrl;
   }
   
   console.log(`Could not generate URL using settlement ID pattern, using placeholder`);
@@ -143,4 +174,3 @@ export const updateSettlementPhotoUrl = async (settlementId: number, publicUrl: 
     return false;
   }
 };
-

@@ -6,8 +6,9 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, AlertCircle, FileUp, ImageUp, Link } from 'lucide-react';
+import { Trash2, AlertCircle, FileUp, ImageUp, Link, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import TestImageAccess from '@/components/admin/TestImageAccess';
 
 const AdminImport = () => {
   const { toast } = useToast();
@@ -214,10 +215,11 @@ const AdminImport = () => {
       <h1 className="text-3xl font-bold mb-6">Admin Import Tool</h1>
       
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="data">Import Settlements</TabsTrigger>
           <TabsTrigger value="images">Upload Images</TabsTrigger>
           <TabsTrigger value="mapping">Map Images</TabsTrigger>
+          <TabsTrigger value="debug">Debug</TabsTrigger>
         </TabsList>
         
         <TabsContent value="data">
@@ -377,6 +379,62 @@ const AdminImport = () => {
                   <p>Settlements mapped to images: {mappingResults.updated}</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="debug">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-500" />
+                Debug Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert className="bg-amber-50 border-amber-200 mb-4">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription>
+                  Use these tools to diagnose issues with settlement images and bucket access.
+                </AlertDescription>
+              </Alert>
+              
+              <TestImageAccess defaultFileName="settlement_1.jpg" />
+              
+              <div className="p-4 border rounded-lg bg-gray-50">
+                <h3 className="font-medium mb-2">Bucket Content Checker</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  List files in the processed_images bucket
+                </p>
+                
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const { data, error } = await supabase.storage
+                        .from('processed_images')
+                        .list();
+                        
+                      if (error) throw error;
+                      
+                      console.log('Files in processed_images bucket:', data);
+                      toast({
+                        title: "Bucket Content Listed",
+                        description: `Found ${data?.length || 0} files/folders in bucket. Check console for details.`
+                      });
+                    } catch (error) {
+                      console.error('Error listing bucket content:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to list bucket content. See console for details.",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                  size="sm"
+                >
+                  List Bucket Content
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
