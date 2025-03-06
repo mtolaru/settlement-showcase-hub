@@ -284,6 +284,39 @@ export const settlementService = {
             } else {
               console.log("Successfully claimed settlement by temporary_id match");
             }
+          } else {
+            console.log("No matching subscription found, creating a temporary subscription link");
+            
+            // As a fallback, try to create a subscription entry with this temporary_id
+            try {
+              const { error: insertError } = await supabase
+                .from('subscriptions')
+                .insert({
+                  user_id: userId,
+                  temporary_id: settlementData.temporary_id,
+                  is_active: true
+                });
+                
+              if (insertError) {
+                console.error("Error creating temporary subscription link:", insertError);
+              } else {
+                console.log("Created temporary subscription link to help with ownership");
+                
+                // Now try to claim the settlement with the user_id
+                const { error: updateAfterSubError } = await supabase
+                  .from('settlements')
+                  .update({ user_id: userId })
+                  .eq('id', settlementId);
+                  
+                if (updateAfterSubError) {
+                  console.error("Error claiming settlement after creating subscription:", updateAfterSubError);
+                } else {
+                  console.log("Successfully claimed settlement after creating subscription link");
+                }
+              }
+            } catch (subCreateError) {
+              console.error("Exception creating subscription link:", subCreateError);
+            }
           }
         }
       }
@@ -352,24 +385,33 @@ export const settlementService = {
         }
       }
       
-      // 3. Last resort - try a direct delete if the settlement exists and email matches or temporary_id matches
-      if ((userEmail && settlementData.attorney_email === userEmail) || 
-          (settlementData.temporary_id && await this.userOwnsTemporaryId(userId, settlementData.temporary_id))) {
+      // 3. Last resort - try a direct delete with the admin key through the functions API
+      try {
+        console.log("Attempting to delete using functions API as a last resort");
         
-        console.log("Attempting direct delete as last resort");
-        const { data: directDeleteData, error: directDeleteError } = await supabase
-          .from('settlements')
-          .delete()
-          .eq('id', settlementId);
-          
-        if (!directDeleteError && directDeleteData !== null) {
-          console.log('Settlement deleted successfully via direct delete');
-          return { success: true, data: directDeleteData };
+        const { data: functionResponse, error: functionError } = await supabase.functions.invoke('delete-settlement', {
+          body: { 
+            settlementId,
+            userId,
+            email: userEmail,
+            temporaryId: settlementData.temporary_id
+          }
+        });
+        
+        if (functionError) {
+          console.error('Error calling delete-settlement function:', functionError);
+          throw new Error("Error calling delete function: " + functionError.message);
         }
         
-        if (directDeleteError) {
-          console.error('Error with direct delete:', directDeleteError);
+        if (functionResponse?.success) {
+          console.log('Settlement deleted successfully via function API');
+          return { success: true };
+        } else {
+          console.error('Function API returned error:', functionResponse?.error);
+          throw new Error(functionResponse?.error || "Deletion failed via function API");
         }
+      } catch (functionCallError) {
+        console.error('Exception calling delete-settlement function:', functionCallError);
       }
       
       // If we got here, the settlement couldn't be deleted

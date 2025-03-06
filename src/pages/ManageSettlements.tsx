@@ -48,6 +48,45 @@ const ManageSettlements = () => {
           });
           refreshSettlements();
         }
+        
+        // Also try to link settlements by temporary_id from subscriptions
+        const { data: subscriptions, error: subError } = await supabase
+          .from('subscriptions')
+          .select('temporary_id')
+          .eq('user_id', user.id)
+          .not('temporary_id', 'is', null);
+          
+        if (subError) {
+          console.error("Error fetching user subscriptions:", subError);
+        } else if (subscriptions && subscriptions.length > 0) {
+          const temporaryIds = subscriptions
+            .map(sub => sub.temporary_id)
+            .filter(Boolean);
+            
+          if (temporaryIds.length > 0) {
+            console.log("Attempting to link settlements by temporary IDs:", temporaryIds);
+            
+            for (const tempId of temporaryIds) {
+              const { data: linkedData, error: linkError } = await supabase
+                .from('settlements')
+                .update({ user_id: user.id })
+                .is('user_id', null)
+                .eq('temporary_id', tempId)
+                .select('id');
+                
+              if (linkError) {
+                console.error(`Error linking settlement with temporary ID ${tempId}:`, linkError);
+              } else if (linkedData && linkedData.length > 0) {
+                console.log(`Successfully linked ${linkedData.length} settlement(s) with temporary ID ${tempId}`);
+                toast({
+                  title: "Settlements Linked",
+                  description: `${linkedData.length} additional settlement(s) have been linked to your account.`,
+                });
+                refreshSettlements();
+              }
+            }
+          }
+        }
       } catch (error) {
         console.error("Error in linkUnlinkedSettlements:", error);
       }
@@ -61,9 +100,10 @@ const ManageSettlements = () => {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     
-    // Try to link settlements by email before refreshing
+    // Try to link settlements by email and temporary_id before refreshing
     if (user?.id && user?.email) {
       try {
+        // Link by email
         const { data: linkedData, error: linkError } = await supabase
           .from('settlements')
           .update({ user_id: user.id })
@@ -79,6 +119,44 @@ const ManageSettlements = () => {
             title: "Settlements Linked",
             description: `${linkedData.length} additional settlement(s) have been linked to your account.`,
           });
+        }
+        
+        // Also try to link by temporary_id from subscriptions
+        const { data: subscriptions, error: subError } = await supabase
+          .from('subscriptions')
+          .select('temporary_id')
+          .eq('user_id', user.id)
+          .not('temporary_id', 'is', null);
+          
+        if (subError) {
+          console.error("Error fetching user subscriptions:", subError);
+        } else if (subscriptions && subscriptions.length > 0) {
+          const temporaryIds = subscriptions
+            .map(sub => sub.temporary_id)
+            .filter(Boolean);
+            
+          if (temporaryIds.length > 0) {
+            console.log("Attempting to link settlements by temporary IDs during refresh:", temporaryIds);
+            
+            for (const tempId of temporaryIds) {
+              const { data: tempLinkedData, error: tempLinkError } = await supabase
+                .from('settlements')
+                .update({ user_id: user.id })
+                .is('user_id', null)
+                .eq('temporary_id', tempId)
+                .select('id');
+                
+              if (tempLinkError) {
+                console.error(`Error linking settlement with temporary ID ${tempId}:`, tempLinkError);
+              } else if (tempLinkedData && tempLinkedData.length > 0) {
+                console.log(`Successfully linked ${tempLinkedData.length} settlement(s) with temporary ID ${tempId}`);
+                toast({
+                  title: "Settlements Linked",
+                  description: `${tempLinkedData.length} additional settlement(s) have been linked to your account.`,
+                });
+              }
+            }
+          }
         }
       } catch (error) {
         console.error("Error during manual linking:", error);
