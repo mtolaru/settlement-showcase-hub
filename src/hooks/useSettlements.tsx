@@ -5,9 +5,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import type { Settlement } from "@/types/settlement";
 import { useSubscription } from "@/hooks/useSubscription";
+import { verifyFileExists } from "@/utils/imageUtils";
 
-export const useSettlements = (user: User | null) => {
+export const useSettlements = (user: User | null, hideWithoutImages: boolean = false) => {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [filteredSettlements, setFilteredSettlements] = useState<Settlement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { subscription } = useSubscription(user);
@@ -29,6 +31,7 @@ export const useSettlements = (user: User | null) => {
       if (!hasActiveSubscription) {
         console.log('User does not have an active subscription, showing no settlements');
         setSettlements([]);
+        setFilteredSettlements([]);
         setIsLoading(false);
         return;
       }
@@ -103,6 +106,12 @@ export const useSettlements = (user: User | null) => {
               console.log('Updated settlements with user_id');
             }
             
+            if (hideWithoutImages) {
+              filterSettlementsWithValidImages(processedData);
+            } else {
+              setFilteredSettlements(processedData);
+            }
+            
             setIsLoading(false);
             return;
           }
@@ -137,6 +146,13 @@ export const useSettlements = (user: User | null) => {
       });
       
       setSettlements(processedData);
+      
+      if (hideWithoutImages) {
+        filterSettlementsWithValidImages(processedData);
+      } else {
+        setFilteredSettlements(processedData);
+      }
+      
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
@@ -149,17 +165,46 @@ export const useSettlements = (user: User | null) => {
     }
   };
 
+  const filterSettlementsWithValidImages = async (allSettlements: Settlement[]) => {
+    try {
+      const validSettlements: Settlement[] = [];
+      
+      for (const settlement of allSettlements) {
+        if (!settlement.photo_url) {
+          // Skip settlements with no photo_url
+          console.log(`Settlement ${settlement.id} has no photo_url, filtering out`);
+          continue;
+        }
+        
+        const exists = await verifyFileExists(settlement.photo_url, settlement.id);
+        if (exists) {
+          validSettlements.push(settlement);
+        } else {
+          console.log(`Image for settlement ${settlement.id} (${settlement.photo_url}) doesn't exist, filtering out`);
+        }
+      }
+      
+      setFilteredSettlements(validSettlements);
+    } catch (error) {
+      console.error('Error filtering settlements with valid images:', error);
+      // Fallback to showing all settlements
+      setFilteredSettlements(allSettlements);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchSettlements();
     } else {
       setSettlements([]);
+      setFilteredSettlements([]);
       setIsLoading(false);
     }
-  }, [user, subscription]);
+  }, [user, subscription, hideWithoutImages]);
 
   return {
-    settlements,
+    settlements: filteredSettlements, // Return filtered settlements based on image validity
+    allSettlements: settlements, // The original list of all settlements
     isLoading,
     refreshSettlements: fetchSettlements
   };
