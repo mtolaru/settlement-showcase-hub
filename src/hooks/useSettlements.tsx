@@ -39,7 +39,8 @@ export const useSettlements = (user: User | null) => {
       let query = supabase
         .from('settlements')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('hidden', false); // Only get non-hidden settlements
       
       const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -59,6 +60,7 @@ export const useSettlements = (user: User | null) => {
             .from('settlements')
             .select('*')
             .eq('temporary_id', tempId)
+            .eq('hidden', false) // Only get non-hidden settlements
             .order('created_at', { ascending: false });
             
           if (tempError) {
@@ -68,7 +70,7 @@ export const useSettlements = (user: User | null) => {
             
             // Process the data to ensure all required fields exist
             const allSettlements = processSettlementData(tempData);
-            await filterSettlementsWithMissingImages(allSettlements);
+            await verifySettlementImages(allSettlements);
             
             // Update these settlements with the user_id
             const { error: updateError } = await supabase
@@ -91,7 +93,7 @@ export const useSettlements = (user: User | null) => {
       
       // Process the data to ensure all required fields exist
       const allSettlements = processSettlementData(data || []);
-      await filterSettlementsWithMissingImages(allSettlements);
+      await verifySettlementImages(allSettlements);
       
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
@@ -127,17 +129,19 @@ export const useSettlements = (user: User | null) => {
         user_id: settlement.user_id,
         payment_completed: settlement.payment_completed,
         photo_url: settlement.photo_url,
-        hidden: settlement.hidden
+        hidden: settlement.hidden,
+        attorney_email: settlement.attorney_email
       };
     });
   };
   
-  // Filter out settlements with missing images
-  const filterSettlementsWithMissingImages = async (allSettlements: Settlement[]) => {
+  // Verify settlement images and filter out ones with missing images
+  const verifySettlementImages = async (allSettlements: Settlement[]) => {
     setProcessingImages(true);
     console.log('Checking image availability for', allSettlements.length, 'settlements');
     
     const filteredSettlements: Settlement[] = [];
+    const settlementsToHide: number[] = [];
     
     for (const settlement of allSettlements) {
       try {
@@ -154,16 +158,29 @@ export const useSettlements = (user: User | null) => {
           filteredSettlements.push(settlement);
         } else {
           console.log(`Hiding settlement ${settlement.id} due to missing image`);
-          
-          // Optionally update the hidden flag in the database
-          await supabase
-            .from('settlements')
-            .update({ hidden: true })
-            .eq('id', settlement.id);
+          settlementsToHide.push(settlement.id);
         }
       } catch (error) {
         console.error(`Error processing settlement ${settlement.id}:`, error);
-        // If there's an error, skip this settlement
+        // If there's an error, mark the settlement to be hidden
+        settlementsToHide.push(settlement.id);
+      }
+    }
+    
+    // Update hidden flag for settlements with missing images
+    if (settlementsToHide.length > 0) {
+      try {
+        console.log(`Updating hidden flag for ${settlementsToHide.length} settlements:`, settlementsToHide);
+        const { error } = await supabase
+          .from('settlements')
+          .update({ hidden: true })
+          .in('id', settlementsToHide);
+          
+        if (error) {
+          console.error('Error updating hidden flag:', error);
+        }
+      } catch (updateError) {
+        console.error('Error batch updating hidden flag:', updateError);
       }
     }
     

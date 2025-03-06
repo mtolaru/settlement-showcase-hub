@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -7,6 +6,7 @@ import { ShareButton } from "@/components/sharing/ShareButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { resolveSettlementImageUrlSync, resolveSettlementImageUrl } from "@/utils/imageUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SettlementGridProps {
   settlements: Settlement[];
@@ -92,43 +92,82 @@ const SettlementGridItem = ({
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
+  const [shouldHide, setShouldHide] = useState<boolean>(false);
 
   useEffect(() => {
-    // Get a sync URL immediately for fast initial render
     const initialUrl = resolveSettlementImageUrlSync(settlement.photo_url, settlement.id);
     if (initialUrl !== imageUrl) {
       setImageUrl(initialUrl);
     }
     
-    // Then get the verified URL asynchronously
     const loadVerifiedImage = async () => {
       try {
         const verifiedUrl = await resolveSettlementImageUrl(settlement.photo_url, settlement.id);
+        
+        if (verifiedUrl === "/placeholder.svg" && initialUrl !== "/placeholder.svg") {
+          console.log(`Settlement ${settlement.id} has missing image, marking hidden`);
+          markSettlementHidden(settlement.id);
+          setShouldHide(true);
+          return;
+        }
+        
         if (verifiedUrl !== imageUrl) {
           setImageUrl(verifiedUrl);
         }
       } catch (err) {
         console.error(`Error loading verified image for settlement ${settlement.id}:`, err);
+        markSettlementHidden(settlement.id);
+        setShouldHide(true);
       }
     };
     
     loadVerifiedImage();
   }, [settlement.photo_url, settlement.id]);
   
+  const markSettlementHidden = async (settlementId: number) => {
+    try {
+      const { error } = await supabase
+        .from('settlements')
+        .update({ hidden: true })
+        .eq('id', settlementId);
+        
+      if (error) {
+        console.error(`Failed to mark settlement ${settlementId} as hidden:`, error);
+      } else {
+        console.log(`Successfully marked settlement ${settlementId} as hidden`);
+      }
+    } catch (err) {
+      console.error(`Error marking settlement ${settlementId} as hidden:`, err);
+    }
+  };
+  
   const handleImageError = () => {
     console.error(`Error loading image for settlement ${settlement.id} (${imageUrl})`);
     setLoadError(true);
     
-    // If we haven't already tried the placeholder, use it now
+    if (imageUrl !== "/placeholder.svg") {
+      markSettlementHidden(settlement.id);
+      setShouldHide(true);
+    }
+    
     if (imageUrl !== "/placeholder.svg") {
       setImageUrl("/placeholder.svg");
     }
   };
   
   const handleImageLoad = () => {
-    setImageLoaded(true);
-    setLoadError(false);
+    if (imageUrl === "/placeholder.svg") {
+      markSettlementHidden(settlement.id);
+      setShouldHide(true);
+    } else {
+      setImageLoaded(true);
+      setLoadError(false);
+    }
   };
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <motion.div

@@ -71,6 +71,7 @@ const Leaderboard = () => {
         }
         
         queryParts.push('payment_completed.eq.true');
+        queryParts.push('hidden.eq.false'); // Only get non-hidden settlements
         
         const { data, error } = await supabase
           .from('settlements')
@@ -101,7 +102,8 @@ const Leaderboard = () => {
             temporary_id: settlement.temporary_id,
             user_id: settlement.user_id,
             payment_completed: settlement.payment_completed,
-            photo_url: settlement.photo_url
+            photo_url: settlement.photo_url,
+            hidden: settlement.hidden
           };
         }) || [];
         
