@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,7 +20,7 @@ export const useSettlements = (user: User | null) => {
         return;
       }
 
-      console.log('Fetching settlements for user:', user.id);
+      console.log('Fetching settlements for user:', user.id, 'email:', user.email);
       
       const hasActiveSubscription = !!subscription?.is_active;
       console.log('User has active subscription:', hasActiveSubscription);
@@ -65,26 +66,39 @@ export const useSettlements = (user: User | null) => {
           console.error('Error fetching settlements by email:', emailError);
         } else if (emailData) {
           console.log('Found settlements by email:', emailData.length);
+          
           // For settlements found by email but not user_id, try to update their user_id
           for (const settlement of emailData) {
-            if (!settlement.user_id) {
+            if (!settlement.user_id || settlement.user_id !== user.id) {
+              console.log(`Attempting to claim settlement ${settlement.id} with email ${user.email} and temporary_id ${settlement.temporary_id || 'none'}`);
+              
               try {
                 const { error: updateError } = await supabase
                   .from('settlements')
                   .update({ user_id: user.id })
                   .eq('id', settlement.id)
-                  .is('user_id', null);
+                  .eq('attorney_email', user.email);
                   
                 if (updateError) {
                   console.error(`Error updating user_id for settlement ${settlement.id}:`, updateError);
                 } else {
                   console.log(`Updated user_id for settlement ${settlement.id}`);
+                  
+                  // Show toast to inform user we've linked a settlement
+                  if (settlement.temporary_id) {
+                    toast({
+                      title: "Settlement Linked",
+                      description: `We found and linked a settlement with your email address.`,
+                    });
+                  }
                 }
               } catch (error) {
                 console.error(`Failed to update user_id for settlement ${settlement.id}:`, error);
               }
             }
           }
+          
+          // Always add the email-matching settlements to our list
           allSettlements = [...allSettlements, ...emailData];
         }
       }
@@ -109,14 +123,25 @@ export const useSettlements = (user: User | null) => {
           // First update any settlements with these temporary IDs to associate with this user
           for (const tempId of temporaryIds) {
             try {
-              const { error: updateError } = await supabase
+              console.log(`Attempting to claim settlements with temporary_id ${tempId} for user ${user.id}`);
+              
+              const { data: updateData, error: updateError } = await supabase
                 .from('settlements')
                 .update({ user_id: user.id })
                 .eq('temporary_id', tempId)
-                .is('user_id', null);
+                .is('user_id', null)
+                .select();
                 
               if (updateError) {
                 console.error(`Error associating settlement with temporary ID ${tempId}:`, updateError);
+              } else if (updateData && updateData.length > 0) {
+                console.log(`Successfully claimed ${updateData.length} settlements with temporary ID ${tempId}`);
+                
+                // Show toast to inform user we've linked settlements
+                toast({
+                  title: "Settlements Linked",
+                  description: `We found and linked ${updateData.length} settlements that belong to you.`,
+                });
               }
             } catch (error) {
               console.error(`Failed to update user_id for temporary ID ${tempId}:`, error);
@@ -164,38 +189,63 @@ export const useSettlements = (user: User | null) => {
   // Associate settlements with user based on email or temporary IDs
   const associateSettlementsWithUser = async (user: User) => {
     try {
-      // 1. Enhanced: Actively claim unassigned settlements by email with more detailed logging
+      // 1. Claim unassigned settlements by email with more detailed logging
       if (user.email) {
         console.log('Attempting to claim unassigned settlements for email:', user.email);
-        const { data: claimedByEmail, error: updateError } = await supabase
+        
+        // Check for unclaimed settlements with this email
+        const { data: unclaimedSettlements, error: checkError } = await supabase
           .from('settlements')
-          .update({ user_id: user.id })
+          .select('id')
           .is('user_id', null)
           .eq('attorney_email', user.email)
-          .eq('payment_completed', true)
-          .select('id');
+          .eq('payment_completed', true);
           
-        if (updateError) {
-          console.error('Error claiming settlements by email:', updateError);
-        } else {
-          const claimCount = claimedByEmail?.length || 0;
-          console.log(`Successfully claimed ${claimCount} unassigned settlements by email`);
+        if (checkError) {
+          console.error('Error checking for unclaimed settlements:', checkError);
+        } else if (unclaimedSettlements && unclaimedSettlements.length > 0) {
+          console.log(`Found ${unclaimedSettlements.length} unclaimed settlements with email ${user.email}`);
           
-          // If settlements were claimed, notify the user
-          if (claimCount > 0) {
-            toast({
-              title: "Settlements Linked",
-              description: `We found ${claimCount} settlements associated with your email and linked them to your account.`,
-            });
+          // Now update them
+          const { data: claimedByEmail, error: updateError } = await supabase
+            .from('settlements')
+            .update({ user_id: user.id })
+            .is('user_id', null)
+            .eq('attorney_email', user.email)
+            .eq('payment_completed', true)
+            .select('id');
             
-            // Get details about the claimed settlements for better user feedback
-            const { data: claimedDetails } = await supabase
-              .from('settlements')
-              .select('id, amount, attorney, firm, type')
-              .in('id', claimedByEmail?.map(s => s.id) || []);
+          if (updateError) {
+            console.error('Error claiming settlements by email:', updateError);
+          } else {
+            const claimCount = claimedByEmail?.length || 0;
+            console.log(`Successfully claimed ${claimCount} unassigned settlements by email`);
+            
+            // If settlements were claimed, notify the user
+            if (claimCount > 0) {
+              toast({
+                title: "Settlements Linked",
+                description: `We found ${claimCount} settlements associated with your email and linked them to your account.`,
+              });
               
-            console.log('Claimed settlement details:', claimedDetails);
+              // Get details about the claimed settlements for better user feedback
+              const { data: claimedDetails } = await supabase
+                .from('settlements')
+                .select('id, amount, attorney, firm, type, temporary_id')
+                .in('id', claimedByEmail?.map(s => s.id) || []);
+                
+              console.log('Claimed settlement details:', claimedDetails);
+              
+              // Log each temporary ID
+              if (claimedDetails) {
+                claimedDetails.forEach(s => {
+                  console.log(`Claimed settlement ${s.id} with temporary_id: ${s.temporary_id || 'none'}`);
+                });
+              }
+            }
           }
+        } else {
+          console.log('No unclaimed settlements found with this email');
         }
       }
       
@@ -216,9 +266,34 @@ export const useSettlements = (user: User | null) => {
         if (temporaryIds.length > 0) {
           console.log('Attempting to claim settlements by temporary IDs:', temporaryIds);
           
+          // Log all temporary IDs for debugging
+          temporaryIds.forEach(id => {
+            console.log(`Checking temporary ID: ${id}`);
+          });
+          
+          // Check for any settlements with these IDs
+          const { data: tempIdSettlements, error: checkTempError } = await supabase
+            .from('settlements')
+            .select('id, temporary_id')
+            .in('temporary_id', temporaryIds);
+            
+          if (checkTempError) {
+            console.error('Error checking settlements by temporary ID:', checkTempError);
+          } else {
+            console.log(`Found ${tempIdSettlements?.length || 0} settlements with matching temporary IDs`);
+            
+            if (tempIdSettlements) {
+              tempIdSettlements.forEach(s => {
+                console.log(`Settlement ${s.id} has temporary_id: ${s.temporary_id}`);
+              });
+            }
+          }
+          
           let totalClaimed = 0;
           
           for (const tempId of temporaryIds) {
+            console.log(`Attempting to claim settlements with temporary_id: ${tempId}`);
+            
             const { data: claimed, error: tempIdError } = await supabase
               .from('settlements')
               .update({ user_id: user.id })
@@ -232,11 +307,22 @@ export const useSettlements = (user: User | null) => {
               const claimCount = claimed?.length || 0;
               totalClaimed += claimCount;
               console.log(`Successfully claimed ${claimCount} settlements with temporary ID ${tempId}`);
+              
+              if (claimed && claimed.length > 0) {
+                claimed.forEach(s => {
+                  console.log(`Claimed settlement ID: ${s.id}`);
+                });
+              }
             }
           }
           
           if (totalClaimed > 0) {
             console.log(`Total settlements claimed by temporary IDs: ${totalClaimed}`);
+            
+            toast({
+              title: "Settlements Linked",
+              description: `We found ${totalClaimed} settlements that belong to you and linked them to your account.`,
+            });
           }
         }
       }

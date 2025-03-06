@@ -38,61 +38,63 @@ const SettlementsSection = ({
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
       // First, verify the settlement exists and get its details
-      try {
-        const { data: settlementData, error: fetchError } = await supabase
-          .from('settlements')
-          .select('id, user_id, attorney_email, temporary_id')
-          .eq('id', settlementId)
-          .maybeSingle();
-        
-        if (fetchError) {
-          console.error('Error fetching settlement:', fetchError);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to verify settlement. Please try again.",
-          });
-          return;
-        }
-        
-        if (!settlementData) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Settlement not found. It may have been already deleted.",
-          });
-          return;
-        }
-        
-        console.log("Settlement data before deletion:", settlementData);
-        
-        // Enhanced: Attempt to associate the settlement with the current user if needed
-        if (!settlementData.user_id || settlementData.user_id !== userId) {
-          console.log("Settlement doesn't belong to current user, attempting to claim it first");
-          
-          // Get user email for claiming
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user?.email && settlementData.attorney_email === user.email) {
-            console.log("User's email matches settlement attorney_email, attempting to claim");
-            
-            const { error: claimError } = await supabase
-              .from('settlements')
-              .update({ user_id: userId })
-              .eq('id', settlementId);
-              
-            if (claimError) {
-              console.error("Error claiming settlement by email:", claimError);
-            } else {
-              console.log("Successfully claimed settlement by email match");
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching settlement:", error);
+      const { data: settlementData, error: fetchError } = await supabase
+        .from('settlements')
+        .select('id, user_id, attorney_email, temporary_id')
+        .eq('id', settlementId)
+        .maybeSingle();
+      
+      if (fetchError) {
+        console.error('Error fetching settlement:', fetchError);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to verify settlement. Please try again.",
+        });
+        return;
       }
       
-      // Proceed with deletion
+      if (!settlementData) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Settlement not found. It may have been already deleted.",
+        });
+        return;
+      }
+      
+      console.log("Settlement data before deletion:", settlementData);
+      
+      // Get user email for claiming/verification
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email;
+      
+      // Enhanced association check before deletion
+      if (!settlementData.user_id || settlementData.user_id !== userId) {
+        console.log(`Settlement doesn't belong to current user. 
+          Settlement user_id: ${settlementData.user_id || 'null'}, 
+          Current user_id: ${userId},
+          Settlement attorney_email: ${settlementData.attorney_email || 'null'},
+          User email: ${userEmail || 'null'}`);
+        
+        // Try to claim by email match
+        if (userEmail && settlementData.attorney_email === userEmail) {
+          console.log("User's email matches settlement attorney_email, attempting to claim");
+          
+          const { error: claimError } = await supabase
+            .from('settlements')
+            .update({ user_id: userId })
+            .eq('id', settlementId);
+            
+          if (claimError) {
+            console.error("Error claiming settlement by email:", claimError);
+          } else {
+            console.log("Successfully claimed settlement by email match");
+          }
+        }
+      }
+      
+      // Proceed with deletion using service
       const result = await settlementService.deleteSettlement(settlementId, userId);
       
       if (result.success) {
@@ -103,11 +105,11 @@ const SettlementsSection = ({
           description: "Your settlement has been successfully deleted.",
         });
       } else {
-        console.error("Delete operation did not return success=true");
+        console.error("Delete operation did not return success=true:", result);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to delete settlement. Please try again.",
+          description: result.error || "Failed to delete settlement. Please try again.",
         });
       }
     } catch (error) {
