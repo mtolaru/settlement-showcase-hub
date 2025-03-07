@@ -42,7 +42,7 @@ const SubscriptionCard = ({
             ✓ Unlimited settlement submissions
           </li>
           <li className="flex items-center gap-2">✓ Transform your Settlements into content</li>
-          <li className="flex items-center gap-2"></li>
+          <li className="flex items-center gap-2">✓ Professional listing on SettlementWins.com</li>
         </ul>
       </div>
     </div>;
