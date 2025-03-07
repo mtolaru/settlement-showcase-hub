@@ -46,14 +46,25 @@ serve(async (req) => {
     // Parse request body
     const { temporaryId, userId, returnUrl } = await req.json();
     
+    // Get the origin for this request with fallbacks
+    const requestOrigin = req.headers.get('origin') || 'https://www.settlementwins.com';
+    
     // Make sure we have a valid return URL
-    const validatedReturnUrl = returnUrl || `${req.headers.get('origin')}/confirmation`;
+    // For production, default to the main domain if no specific return URL is provided
+    let validatedReturnUrl = returnUrl;
+    if (!validatedReturnUrl) {
+      // Determine if this is a production environment based on the request origin
+      const isProduction = requestOrigin.includes('settlementwins.com');
+      validatedReturnUrl = isProduction 
+        ? 'https://www.settlementwins.com/confirmation'
+        : `${requestOrigin}/confirmation`;
+    }
 
     console.log("Creating checkout session with params:", { 
       temporaryId, 
       userId, 
       returnUrl: validatedReturnUrl,
-      origin: req.headers.get('origin') || 'unknown'
+      origin: requestOrigin || 'unknown'
     });
 
     // Create the checkout session
@@ -77,7 +88,7 @@ serve(async (req) => {
       ],
       mode: 'subscription',
       success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${temporaryId}`,
-      cancel_url: `${req.headers.get('origin')}/submit?step=3&canceled=true`,
+      cancel_url: `${requestOrigin}/submit?step=3&canceled=true`,
       client_reference_id: temporaryId,
       metadata: {
         temporaryId: temporaryId,
