@@ -1,6 +1,7 @@
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 const FAQ = () => {
   return (
@@ -69,7 +70,10 @@ const FAQ = () => {
               <AccordionItem value="edit-after-submission">
                 <AccordionTrigger>Can I edit my settlement after submission?</AccordionTrigger>
                 <AccordionContent className="text-left">
-                  Absolutely.
+                  Absolutely. You can edit your settlement details anytime through your account dashboard. 
+                  <Link to="/manage" className="text-primary-600 hover:underline ml-1">
+                    Log in to your account
+                  </Link> to access and update your submissions.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
