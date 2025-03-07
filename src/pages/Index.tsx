@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
 import LocationSelector from "@/components/home/LocationSelector";
-import LazySettlementCard from "@/components/home/LazySettlementCard";
+import SettlementCard from "@/components/home/SettlementCard";
 import WhyShare from "@/components/home/WhyShare";
 import CallToAction from "@/components/home/CallToAction";
 import { ArrowRight, Trophy, Clock, FileQuestion, Loader2 } from "lucide-react";
@@ -214,7 +214,7 @@ const Index = () => {
               <LoadingState />
             ) : recentSettlements.length > 0 ? (
               recentSettlements.map((settlement) => (
-                <LazySettlementCard 
+                <SettlementCard 
                   key={settlement.id} 
                   settlement={formatSettlement(settlement)} 
                 />
@@ -251,7 +251,7 @@ const Index = () => {
               <LoadingState />
             ) : topSettlements.length > 0 ? (
               topSettlements.map((settlement) => (
-                <LazySettlementCard 
+                <SettlementCard 
                   key={settlement.id} 
                   settlement={formatSettlement(settlement)} 
                 />
