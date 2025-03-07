@@ -10,13 +10,26 @@ const getSupabaseConfig = () => {
   // Check for direct environment variables first (for Vercel and other hosting platforms)
   if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_KEY) {
     console.log(`Using direct environment variables for Supabase`);
-    return {
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-      supabaseKey: import.meta.env.VITE_SUPABASE_KEY
-    };
+    try {
+      // Validate URL format
+      new URL(import.meta.env.VITE_SUPABASE_URL);
+      console.log(`VITE_SUPABASE_URL validation passed`);
+      
+      return {
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+        supabaseKey: import.meta.env.VITE_SUPABASE_KEY
+      };
+    } catch (error) {
+      console.error(`Invalid VITE_SUPABASE_URL format:`, import.meta.env.VITE_SUPABASE_URL);
+      console.error(`Error details:`, error);
+      // Fall back to default values below
+    }
+  } else {
+    console.warn('Direct Supabase environment variables not found. This is expected in development but may cause issues in production.');
+    console.log('Available env vars:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
   }
   
-  // Default to development values if direct vars aren't available
+  // Default to development values if direct vars aren't available or invalid
   let supabaseUrl = "https://zxstilrzamzlgswgwlpp.supabase.co";
   let supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4c3RpbHJ6YW16bGdzd2d3bHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1MDAzOTYsImV4cCI6MjA1NjA3NjM5Nn0.WiqcQcQnxfGhE9BwCorEYdZbV3ece7ITv2OwCUufpwI";
 
@@ -34,16 +47,65 @@ const getSupabaseConfig = () => {
     console.log('Using development Supabase environment');
   }
 
-  return { supabaseUrl, supabaseKey };
+  try {
+    // Validate URL format before returning
+    new URL(supabaseUrl);
+    return { supabaseUrl, supabaseKey };
+  } catch (error) {
+    console.error(`Invalid Supabase URL format: ${supabaseUrl}`);
+    console.error('Error details:', error);
+    throw new Error(`Invalid Supabase URL: ${supabaseUrl}. Please check your environment variables.`);
+  }
 };
 
-const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+let supabaseUrl, supabaseKey;
 
-// Log connection info (without revealing the full key)
-console.log(`Connecting to Supabase URL: ${supabaseUrl}`);
-console.log(`Using key: ${supabaseKey.substring(0, 8)}...`);
+try {
+  const config = getSupabaseConfig();
+  supabaseUrl = config.supabaseUrl;
+  supabaseKey = config.supabaseKey;
+  
+  // Log connection info (without revealing the full key)
+  console.log(`Connecting to Supabase URL: ${supabaseUrl}`);
+  console.log(`Using key: ${supabaseKey.substring(0, 8)}...`);
+} catch (error) {
+  console.error('Failed to configure Supabase client:', error);
+  // Provide fallback values to prevent app from crashing
+  supabaseUrl = "https://zxstilrzamzlgswgwlpp.supabase.co";
+  supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4c3RpbHJ6YW16bGdzd2d3bHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1MDAzOTYsImV4cCI6MjA1NjA3NjM5Nn0.WiqcQcQnxfGhE9BwCorEYdZbV3ece7ITv2OwCUufpwI";
+  console.log('Using fallback Supabase configuration');
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
+
+// Add a health check function to verify connection
+export const checkSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('settlements').select('count').limit(1);
+    if (error) {
+      console.error('Supabase connection check failed:', error);
+      return { success: false, error: error.message };
+    }
+    console.log('Supabase connection successful', data);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Supabase connection check exception:', error);
+    return { success: false, error: String(error) };
+  }
+};
+
+// Run the health check immediately to detect any issues early
+setTimeout(() => {
+  console.log('Running Supabase connection check...');
+  checkSupabaseConnection().then(result => {
+    console.log('Connection check result:', result);
+  });
+}, 2000);

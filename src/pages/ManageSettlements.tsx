@@ -1,12 +1,14 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useSettlements } from "@/hooks/useSettlements";
 import AccountHeader from "@/components/manage/AccountHeader";
 import SubscriptionSection from "@/components/manage/SubscriptionSection";
 import SettlementsSection from "@/components/manage/SettlementsSection";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSupabaseConnection } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { AlertCircle } from "lucide-react";
 
 const ManageSettlements = () => {
   const {
@@ -25,11 +27,27 @@ const ManageSettlements = () => {
     isLoading: isLoadingSettlements,
     refreshSettlements
   } = useSettlements(user);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        setConnectionError(null);
+        const result = await checkSupabaseConnection();
+        if (!result.success) {
+          setConnectionError(`Connection check failed: ${result.error}`);
+          console.error('Supabase connection check failed:', result.error);
+        } else {
+          console.log('Supabase connection verified:', result);
+        }
+      } catch (error) {
+        setConnectionError(`Connection check error: ${String(error)}`);
+        console.error('Error checking Supabase connection:', error);
+      }
+    };
+    
+    checkConnection();
     checkAuth();
   }, [checkAuth]);
 
@@ -98,6 +116,22 @@ const ManageSettlements = () => {
   return <div className="min-h-screen bg-white py-12">
       <div className="container max-w-4xl">
         <AccountHeader user={user} signOut={signOut} />
+
+        {connectionError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 mb-6 rounded-lg flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 mt-0.5" />
+            <div>
+              <h3 className="font-semibold">Supabase Connection Error</h3>
+              <p className="text-sm">{connectionError}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="text-red-700 underline text-sm mt-2"
+              >
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        )}
 
         <SubscriptionSection subscription={subscription} isLoading={isLoadingSubscription} isVerified={isVerified} refreshSubscription={refreshSubscription} />
 
