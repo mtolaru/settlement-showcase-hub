@@ -198,7 +198,7 @@ const SubmissionConfirmation = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Loading...</h2>
           <p className="text-neutral-600">Fetching your settlement details...</p>
@@ -209,8 +209,8 @@ const SubmissionConfirmation = () => {
 
   if (error && !settlementData) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border border-neutral-200">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
           <p className="text-neutral-600 mb-4">{error}</p>
           <p className="text-sm text-neutral-500 mb-6">
@@ -231,7 +231,7 @@ const SubmissionConfirmation = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       <div className="bg-primary-900 text-white py-12">
         <div className="container">
           <Link to="/settlements">
@@ -257,7 +257,7 @@ const SubmissionConfirmation = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-md p-8"
+              className="bg-white rounded-lg shadow-md p-8 border border-neutral-200"
             >
               <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CreditCard className="h-8 w-8 text-primary-500" />

@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -35,13 +34,11 @@ const ManageSettlements = () => {
   }, [checkAuth]);
 
   useEffect(() => {
-    // Attempt to link any unlinked settlements when the user is authenticated
     const linkUnlinkedSettlements = async () => {
       if (!user?.id || !user?.email) return;
       try {
         console.log("Checking for unlinked settlements for user:", user.id, user.email);
 
-        // Try to link settlements by email
         const {
           data: emailSettlements,
           error: emailError
@@ -59,7 +56,6 @@ const ManageSettlements = () => {
           refreshSettlements();
         }
 
-        // Also try to link settlements by temporary_id from subscriptions
         const {
           data: subscriptions,
           error: subError
@@ -99,7 +95,7 @@ const ManageSettlements = () => {
     }
   }, [user, toast, refreshSettlements]);
 
-  return <div className="min-h-screen bg-neutral-50 py-12">
+  return <div className="min-h-screen bg-white py-12">
       <div className="container max-w-4xl">
         <AccountHeader user={user} signOut={signOut} />
 

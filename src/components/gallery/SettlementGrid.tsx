@@ -136,7 +136,7 @@ const SettlementGridItem = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border border-neutral-200"
       onClick={() => onCardClick(settlement.id)}
     >
       <div className="relative">
@@ -154,11 +154,11 @@ const SettlementGridItem = ({
             onLoad={handleImageLoad}
           />
           <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
-            <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900">
+            <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-neutral-900 border border-neutral-200">
               {settlement.type}
             </span>
             {settlement.settlement_phase && (
-              <span className="bg-primary-100 px-3 py-1 rounded-full text-sm font-medium text-primary-800">
+              <span className="bg-primary-100 px-3 py-1 rounded-full text-sm font-medium text-primary-800 border border-primary-200">
                 {getSettlementPhaseLabel(settlement.settlement_phase)}
               </span>
             )}
