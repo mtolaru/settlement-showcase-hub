@@ -7,19 +7,28 @@ import type { Database } from './types';
 const getSupabaseConfig = () => {
   const environment = import.meta.env.VITE_APP_ENV || 'development';
   
-  // Default to development values
+  // Check for direct environment variables first (for Vercel and other hosting platforms)
+  if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_KEY) {
+    console.log(`Using direct environment variables for Supabase`);
+    return {
+      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+      supabaseKey: import.meta.env.VITE_SUPABASE_KEY
+    };
+  }
+  
+  // Default to development values if direct vars aren't available
   let supabaseUrl = "https://zxstilrzamzlgswgwlpp.supabase.co";
   let supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4c3RpbHJ6YW16bGdzd2d3bHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1MDAzOTYsImV4cCI6MjA1NjA3NjM5Nn0.WiqcQcQnxfGhE9BwCorEYdZbV3ece7ITv2OwCUufpwI";
 
   if (environment === 'staging') {
-    // Staging environment values (you'll need to set these up)
+    // Staging environment values
     supabaseUrl = import.meta.env.VITE_SUPABASE_URL_STAGING || supabaseUrl;
     supabaseKey = import.meta.env.VITE_SUPABASE_KEY_STAGING || supabaseKey;
     console.log('Using staging Supabase environment');
   } else if (environment === 'production') {
-    // Production environment values
-    supabaseUrl = import.meta.env.VITE_SUPABASE_URL_PRODUCTION || supabaseUrl;
-    supabaseKey = import.meta.env.VITE_SUPABASE_KEY_PRODUCTION || supabaseKey;
+    // Production environment values - prioritize direct env vars
+    supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL_PRODUCTION || supabaseUrl;
+    supabaseKey = import.meta.env.VITE_SUPABASE_KEY || import.meta.env.VITE_SUPABASE_KEY_PRODUCTION || supabaseKey;
     console.log('Using production Supabase environment');
   } else {
     console.log('Using development Supabase environment');
@@ -29,6 +38,10 @@ const getSupabaseConfig = () => {
 };
 
 const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+
+// Log connection info (without revealing the full key)
+console.log(`Connecting to Supabase URL: ${supabaseUrl}`);
+console.log(`Using key: ${supabaseKey.substring(0, 8)}...`);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
