@@ -1,7 +1,10 @@
 
-import SubmitSettlementPage from "./settlement/SubmitSettlementPage";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
+import { LoadingState } from "@/components/settlement/LoadingState";
+
+// Lazy load the SubmitSettlementPage component
+const SubmitSettlementPage = lazy(() => import("./settlement/SubmitSettlementPage"));
 
 const SubmitSettlement = () => {
   useEffect(() => {
@@ -27,7 +30,9 @@ const SubmitSettlement = () => {
   
   return (
     <>
-      <SubmitSettlementPage />
+      <Suspense fallback={<LoadingState message="Loading settlement form..." />}>
+        <SubmitSettlementPage />
+      </Suspense>
       <Toaster />
     </>
   );
