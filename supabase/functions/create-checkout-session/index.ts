@@ -106,6 +106,7 @@ serve(async (req) => {
         temporaryId: temporaryId,
         userId: userId || '',
       },
+      allow_promotion_codes: true, // Enable promotion codes
     });
 
     console.log("Checkout session created:", session.id, "Redirection URL:", session.url);
