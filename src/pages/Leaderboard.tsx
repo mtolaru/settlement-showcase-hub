@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
@@ -221,7 +220,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       <GalleryHeader 
         settlementCount={filteredSettlements.length} 
         isLoading={isLoading}

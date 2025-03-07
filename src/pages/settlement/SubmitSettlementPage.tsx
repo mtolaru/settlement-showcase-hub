@@ -54,7 +54,7 @@ const SubmitSettlementPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white">
       <SettlementFormHeader />
 
       <div className="container py-12">
