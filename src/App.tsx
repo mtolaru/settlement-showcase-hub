@@ -22,7 +22,7 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop /> {/* Add the ScrollToTop component here */}
-      <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100">
+      <div className="min-h-screen bg-white">
         <Navbar />
         <Routes>
           <Route path="/" element={<Index />} />

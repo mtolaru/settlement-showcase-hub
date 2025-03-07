@@ -48,7 +48,7 @@ const WhyShare = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-neutral-50 p-6 rounded-lg shadow-md flex flex-col items-center text-center"
+                className="bg-primary-50 p-6 rounded-lg shadow-md flex flex-col items-center text-center"
               >
                 {feature.icon}
                 <h3 className="text-xl font-bold mb-3">{feature.title}</h3>

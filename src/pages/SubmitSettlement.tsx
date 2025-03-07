@@ -26,10 +26,10 @@ const SubmitSettlement = () => {
   }, []);
   
   return (
-    <>
+    <div className="bg-white">
       <SubmitSettlementPage />
       <Toaster />
-    </>
+    </div>
   );
 };
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
@@ -192,7 +193,7 @@ const Index = () => {
         selectedCity={selectedCity}
       />
 
-      <section className="py-12 bg-neutral-50">
+      <section className="py-12 bg-white">
         <div className="container">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
