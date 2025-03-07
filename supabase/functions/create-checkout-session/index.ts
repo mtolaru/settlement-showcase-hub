@@ -17,11 +17,29 @@ serve(async (req) => {
   }
   
   try {
-    // Create a Supabase client with the Auth context of the function
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    // Get and validate environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    
+    // Log environment variable availability (not values for security)
+    console.log('Environment check:', {
+      supabaseUrlAvailable: !!supabaseUrl,
+      supabaseKeyAvailable: !!supabaseKey,
+      stripeKeyAvailable: !!stripeKey
+    });
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
+    }
+    
+    if (!stripeKey) {
+      throw new Error('Missing Stripe configuration. STRIPE_SECRET_KEY must be set.');
+    }
+    
+    // Create clients
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
+    const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
     });
 
@@ -31,7 +49,12 @@ serve(async (req) => {
     // Make sure we have a valid return URL
     const validatedReturnUrl = returnUrl || `${req.headers.get('origin')}/confirmation`;
 
-    console.log("Creating checkout session with params:", { temporaryId, userId, returnUrl: validatedReturnUrl });
+    console.log("Creating checkout session with params:", { 
+      temporaryId, 
+      userId, 
+      returnUrl: validatedReturnUrl,
+      origin: req.headers.get('origin') || 'unknown'
+    });
 
     // Create the checkout session
     const session = await stripe.checkout.sessions.create({
@@ -76,8 +99,16 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error creating checkout session:', error);
+    
+    // Create a more detailed error response
+    const errorResponse = {
+      error: error.message,
+      details: error.stack,
+      timestamp: new Date().toISOString()
+    };
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify(errorResponse),
       { 
         headers: { 
           ...corsHeaders,
