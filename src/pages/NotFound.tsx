@@ -3,14 +3,17 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, AlertCircle } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isPaymentReturn, setIsPaymentReturn] = useState(false);
   const [temporaryId, setTemporaryId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   useEffect(() => {
     // Check if this is a payment return by looking for session_id parameter
@@ -23,22 +26,34 @@ const NotFound = () => {
       console.log("Payment session detected:", session);
       setIsPaymentReturn(true);
       
-      if (tempId) {
-        setTemporaryId(tempId);
-        console.log("Temporary ID found:", tempId);
+      if (!redirectAttempted) {
+        setRedirectAttempted(true);
+        setRedirecting(true);
         
-        setRedirecting(true);
-        // Automatically redirect to confirmation page immediately
-        navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
-      } else {
-        // Try to redirect with just session ID
-        setRedirecting(true);
-        navigate(`/confirmation?session_id=${session}`, { replace: true });
+        if (tempId) {
+          setTemporaryId(tempId);
+          console.log("Temporary ID found:", tempId);
+          // Automatically redirect to confirmation page immediately
+          navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
+          
+          toast({
+            title: "Payment successful!",
+            description: "Redirecting to confirmation page...",
+          });
+        } else {
+          // Try to redirect with just session ID
+          navigate(`/confirmation?session_id=${session}`, { replace: true });
+          
+          toast({
+            title: "Payment processed",
+            description: "Redirecting to confirmation page...",
+          });
+        }
       }
     }
 
     // If not a payment return, log regular 404 error
-    if (!session) {
+    if (!session && !redirectAttempted) {
       console.error(
         "404 Error: User attempted to access non-existent route:",
         location.pathname,
@@ -48,7 +63,7 @@ const NotFound = () => {
         window.location.href
       );
     }
-  }, [location.pathname, location.search, navigate]);
+  }, [location.pathname, location.search, navigate, redirectAttempted, toast]);
 
   // If this is a payment return, show a specific message and auto-redirect
   if (isPaymentReturn) {
@@ -69,6 +84,14 @@ const NotFound = () => {
               className="block w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
             >
               Go to Confirmation Now
+            </Button>
+            
+            <Button 
+              onClick={() => navigate("/")}
+              variant="outline"
+              className="block w-full"
+            >
+              Return to Home
             </Button>
           </div>
         </div>

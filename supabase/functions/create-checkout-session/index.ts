@@ -50,7 +50,10 @@ serve(async (req) => {
     const requestOrigin = req.headers.get('origin');
     
     // Determine the environment based on the request origin
-    const isProduction = requestOrigin?.includes('settlementwins.com') || false;
+    const isProduction = requestOrigin?.includes('settlementwins.com') || 
+                         requestOrigin?.includes('vercel.app') ||
+                         false;
+    
     console.log("Environment detection:", { 
       requestOrigin: requestOrigin || 'unknown', 
       isProduction 
