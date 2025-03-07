@@ -51,10 +51,14 @@ serve(async (req) => {
     try {
       // Log a portion of the signature and body for debugging
       console.log(`Webhook received with signature: ${signature.substring(0, 10)}...`);
+      console.log(`Body preview: ${body.substring(0, 100)}...`);
       console.log(`Body length: ${body.length} characters`);
       
       const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-      console.log('Processing webhook event:', event.type, 'Event ID:', event.id);
+      console.log('Processing webhook event:', event.type, 'Event ID:', event.id, 'Live mode:', event.livemode);
+
+      // Connect to Supabase
+      const supabase = createClient(supabaseUrl, supabaseKey);
 
       switch (event.type) {
         case 'checkout.session.completed': {
@@ -64,13 +68,11 @@ serve(async (req) => {
           const userId = session.metadata?.userId;
           const temporaryId = session.metadata?.temporaryId;
           const customerId = session.customer;
+          const paymentId = session.payment_intent || session.id; // Fallback to session ID if payment_intent not available
 
           if (!userId && !temporaryId) {
             throw new Error('No user ID or temporary ID found in session metadata');
           }
-
-          // Connect to Supabase
-          const supabase = createClient(supabaseUrl, supabaseKey);
 
           // Create a new subscription record
           const { error: subscriptionError } = await supabase
@@ -80,7 +82,7 @@ serve(async (req) => {
               temporary_id: temporaryId,
               starts_at: new Date().toISOString(),
               is_active: true,
-              payment_id: session.payment_intent,
+              payment_id: paymentId,
               customer_id: customerId, // Store the customer ID for future use
             });
 
@@ -134,8 +136,6 @@ serve(async (req) => {
           const subscription = event.data.object;
           console.log('Processing subscription update:', subscription.id, 'Status:', subscription.status);
           
-          const supabase = createClient(supabaseUrl, supabaseKey);
-          
           // Try to find any subscription record with this customer
           const { data: subscriptions, error: findError } = await supabase
             .from('subscriptions')
@@ -164,25 +164,27 @@ serve(async (req) => {
               console.log('Successfully updated subscription for customer', subscription.customer);
             }
           } else {
-            // Fallback: try to update by payment_id
-            console.log('No subscription found with customer ID, trying by payment_id');
+            // Fallback: try to update by payment_id if it matches the latest invoice
+            console.log('No subscription found with customer ID, trying alternative lookup methods');
             
-            const { error: updateError } = await supabase
-              .from('subscriptions')
-              .update({
-                is_active: subscription.status === 'active',
-                ends_at: subscription.current_period_end 
-                  ? new Date(subscription.current_period_end * 1000).toISOString() 
-                  : null,
-                // Also update the customer ID for future reference
-                customer_id: subscription.customer
-              })
-              .eq('payment_id', subscription.latest_invoice);
-              
-            if (updateError) {
-              console.error('Error updating subscription by payment_id:', updateError);
-            } else {
-              console.log('Successfully updated subscription by payment_id');
+            if (subscription.latest_invoice) {
+              const { error: updateError } = await supabase
+                .from('subscriptions')
+                .update({
+                  is_active: subscription.status === 'active',
+                  ends_at: subscription.current_period_end 
+                    ? new Date(subscription.current_period_end * 1000).toISOString() 
+                    : null,
+                  // Also update the customer ID for future reference
+                  customer_id: subscription.customer
+                })
+                .eq('payment_id', subscription.latest_invoice);
+                
+              if (updateError) {
+                console.error('Error updating subscription by invoice:', updateError);
+              } else {
+                console.log('Successfully updated subscription by invoice reference');
+              }
             }
           }
           
@@ -192,8 +194,6 @@ serve(async (req) => {
         case 'customer.subscription.deleted': {
           const subscription = event.data.object;
           console.log('Processing subscription deletion:', subscription.id);
-          
-          const supabase = createClient(supabaseUrl, supabaseKey);
           
           // Try to find and update any subscription with this customer ID
           const { error: updateError } = await supabase

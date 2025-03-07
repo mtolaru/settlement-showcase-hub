@@ -46,24 +46,36 @@ serve(async (req) => {
     // Parse request body
     const { temporaryId, userId, returnUrl } = await req.json();
     
-    // Get the origin for this request with fallbacks
-    const requestOrigin = req.headers.get('origin') || 'https://www.settlementwins.com';
+    // Get the origin for this request
+    const requestOrigin = req.headers.get('origin');
+    
+    // Determine the environment based on the request origin
+    const isProduction = requestOrigin?.includes('settlementwins.com') || false;
+    console.log("Environment detection:", { 
+      requestOrigin: requestOrigin || 'unknown', 
+      isProduction 
+    });
+    
+    // Set appropriate base URL based on environment
+    let baseUrl = isProduction 
+      ? 'https://www.settlementwins.com'
+      : (requestOrigin || 'http://localhost:5173');
     
     // Make sure we have a valid return URL
-    // For production, default to the main domain if no specific return URL is provided
     let validatedReturnUrl = returnUrl;
     if (!validatedReturnUrl) {
-      // Determine if this is a production environment based on the request origin
-      const isProduction = requestOrigin.includes('settlementwins.com');
-      validatedReturnUrl = isProduction 
-        ? 'https://www.settlementwins.com/confirmation'
-        : `${requestOrigin}/confirmation`;
+      validatedReturnUrl = `${baseUrl}/confirmation`;
     }
+    
+    // Set cancel URL based on same base URL
+    const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
 
     console.log("Creating checkout session with params:", { 
       temporaryId, 
       userId, 
       returnUrl: validatedReturnUrl,
+      cancelUrl,
+      baseUrl,
       origin: requestOrigin || 'unknown'
     });
 
@@ -88,7 +100,7 @@ serve(async (req) => {
       ],
       mode: 'subscription',
       success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${temporaryId}`,
-      cancel_url: `${requestOrigin}/submit?step=3&canceled=true`,
+      cancel_url: cancelUrl,
       client_reference_id: temporaryId,
       metadata: {
         temporaryId: temporaryId,

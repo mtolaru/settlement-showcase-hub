@@ -10,6 +10,7 @@ const NotFound = () => {
   const [isPaymentReturn, setIsPaymentReturn] = useState(false);
   const [temporaryId, setTemporaryId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     // Check if this is a payment return by looking for session_id parameter
@@ -26,24 +27,27 @@ const NotFound = () => {
         setTemporaryId(tempId);
         console.log("Temporary ID found:", tempId);
         
-        // Automatically redirect to confirmation page after a short delay
-        const timer = setTimeout(() => {
-          navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`);
-        }, 3000);
-        
-        return () => clearTimeout(timer);
+        setRedirecting(true);
+        // Automatically redirect to confirmation page immediately
+        navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
+      } else {
+        // Try to redirect with just session ID
+        setRedirecting(true);
+        navigate(`/confirmation?session_id=${session}`, { replace: true });
       }
     }
 
     // If not a payment return, log regular 404 error
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname,
-      "Search params:",
-      location.search,
-      "Full URL:",
-      window.location.href
-    );
+    if (!session) {
+      console.error(
+        "404 Error: User attempted to access non-existent route:",
+        location.pathname,
+        "Search params:",
+        location.search,
+        "Full URL:",
+        window.location.href
+      );
+    }
   }, [location.pathname, location.search, navigate]);
 
   // If this is a payment return, show a specific message and auto-redirect
@@ -56,7 +60,7 @@ const NotFound = () => {
           </div>
           <h1 className="text-2xl font-bold mb-4 text-primary-600">Payment Successful!</h1>
           <p className="text-sm text-gray-500 mb-6">
-            Your payment has been processed. Redirecting you to the confirmation page...
+            {redirecting ? "Redirecting you to the confirmation page..." : "Your payment has been processed."}
           </p>
           
           <div className="space-y-4">

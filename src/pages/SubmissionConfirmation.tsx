@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CreditCard } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import CreateAccountPrompt from "@/components/auth/CreateAccountPrompt";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,7 @@ import { ShareButton } from "@/components/sharing/ShareButton";
 import { useToast } from "@/components/ui/use-toast";
 
 const SubmissionConfirmation = () => {
+  const location = useLocation();
   const [showCreateAccount, setShowCreateAccount] = useState(true);
   const [settlementData, setSettlementData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,17 +21,15 @@ const SubmissionConfirmation = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Get temporaryId from URL parameters - handle both formats
-  const params = new URLSearchParams(window.location.search);
+  // Get URL parameters and clean them if needed
+  const params = new URLSearchParams(location.search);
   let temporaryId = params.get("temporaryId");
+  const sessionId = params.get("session_id");
   
   // Clean the temporaryId in case it contains extra parameters
   if (temporaryId && temporaryId.includes('?')) {
     temporaryId = temporaryId.split('?')[0];
   }
-  
-  // Also handle session_id format from Stripe
-  const sessionId = params.get("session_id");
 
   const handleClose = () => {
     setShowCreateAccount(false);
@@ -95,7 +94,7 @@ const SubmissionConfirmation = () => {
       // First try to find subscription with this payment_id
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
-        .select('temporary_id')
+        .select('temporary_id, user_id')
         .eq('payment_id', sessionId)
         .maybeSingle();
       
@@ -108,6 +107,28 @@ const SubmissionConfirmation = () => {
         // Use this temporary_id to fetch the settlement
         fetchSettlementData(subscriptionData.temporary_id);
         return;
+      }
+      
+      // If no subscription found via payment_id, try looking for a subscription with customer_id
+      // This helps with Stripe Live vs Test mode differences
+      if (sessionId.startsWith('cs_') && !subscriptionData) {
+        console.log("No subscription found by payment_id, checking recent subscriptions");
+        // Try to find the most recent subscription
+        const { data: recentSubscriptions, error: recentError } = await supabase
+          .from('subscriptions')
+          .select('temporary_id, user_id')
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (recentError) {
+          console.error("Error fetching recent subscriptions:", recentError);
+        }
+        
+        if (recentSubscriptions && recentSubscriptions.length > 0) {
+          console.log("Found recent subscription:", recentSubscriptions[0]);
+          fetchSettlementData(recentSubscriptions[0].temporary_id);
+          return;
+        }
       }
       
       setIsLoading(false);
