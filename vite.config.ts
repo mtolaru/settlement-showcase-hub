@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
   const isStaging = mode === 'staging';
   
   console.log(`Building for ${mode} environment`);
+  console.log('Environment variables available:', Object.keys(env).filter(key => key.startsWith('VITE_')));
 
   return {
     define: {
