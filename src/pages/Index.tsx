@@ -46,7 +46,7 @@ const Index = () => {
       try {
         setIsLoading(true);
         
-        console.log('Starting to fetch settlements from:', supabase.supabaseUrl);
+        console.log('Starting to fetch settlements');
         
         const { data: subscribedUsers, error: subscriptionError } = await supabase
           .from('subscriptions')
