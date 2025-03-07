@@ -10,6 +10,10 @@ const getSupabaseConfig = () => {
   // Check for direct environment variables first (for Vercel and other hosting platforms)
   if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_KEY) {
     console.log(`Using direct environment variables for Supabase`);
+    console.log(`VITE_SUPABASE_URL: ${import.meta.env.VITE_SUPABASE_URL}`);
+    // Log the first few characters of the key (for debugging, without revealing the full key)
+    console.log(`VITE_SUPABASE_KEY: ${import.meta.env.VITE_SUPABASE_KEY.substring(0, 10)}...`);
+    
     try {
       // Validate URL format
       new URL(import.meta.env.VITE_SUPABASE_URL);
@@ -43,6 +47,13 @@ const getSupabaseConfig = () => {
     supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL_PRODUCTION || supabaseUrl;
     supabaseKey = import.meta.env.VITE_SUPABASE_KEY || import.meta.env.VITE_SUPABASE_KEY_PRODUCTION || supabaseKey;
     console.log('Using production Supabase environment');
+    console.log(`Supabase URL (production): ${supabaseUrl}`);
+    
+    // This should never be a placeholder in production
+    if (supabaseUrl.includes('your-production-project')) {
+      console.error('CRITICAL ERROR: Using placeholder Supabase URL in production!');
+      console.error('Please set correct VITE_SUPABASE_URL in Vercel environment variables');
+    }
   } else {
     console.log('Using development Supabase environment');
   }
@@ -89,6 +100,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
 // Add a health check function to verify connection
 export const checkSupabaseConnection = async () => {
   try {
+    console.log(`Attempting to connect to Supabase at: ${supabaseUrl}`);
     const { data, error } = await supabase.from('settlements').select('count').limit(1);
     if (error) {
       console.error('Supabase connection check failed:', error);
