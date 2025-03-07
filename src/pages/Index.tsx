@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { getCities } from "@/lib/locations";
 import Hero from "@/components/home/Hero";
@@ -215,7 +214,7 @@ const Index = () => {
               <LoadingState />
             ) : recentSettlements.length > 0 ? (
               recentSettlements.map((settlement) => (
-                <SettlementCard 
+                <LazySettlementCard 
                   key={settlement.id} 
                   settlement={formatSettlement(settlement)} 
                 />
@@ -252,7 +251,7 @@ const Index = () => {
               <LoadingState />
             ) : topSettlements.length > 0 ? (
               topSettlements.map((settlement) => (
-                <SettlementCard 
+                <LazySettlementCard 
                   key={settlement.id} 
                   settlement={formatSettlement(settlement)} 
                 />
