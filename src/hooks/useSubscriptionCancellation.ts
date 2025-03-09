@@ -30,6 +30,7 @@ export const useSubscriptionCancellation = (
       
       // Prepare customer ID or subscription ID to send to the edge function
       let customerId = subscription.customer_id;
+      let stripeSubscriptionId = subscription.stripe_subscription_id;
       
       // If no customer_id, try to use the subscription ID itself
       if (!customerId && subscription.id.startsWith('stripe-')) {
@@ -49,6 +50,7 @@ export const useSubscriptionCancellation = (
       const response = await supabase.functions.invoke('create-customer-portal', {
         body: { 
           subscription_id: customerId || undefined,
+          stripe_subscription_id: stripeSubscriptionId || undefined,
           user_email: userEmail,
           return_url: window.location.origin + '/manage'
         }
