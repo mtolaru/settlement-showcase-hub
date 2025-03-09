@@ -36,6 +36,15 @@ const SubmissionConfirmation = () => {
   };
 
   useEffect(() => {
+    // Log all URL params for debugging
+    console.log("URL Params:", {
+      rawParams: location.search,
+      temporaryId,
+      sessionId,
+      pathname: location.pathname,
+      fullURL: window.location.href
+    });
+    
     // If we have a sessionId but no temporaryId, try to fetch the settlement based on session data
     if (sessionId && !temporaryId) {
       console.log("No temporaryId but found sessionId:", sessionId);
@@ -51,7 +60,7 @@ const SubmissionConfirmation = () => {
     
     console.log("Attempting to fetch settlement with temporary ID:", temporaryId);
     fetchSettlementData();
-  }, [temporaryId, sessionId]);
+  }, [temporaryId, sessionId, location.search]);
   
   // Associate the user ID with settlements if the user is authenticated
   useEffect(() => {
@@ -129,6 +138,25 @@ const SubmissionConfirmation = () => {
           fetchSettlementData(recentSubscriptions[0].temporary_id);
           return;
         }
+      }
+      
+      // If still no subscription found, add a fallback check directly for the settlement
+      console.log("No subscription found, checking for recent settlements");
+      const { data: recentSettlements, error: settlementsError } = await supabase
+        .from('settlements')
+        .select('temporary_id, payment_completed')
+        .eq('payment_completed', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (settlementsError) {
+        console.error("Error fetching recent settlements:", settlementsError);
+      }
+      
+      if (recentSettlements && recentSettlements.length > 0) {
+        console.log("Found recent settlement:", recentSettlements[0]);
+        fetchSettlementData(recentSettlements[0].temporary_id);
+        return;
       }
       
       setIsLoading(false);
@@ -215,7 +243,19 @@ const SubmissionConfirmation = () => {
   };
 
   // Show create account prompt only for non-authenticated users with a temporaryId and settlement data
-  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && (temporaryId || settlementData?.temporary_id) && settlementData;
+  // The key issue was here - we need to ensure this evaluates correctly
+  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && settlementData;
+
+  // Log current state to help debug
+  useEffect(() => {
+    console.log("Current state:", {
+      isAuthenticated,
+      showCreateAccount,
+      hasTemporaryId: !!temporaryId || !!(settlementData?.temporary_id),
+      hasSettlementData: !!settlementData,
+      shouldShowCreateAccount
+    });
+  }, [isAuthenticated, showCreateAccount, temporaryId, settlementData]);
 
   if (isLoading) {
     return (

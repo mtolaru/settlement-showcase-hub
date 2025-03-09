@@ -17,6 +17,13 @@ const NotFound = () => {
   const [redirectTimeout, setRedirectTimeout] = useState<number | null>(null);
 
   useEffect(() => {
+    // Log all URL params for debugging
+    console.log("NotFound: URL parameters:", {
+      search: location.search,
+      pathname: location.pathname,
+      fullURL: window.location.href
+    });
+    
     // Check if this is a payment return by looking for session_id parameter
     const params = new URLSearchParams(location.search);
     const session = params.get("session_id");
@@ -39,26 +46,26 @@ const NotFound = () => {
           const timeout = window.setTimeout(() => {
             // Automatically redirect to confirmation page
             console.log("Redirecting to confirmation page with session and temporaryId");
-            navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
+            navigate(`/confirmation?session_id=${encodeURIComponent(session)}&temporaryId=${encodeURIComponent(tempId)}`, { replace: true });
             
             toast({
               title: "Payment successful!",
               description: "Redirecting to confirmation page...",
             });
-          }, 500);
+          }, 300); // Reduced timeout for faster redirect
           
           setRedirectTimeout(timeout);
         } else {
           // Try to redirect with just session ID
           const timeout = window.setTimeout(() => {
             console.log("Redirecting to confirmation page with session only");
-            navigate(`/confirmation?session_id=${session}`, { replace: true });
+            navigate(`/confirmation?session_id=${encodeURIComponent(session)}`, { replace: true });
             
             toast({
               title: "Payment processed",
               description: "Redirecting to confirmation page...",
             });
-          }, 500);
+          }, 300); // Reduced timeout for faster redirect
           
           setRedirectTimeout(timeout);
         }
@@ -100,7 +107,7 @@ const NotFound = () => {
           
           <div className="space-y-4">
             <Button 
-              onClick={() => navigate(`/confirmation?session_id=${sessionId}${temporaryId ? `&temporaryId=${temporaryId}` : ''}`)}
+              onClick={() => navigate(`/confirmation?session_id=${encodeURIComponent(sessionId || '')}&temporaryId=${encodeURIComponent(temporaryId || '')}`)}
               className="block w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
             >
               Go to Confirmation Now

@@ -49,6 +49,14 @@ serve(async (req) => {
     // Get the origin for this request
     const requestOrigin = req.headers.get('origin');
     
+    // Log the request details for debugging
+    console.log("Request details:", {
+      temporaryId,
+      userId,
+      returnUrl,
+      origin: requestOrigin || "unknown"
+    });
+    
     // Determine the environment based on the request origin
     const isProduction = requestOrigin?.includes('settlementwins.com') || 
                          requestOrigin?.includes('vercel.app') ||
