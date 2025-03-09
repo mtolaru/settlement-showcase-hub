@@ -114,6 +114,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
+      // Fix URL parameter formatting here - use & instead of another ? for session_id
       success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${temporaryId}`,
       cancel_url: cancelUrl,
       client_reference_id: temporaryId,
