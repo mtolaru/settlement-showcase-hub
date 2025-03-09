@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
@@ -20,8 +21,10 @@ export interface Subscription {
   user_id: string | null;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
-  status?: string; // Added status field
-  cancel_at_period_end?: boolean; // Added cancellation indicator
+  status?: string; // Status field from Stripe
+  cancel_at_period_end?: boolean; // Cancellation indicator from Stripe
+  is_live_mode?: boolean; // Add live mode flag
+  current_period_end?: number; // Add period end timestamp
 }
 
 export const useSubscription = (user: User | null) => {
@@ -48,6 +51,8 @@ export const useSubscription = (user: User | null) => {
             body: { userId: user.id, email: user.email, includeDetails: true }
           });
           
+          console.log('Verify subscription response:', stripeData);
+          
           if (stripeError) {
             console.error('Error verifying Stripe subscription:', stripeError);
           } else if (stripeData && stripeData.subscription) {
@@ -70,7 +75,8 @@ export const useSubscription = (user: User | null) => {
             console.log('Processing Stripe subscription data:', {
               status: stripeData.subscription.status,
               cancel_at_period_end: stripeData.subscription.cancel_at_period_end,
-              ends_at: stripeData.subscription.ends_at
+              ends_at: stripeData.subscription.ends_at,
+              is_live_mode: stripeData.subscription.is_live_mode
             });
             
             setSubscription(stripeData.subscription);
@@ -147,29 +153,6 @@ export const useSubscription = (user: User | null) => {
           setIsLoading(false);
           return;
         }
-      }
-      
-      // Special case: Check for known Stripe customer ID
-      if (user.email === 'mtolaru+3@gmail.com') {
-        console.log('Checking special case for known Stripe customer');
-        const stripeCustomerId = 'cus_RqvYeFDtIHz2hO';
-        
-        // Create a virtual subscription based on the Stripe customer ID
-        const virtualSubscription: Subscription = {
-          id: `stripe-${stripeCustomerId}`,
-          starts_at: new Date().toISOString(),
-          ends_at: null, // Ongoing subscription
-          is_active: true,
-          payment_id: stripeCustomerId,
-          customer_id: stripeCustomerId,
-          temporary_id: null,
-          user_id: user.id
-        };
-        
-        setSubscription(virtualSubscription);
-        setIsVerified(true);
-        setIsLoading(false);
-        return;
       }
       
       // If we've tried all paths and still don't have a subscription
