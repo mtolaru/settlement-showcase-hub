@@ -8,6 +8,8 @@ import Stripe from 'https://esm.sh/stripe@12.1.1?target=deno';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 serve(async (req) => {
@@ -81,8 +83,11 @@ serve(async (req) => {
       baseUrl,
       origin: requestOrigin || 'unknown'
     });
+    
+    // Properly encode the temporaryId for URL usage
+    const encodedTempId = encodeURIComponent(temporaryId);
 
-    // Create the checkout session
+    // Create the checkout session with properly encoded URLs
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -102,7 +107,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${temporaryId}`,
+      success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`,
       cancel_url: cancelUrl,
       client_reference_id: temporaryId,
       metadata: {

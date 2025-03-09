@@ -16,10 +16,32 @@ const NotFound = () => {
   const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   useEffect(() => {
-    // Check if this is a payment return by looking for session_id parameter
-    const params = new URLSearchParams(location.search);
+    // Start by parsing the full search string to detect any malformed URLs
+    const searchParams = location.search;
+    console.log("Original search string:", searchParams);
+    
+    // Handle malformed URLs with multiple question marks
+    let sanitizedSearch = searchParams;
+    if (searchParams.split('?').length > 2) {
+      console.log("Detected malformed URL with multiple question marks");
+      // Replace all occurrences after the first ? with &
+      sanitizedSearch = searchParams.replace(/\?(?!.*=$)/g, '&');
+      console.log("Sanitized search string:", sanitizedSearch);
+    }
+    
+    // Create URLSearchParams from sanitized string
+    const params = new URLSearchParams(sanitizedSearch);
+    
+    // Extract parameters
     const session = params.get("session_id");
-    const tempId = params.get("temporaryId");
+    let tempId = params.get("temporaryId");
+    
+    // Further sanitize temporaryId if it contains a question mark
+    if (tempId && tempId.includes('?')) {
+      console.log("Detected malformed temporaryId:", tempId);
+      tempId = tempId.split('?')[0];
+      console.log("Sanitized temporaryId:", tempId);
+    }
     
     if (session) {
       setSessionId(session);
@@ -30,25 +52,32 @@ const NotFound = () => {
         setRedirectAttempted(true);
         setRedirecting(true);
         
+        // Build a proper URL with correctly formatted parameters
+        let redirectUrl = '/confirmation';
+        const queryParams = [];
+        
+        if (session) queryParams.push(`session_id=${encodeURIComponent(session)}`);
         if (tempId) {
+          queryParams.push(`temporaryId=${encodeURIComponent(tempId)}`);
           setTemporaryId(tempId);
           console.log("Temporary ID found:", tempId);
-          // Automatically redirect to confirmation page immediately
-          navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
+        }
+        
+        if (queryParams.length > 0) {
+          redirectUrl += `?${queryParams.join('&')}`;
+        }
+        
+        console.log("Redirecting to:", redirectUrl);
+        
+        // Short delay before redirect to ensure state updates
+        setTimeout(() => {
+          navigate(redirectUrl, { replace: true });
           
           toast({
             title: "Payment successful!",
             description: "Redirecting to confirmation page...",
           });
-        } else {
-          // Try to redirect with just session ID
-          navigate(`/confirmation?session_id=${session}`, { replace: true });
-          
-          toast({
-            title: "Payment processed",
-            description: "Redirecting to confirmation page...",
-          });
-        }
+        }, 300);
       }
     }
 
@@ -79,8 +108,15 @@ const NotFound = () => {
           </p>
           
           <div className="space-y-4">
+            {/* Use proper URL construction with encoded parameters */}
             <Button 
-              onClick={() => navigate(`/confirmation?session_id=${sessionId}${temporaryId ? `&temporaryId=${temporaryId}` : ''}`)}
+              onClick={() => {
+                const params = [];
+                if (sessionId) params.push(`session_id=${encodeURIComponent(sessionId)}`);
+                if (temporaryId) params.push(`temporaryId=${encodeURIComponent(temporaryId)}`);
+                const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+                navigate(`/confirmation${queryString}`);
+              }}
               className="block w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
             >
               Go to Confirmation Now

@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CreditCard } from "lucide-react";
@@ -21,22 +20,30 @@ const SubmissionConfirmation = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Get URL parameters and clean them if needed
   const params = new URLSearchParams(location.search);
   let temporaryId = params.get("temporaryId");
   const sessionId = params.get("session_id");
   
-  // Clean the temporaryId in case it contains extra parameters
   if (temporaryId && temporaryId.includes('?')) {
+    console.log("Cleaning malformed temporaryId:", temporaryId);
     temporaryId = temporaryId.split('?')[0];
+    console.log("Cleaned temporaryId:", temporaryId);
   }
+
+  useEffect(() => {
+    console.log("SubmissionConfirmation - URL parameters:", {
+      temporaryId,
+      sessionId,
+      fullSearch: location.search,
+      pathname: location.pathname
+    });
+  }, [location, temporaryId, sessionId]);
 
   const handleClose = () => {
     setShowCreateAccount(false);
   };
 
   useEffect(() => {
-    // If we have a sessionId but no temporaryId, try to fetch the settlement based on session data
     if (sessionId && !temporaryId) {
       console.log("No temporaryId but found sessionId:", sessionId);
       fetchSettlementBySessionId(sessionId);
@@ -53,7 +60,6 @@ const SubmissionConfirmation = () => {
     fetchSettlementData();
   }, [temporaryId, sessionId]);
   
-  // Associate the user ID with settlements if the user is authenticated
   useEffect(() => {
     if (isAuthenticated && user && settlementData && temporaryId && !settlementData.user_id) {
       associateUserWithSettlement();
@@ -77,7 +83,6 @@ const SubmissionConfirmation = () => {
         console.error("Error associating user with settlement:", updateError);
       } else {
         console.log("Successfully associated user with settlement");
-        // Refresh settlement data
         fetchSettlementData();
       }
     } catch (error) {
@@ -91,7 +96,6 @@ const SubmissionConfirmation = () => {
     try {
       console.log("Attempting to fetch settlement by session ID:", sessionId);
       
-      // First try to find subscription with this payment_id
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('temporary_id, user_id')
@@ -104,16 +108,12 @@ const SubmissionConfirmation = () => {
       
       if (subscriptionData?.temporary_id) {
         console.log("Found temporary_id from subscription:", subscriptionData.temporary_id);
-        // Use this temporary_id to fetch the settlement
         fetchSettlementData(subscriptionData.temporary_id);
         return;
       }
       
-      // If no subscription found via payment_id, try looking for a subscription with customer_id
-      // This helps with Stripe Live vs Test mode differences
       if (sessionId.startsWith('cs_') && !subscriptionData) {
         console.log("No subscription found by payment_id, checking recent subscriptions");
-        // Try to find the most recent subscription
         const { data: recentSubscriptions, error: recentError } = await supabase
           .from('subscriptions')
           .select('temporary_id, user_id')
@@ -165,23 +165,19 @@ const SubmissionConfirmation = () => {
       console.log("Found settlement data:", data);
       setSettlementData(data);
       
-      // Check if payment has been completed - only update if not completed yet
       if (!data.payment_completed && !isUpdating) {
-        // Set flag to prevent concurrent updates
         setIsUpdating(true);
         
-        // Try to update payment status
         const { error: updateError } = await supabase
           .from('settlements')
           .update({ payment_completed: true })
           .eq('temporary_id', tempId)
-          .eq('payment_completed', false); // Only update if not already completed
+          .eq('payment_completed', false);
           
         if (updateError) {
           console.error("Error updating payment status:", updateError);
         } else {
           console.log("Updated payment status to completed");
-          // Refresh settlement data to get updated record
           const { data: refreshedData } = await supabase
             .from('settlements')
             .select('*')
@@ -190,12 +186,6 @@ const SubmissionConfirmation = () => {
             
           if (refreshedData) {
             setSettlementData(refreshedData);
-            
-            // If user is authenticated and settlement doesn't have a user_id yet,
-            // associate it with the current user
-            if (isAuthenticated && user && !refreshedData.user_id) {
-              associateUserWithSettlement();
-            }
           }
         }
       }
@@ -214,8 +204,19 @@ const SubmissionConfirmation = () => {
     }
   };
 
-  // Show create account prompt only for non-authenticated users with a temporaryId and settlement data
-  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && (temporaryId || settlementData?.temporary_id) && settlementData;
+  const shouldShowCreateAccount = !isAuthenticated && showCreateAccount && settlementData && 
+    (temporaryId || settlementData.temporary_id) && !settlementData.user_id;
+
+  useEffect(() => {
+    console.log("Create account prompt condition:", {
+      isAuthenticated,
+      showCreateAccount,
+      hasSettlementData: !!settlementData,
+      temporaryId: temporaryId || settlementData?.temporary_id,
+      userId: settlementData?.user_id,
+      shouldShow: shouldShowCreateAccount
+    });
+  }, [isAuthenticated, showCreateAccount, settlementData, temporaryId, shouldShowCreateAccount]);
 
   if (isLoading) {
     return (
@@ -288,7 +289,6 @@ const SubmissionConfirmation = () => {
                 Your settlement details have been received and are now live in our gallery.
               </p>
 
-              {/* Share section */}
               {settlementData && (
                 <div className="mb-8 p-6 bg-primary-50 rounded-lg">
                   <ShareButton

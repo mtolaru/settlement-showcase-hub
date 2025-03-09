@@ -8,6 +8,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 serve(async (req) => {
@@ -20,7 +22,6 @@ serve(async (req) => {
   try {
     // Log request details for debugging
     console.log(`Webhook request received: ${req.method} ${req.url}`);
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
     // Get environment variables with validation
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
@@ -55,18 +56,13 @@ serve(async (req) => {
       console.error('No Stripe signature found in request headers');
       console.log('Available headers:', [...req.headers.keys()].join(', '));
       
-      // Log raw headers for debugging
-      for (const [key, value] of req.headers.entries()) {
-        console.log(`Header "${key}": ${value}`);
-      }
-      
       return new Response(
         JSON.stringify({ 
           error: 'No stripe-signature header found', 
           availableHeaders: [...req.headers.keys()]
         }),
         { 
-          status: 400,
+          status: 200, // Return 200 instead of 400 to avoid Stripe retries
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -76,11 +72,7 @@ serve(async (req) => {
     
     // Log detailed debugging information
     console.log(`Webhook received with signature: ${signature.substring(0, 10)}...`);
-    console.log(`Request headers:`, [...req.headers.entries()].map(([key, value]) => `${key}: ${value.substring(0, 20)}...`));
     console.log(`Body preview: ${body.substring(0, 100)}...`);
-    console.log(`Body length: ${body.length} characters`);
-    console.log(`Webhook secret available: ${!!webhookSecret}`);
-    console.log(`Webhook secret length: ${webhookSecret?.length} characters`);
     
     let event;
     
@@ -88,17 +80,9 @@ serve(async (req) => {
       // Verify the event with the webhook secret
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       console.log('Successfully verified webhook signature');
-      console.log('Processing webhook event:', event.type, 'Event ID:', event.id, 'Live mode:', event.livemode);
+      console.log('Processing webhook event:', event.type, 'Event ID:', event.id);
     } catch (webhookError) {
       console.error('Webhook signature verification failed:', webhookError);
-      console.error('Error details:', webhookError.message);
-      
-      // Log more details about the verification failure
-      if (webhookError.message.includes('timestamp')) {
-        console.log('Possible timestamp issue - check server time synchronization');
-      } else if (webhookError.message.includes('signature')) {
-        console.log('Possible signature mismatch - verify STRIPE_WEBHOOK_SECRET is correct');
-      }
       
       return new Response(
         JSON.stringify({ 
@@ -107,7 +91,7 @@ serve(async (req) => {
           received: true
         }),
         { 
-          status: 401, // Return 401 for invalid signature
+          status: 200, // Return 200 instead of 401 to avoid Stripe retries
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -297,15 +281,16 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Webhook general error:', error);
-    // Provide more detailed error information
+    // Provide more detailed error information but return 200 to prevent Stripe from retrying
     return new Response(
       JSON.stringify({ 
         error: error.message,
         details: error.stack,
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        received: true // Tell Stripe we received the webhook
       }),
       { 
-        status: 500,
+        status: 200, // Always return 200 to Stripe
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
