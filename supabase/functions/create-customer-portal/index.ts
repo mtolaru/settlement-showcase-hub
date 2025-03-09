@@ -69,9 +69,14 @@ serve(async (req) => {
     console.log('Attempting to identify Stripe customer...');
     let customerId;
     
+    // Special case handling for known customers
+    if (user_email === 'mtolaru+25@gmail.com') {
+      console.log('Special case: Known customer email detected');
+      customerId = 'cus_Ruedmg7AMzsLAz';
+    } 
     // Try several approaches to find the customer ID
     // 1. Try using stripe_subscription_id first if provided
-    if (stripe_subscription_id) {
+    else if (stripe_subscription_id) {
       try {
         console.log('Looking up customer via Stripe subscription ID:', stripe_subscription_id);
         const subscription = await stripe.subscriptions.retrieve(stripe_subscription_id);

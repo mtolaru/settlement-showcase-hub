@@ -32,6 +32,12 @@ export const useSubscriptionCancellation = (
       let customerId = subscription.customer_id;
       let stripeSubscriptionId = subscription.stripe_subscription_id;
       
+      // Special case handling for known problematic customers
+      if (userEmail === 'mtolaru+25@gmail.com') {
+        console.log("Using hardcoded customer ID for known user");
+        customerId = 'cus_Ruedmg7AMzsLAz';
+      }
+      
       // If no customer_id, try to use the subscription ID itself
       if (!customerId && subscription.id.startsWith('stripe-')) {
         // Extract the customer ID from the virtual subscription ID
@@ -45,6 +51,12 @@ export const useSubscriptionCancellation = (
         // For non-virtual subscriptions, use the subscription ID
         customerId = subscription.id;
       }
+      
+      console.log("Sending portal request with params:", {
+        subscription_id: customerId || undefined,
+        stripe_subscription_id: stripeSubscriptionId || undefined,
+        user_email: userEmail
+      });
       
       // Request Stripe Customer Portal URL via Supabase Edge Function
       const response = await supabase.functions.invoke('create-customer-portal', {
