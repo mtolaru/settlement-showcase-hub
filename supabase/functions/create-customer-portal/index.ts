@@ -27,7 +27,10 @@ serve(async (req) => {
     if (!subscription_id && !user_email) {
       console.error('Missing required parameters - need either subscription_id or user_email');
       return new Response(
-        JSON.stringify({ error: 'Missing subscription_id or user_email parameter' }),
+        JSON.stringify({ 
+          error: 'Missing subscription_id or user_email parameter',
+          status: 'error' 
+        }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -40,7 +43,10 @@ serve(async (req) => {
     if (!stripeKey) {
       console.error('STRIPE_SECRET_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'Stripe configuration missing' }),
+        JSON.stringify({ 
+          error: 'Stripe configuration missing',
+          status: 'error' 
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,6 +94,7 @@ serve(async (req) => {
     if (!customerId && user_email) {
       console.log('Searching for customer by email:', user_email);
       try {
+        // First try exact match
         const customers = await stripe.customers.list({
           email: user_email,
           limit: 1,
@@ -95,19 +102,43 @@ serve(async (req) => {
         
         if (customers.data.length > 0) {
           customerId = customers.data[0].id;
-          console.log('Found customer by email:', customerId);
+          console.log('Found customer by exact email match:', customerId);
         } else {
-          console.log('No customer found with email:', user_email);
+          console.log('No customer found with exact email match:', user_email);
           
-          // Try searching with case-insensitive like match for edge cases
+          // Try searching with case-insensitive like match
+          console.log('Attempting case-insensitive email search...');
           const allCustomers = await stripe.customers.list({ limit: 100 });
+          
+          // Log all retrieved emails for debugging
+          console.log('All customer emails found:', 
+            allCustomers.data.map(c => ({ id: c.id, email: c.email }))
+          );
+          
           const matchingCustomer = allCustomers.data.find(
             c => c.email && c.email.toLowerCase() === user_email.toLowerCase()
           );
           
           if (matchingCustomer) {
             customerId = matchingCustomer.id;
-            console.log('Found customer by case-insensitive email match:', customerId);
+            console.log('Found customer by case-insensitive email match:', customerId, 'with email:', matchingCustomer.email);
+          } else {
+            console.log('No customer found with case-insensitive email match either.');
+            
+            // Try partial email match as a last resort (for development/test emails)
+            const emailBase = user_email.split('@')[0].split('+')[0];
+            const domain = user_email.split('@')[1];
+            console.log(`Trying partial match with base: ${emailBase} and domain: ${domain}`);
+            
+            const partialMatchCustomer = allCustomers.data.find(c => 
+              c.email && c.email.toLowerCase().includes(emailBase.toLowerCase()) && 
+              c.email.toLowerCase().includes(domain.toLowerCase())
+            );
+            
+            if (partialMatchCustomer) {
+              customerId = partialMatchCustomer.id;
+              console.log('Found customer by partial email match:', customerId, 'with email:', partialMatchCustomer.email);
+            }
           }
         }
       } catch (emailLookupError) {
@@ -125,7 +156,8 @@ serve(async (req) => {
             subscription_id,
             user_email,
             timestamp: new Date().toISOString()
-          }
+          },
+          status: 'error'
         }),
         { 
           status: 404, 
@@ -152,7 +184,8 @@ serve(async (req) => {
             customer_id: customerId,
             error_message: error.message,
             timestamp: new Date().toISOString()
-          }
+          },
+          status: 'error'
         }),
         { 
           status: 404, 
@@ -164,23 +197,41 @@ serve(async (req) => {
     console.log('Creating portal session for verified customer:', customerId);
     
     // Create a billing portal session
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: return_url || 'https://settlementdb.com/manage',
-    });
+    try {
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: return_url || 'https://settlementdb.com/manage',
+      });
 
-    console.log('Portal session created successfully:', session.url);
+      console.log('Portal session created successfully:', session.url);
 
-    // Return the URL of the portal
-    return new Response(
-      JSON.stringify({ url: session.url }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+      // Return the URL of the portal
+      return new Response(
+        JSON.stringify({ 
+          url: session.url,
+          status: 'success' 
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    } catch (portalError) {
+      console.error('Error creating Stripe portal session:', portalError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to create Stripe portal session',
+          details: portalError.message,
+          status: 'error'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
   } catch (error) {
-    console.error('Error creating Stripe portal session:', error);
+    console.error('Unexpected error creating Stripe portal session:', error);
     
     // Determine if this is a Stripe API error
     let errorMessage = 'Internal server error';
@@ -223,7 +274,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        details: errorDetails
+        details: errorDetails,
+        status: 'error'
       }),
       { 
         status: statusCode, 

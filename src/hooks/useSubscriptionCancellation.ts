@@ -73,6 +73,11 @@ export const useSubscriptionCancellation = (
         throw new Error(data.error || 'Error from server');
       }
 
+      if (data.status === 'error') {
+        console.error("Error status returned from edge function:", data);
+        throw new Error(data.error || 'Error processing request');
+      }
+
       if (data && data.url) {
         console.log("Portal URL generated, redirecting:", data.url);
         // Redirect to Stripe portal
