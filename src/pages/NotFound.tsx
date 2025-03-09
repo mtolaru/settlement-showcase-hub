@@ -14,6 +14,7 @@ const NotFound = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [redirectAttempted, setRedirectAttempted] = useState(false);
+  const [redirectTimeout, setRedirectTimeout] = useState<number | null>(null);
 
   useEffect(() => {
     // Check if this is a payment return by looking for session_id parameter
@@ -33,21 +34,33 @@ const NotFound = () => {
         if (tempId) {
           setTemporaryId(tempId);
           console.log("Temporary ID found:", tempId);
-          // Automatically redirect to confirmation page immediately
-          navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
           
-          toast({
-            title: "Payment successful!",
-            description: "Redirecting to confirmation page...",
-          });
+          // Set a short timeout to allow the app to recognize the route change
+          const timeout = window.setTimeout(() => {
+            // Automatically redirect to confirmation page
+            console.log("Redirecting to confirmation page with session and temporaryId");
+            navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
+            
+            toast({
+              title: "Payment successful!",
+              description: "Redirecting to confirmation page...",
+            });
+          }, 500);
+          
+          setRedirectTimeout(timeout);
         } else {
           // Try to redirect with just session ID
-          navigate(`/confirmation?session_id=${session}`, { replace: true });
+          const timeout = window.setTimeout(() => {
+            console.log("Redirecting to confirmation page with session only");
+            navigate(`/confirmation?session_id=${session}`, { replace: true });
+            
+            toast({
+              title: "Payment processed",
+              description: "Redirecting to confirmation page...",
+            });
+          }, 500);
           
-          toast({
-            title: "Payment processed",
-            description: "Redirecting to confirmation page...",
-          });
+          setRedirectTimeout(timeout);
         }
       }
     }
@@ -63,6 +76,13 @@ const NotFound = () => {
         window.location.href
       );
     }
+    
+    // Clean up timeout if component unmounts
+    return () => {
+      if (redirectTimeout) {
+        window.clearTimeout(redirectTimeout);
+      }
+    };
   }, [location.pathname, location.search, navigate, redirectAttempted, toast]);
 
   // If this is a payment return, show a specific message and auto-redirect

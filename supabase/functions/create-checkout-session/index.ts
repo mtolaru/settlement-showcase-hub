@@ -68,6 +68,10 @@ serve(async (req) => {
     let validatedReturnUrl = returnUrl;
     if (!validatedReturnUrl) {
       validatedReturnUrl = `${baseUrl}/confirmation`;
+    } 
+    // If returnUrl is provided but doesn't include the base, add it
+    else if (!returnUrl.startsWith('http')) {
+      validatedReturnUrl = `${baseUrl}${returnUrl.startsWith('/') ? '' : '/'}${returnUrl}`;
     }
     
     // Set cancel URL based on same base URL
