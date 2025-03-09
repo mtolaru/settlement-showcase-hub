@@ -58,11 +58,7 @@ export const useSubscriptionCancellation = (
 
       console.log("Edge function response:", response);
 
-      if (response.error) {
-        console.error("Error invoking edge function:", response.error);
-        throw new Error(response.error.message || 'Error communicating with server');
-      }
-
+      // Check for both data and error in response (since we're now always returning 200)
       const data = response.data;
 
       if (!data) {
@@ -71,7 +67,18 @@ export const useSubscriptionCancellation = (
       }
 
       if (data.error) {
-        console.error("Error returned from edge function:", data.error);
+        console.error("Error returned from edge function:", data.error, data.details || '');
+        
+        if (data.redirectUrl) {
+          console.log("Redirect URL provided, will redirect to:", data.redirectUrl);
+          // Wait a moment to show error before redirecting
+          setCancelError(data.error);
+          setTimeout(() => {
+            window.location.href = data.redirectUrl;
+          }, 2000);
+          return;
+        }
+        
         throw new Error(data.error || 'Error from server');
       }
 

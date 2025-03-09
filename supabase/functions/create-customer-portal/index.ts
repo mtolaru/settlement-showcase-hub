@@ -39,7 +39,7 @@ serve(async (req) => {
           status: 'error' 
         }),
         { 
-          status: 400, 
+          status: 200, // Return 200 instead of 400
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -55,7 +55,7 @@ serve(async (req) => {
           status: 'error' 
         }),
         { 
-          status: 500, 
+          status: 200, // Return 200 instead of 500
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -200,10 +200,11 @@ serve(async (req) => {
             user_email,
             timestamp: new Date().toISOString()
           },
-          status: 'error'
+          status: 'error',
+          redirectUrl: return_url ? `${return_url}?error=no_customer` : undefined
         }),
         { 
-          status: 404, 
+          status: 200, // Return 200 instead of 404
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -228,10 +229,11 @@ serve(async (req) => {
             error_message: error.message,
             timestamp: new Date().toISOString()
           },
-          status: 'error'
+          status: 'error',
+          redirectUrl: return_url ? `${return_url}?error=customer_verification` : undefined
         }),
         { 
-          status: 404, 
+          status: 200, // Return 200 instead of 404
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -265,10 +267,11 @@ serve(async (req) => {
         JSON.stringify({ 
           error: 'Failed to create Stripe portal session',
           details: portalError.message,
-          status: 'error'
+          status: 'error',
+          redirectUrl: return_url ? `${return_url}?error=portal&message=${encodeURIComponent(portalError.message)}` : undefined
         }),
         { 
-          status: 400, 
+          status: 200, // Return 200 instead of 400
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -278,7 +281,6 @@ serve(async (req) => {
     
     // Determine if this is a Stripe API error
     let errorMessage = 'Internal server error';
-    let statusCode = 500;
     let errorDetails = {};
     
     if (error instanceof Error) {
@@ -304,13 +306,6 @@ serve(async (req) => {
         } else {
           errorMessage = `Stripe error: ${errorMessage}`;
         }
-        
-        // Use appropriate status code for client errors
-        if (error.type.includes('InvalidRequest') || error.type.includes('CardError')) {
-          statusCode = 400;
-        } else if (error.type.includes('Authentication')) {
-          statusCode = 401;
-        }
       }
     }
     
@@ -321,7 +316,7 @@ serve(async (req) => {
         status: 'error'
       }),
       { 
-        status: statusCode, 
+        status: 200, // Return 200 instead of 500
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
