@@ -46,7 +46,7 @@ export const useSubscriptionCancellation = (
       }
       
       // Request Stripe Customer Portal URL via Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('create-customer-portal', {
+      const response = await supabase.functions.invoke('create-customer-portal', {
         body: { 
           subscription_id: customerId || undefined,
           user_email: userEmail,
@@ -54,10 +54,14 @@ export const useSubscriptionCancellation = (
         }
       });
 
-      if (error) {
-        console.error("Error invoking edge function:", error);
-        throw new Error(error.message || 'Error communicating with server');
+      console.log("Edge function response:", response);
+
+      if (response.error) {
+        console.error("Error invoking edge function:", response.error);
+        throw new Error(response.error.message || 'Error communicating with server');
       }
+
+      const data = response.data;
 
       if (!data) {
         console.error("No data returned from edge function");
@@ -81,11 +85,22 @@ export const useSubscriptionCancellation = (
       }
     } catch (error: any) {
       console.error('Error creating customer portal session:', error);
-      setCancelError(error.message || 'Failed to create customer portal session');
+      
+      // Provide more user-friendly error messages
+      let errorMessage = error.message || 'Failed to create customer portal session';
+      
+      // Check for specific error cases
+      if (errorMessage.includes('No valid Stripe customer found')) {
+        errorMessage = 'We could not find your Stripe customer record. Please contact support for assistance.';
+      } else if (errorMessage.includes('non-2xx status code')) {
+        errorMessage = 'The server encountered an issue processing your request. Please try again later.';
+      }
+      
+      setCancelError(errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to access subscription management. Please try again.",
+        description: "Failed to access subscription management. Please try again or contact support.",
       });
     } finally {
       setIsCancelling(false);

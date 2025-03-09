@@ -98,6 +98,17 @@ serve(async (req) => {
           console.log('Found customer by email:', customerId);
         } else {
           console.log('No customer found with email:', user_email);
+          
+          // Try searching with case-insensitive like match for edge cases
+          const allCustomers = await stripe.customers.list({ limit: 100 });
+          const matchingCustomer = allCustomers.data.find(
+            c => c.email && c.email.toLowerCase() === user_email.toLowerCase()
+          );
+          
+          if (matchingCustomer) {
+            customerId = matchingCustomer.id;
+            console.log('Found customer by case-insensitive email match:', customerId);
+          }
         }
       } catch (emailLookupError) {
         console.error('Error looking up customer by email:', emailLookupError);
@@ -109,7 +120,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'No valid Stripe customer found',
-          details: 'We could not find a Stripe customer record associated with your account.'
+          details: 'We could not find a Stripe customer record associated with your account.',
+          debug_info: {
+            subscription_id,
+            user_email,
+            timestamp: new Date().toISOString()
+          }
         }),
         { 
           status: 404, 
@@ -125,12 +141,18 @@ serve(async (req) => {
       if (customer.deleted) {
         throw new Error('Customer has been deleted');
       }
+      console.log('Customer verified:', customer.id, 'email:', customer.email);
     } catch (error) {
       console.error('Customer verification failed:', error);
       return new Response(
         JSON.stringify({ 
           error: 'Customer verification failed',
-          details: 'The Stripe customer record could not be found or has been deleted.'
+          details: 'The Stripe customer record could not be found or has been deleted.',
+          debug_info: {
+            customer_id: customerId,
+            error_message: error.message,
+            timestamp: new Date().toISOString()
+          }
         }),
         { 
           status: 404, 
@@ -163,13 +185,26 @@ serve(async (req) => {
     // Determine if this is a Stripe API error
     let errorMessage = 'Internal server error';
     let statusCode = 500;
+    let errorDetails = {};
     
     if (error instanceof Error) {
       errorMessage = error.message;
+      errorDetails = {
+        name: error.name,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+        timestamp: new Date().toISOString()
+      };
       
       // Check if it's a Stripe error
       if ('type' in error && typeof error.type === 'string' && error.type.startsWith('Stripe')) {
         // Format Stripe-specific errors
+        errorDetails = {
+          ...errorDetails,
+          type: error.type,
+          code: 'code' in error ? error.code : undefined,
+          param: 'param' in error ? error.param : undefined,
+        };
+        
         if ('code' in error) {
           errorMessage = `Stripe error (${error.code}): ${errorMessage}`;
         } else {
@@ -186,7 +221,10 @@ serve(async (req) => {
     }
     
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: errorDetails
+      }),
       { 
         status: statusCode, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
