@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { settlementService } from "@/services/settlementService";
 import { FormData } from "@/types/settlementForm";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UseSettlementSubmissionProps {
   temporaryId: string;
@@ -90,13 +91,36 @@ export const useSettlementSubmission = ({
         }
       }
       
-      const response = await settlementService.createCheckoutSession(
-        temporaryId, 
-        formData, 
-        unformatNumber
-      );
+      // Instead of calling the settlement service directly, use supabase.functions.invoke
+      console.log("Creating checkout session for temporary ID:", temporaryId);
       
-      if (response.isExisting) {
+      // Get user info if available
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+      
+      const response = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          temporaryId,
+          userId: userId || undefined,
+          returnUrl: window.location.origin + '/confirmation',
+          formData // Include form data for logging purposes only
+        }
+      });
+      
+      console.log("Checkout session response:", response);
+      
+      const data = response.data;
+      
+      if (!data) {
+        throw new Error('No response received from server');
+      }
+      
+      if (data.error) {
+        console.error("Error creating checkout session:", data.error);
+        throw new Error(data.error);
+      }
+      
+      if (data.isExisting) {
         toast({
           title: "Already Submitted",
           description: "This settlement has already been processed. Redirecting to settlements page.",
@@ -105,7 +129,7 @@ export const useSettlementSubmission = ({
         return;
       }
       
-      const { url } = response;
+      const { url } = data;
       if (url) {
         window.location.href = url;
       } else {
