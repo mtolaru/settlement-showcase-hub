@@ -1,4 +1,3 @@
-
 // Follow this setup guide to integrate the Deno runtime and your Supabase project:
 // https://supabase.com/docs/guides/functions/connect-to-supabase
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -61,16 +60,13 @@ serve(async (req) => {
         console.log(`Header "${key}": ${value}`);
       }
       
-      // Important: Return a 200 response instead of 400 to prevent Stripe from retrying
-      // This makes debugging easier and won't cause multiple retries
       return new Response(
         JSON.stringify({ 
           error: 'No stripe-signature header found', 
-          availableHeaders: [...req.headers.keys()],
-          status: 'acknowledged' // Let Stripe know we received it despite the error
+          availableHeaders: [...req.headers.keys()]
         }),
         { 
-          status: 200, // Changed from 400 to 200
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -104,29 +100,21 @@ serve(async (req) => {
         console.log('Possible signature mismatch - verify STRIPE_WEBHOOK_SECRET is correct');
       }
       
-      // Important: Return a 200 response instead of 401 to prevent Stripe from retrying
-      // This makes debugging easier by avoiding multiple retries with the same error
       return new Response(
         JSON.stringify({ 
           error: 'Webhook signature verification failed',
           details: webhookError.message,
-          received: true,
-          status: 'acknowledged' // Let Stripe know we received it despite the error
+          received: true
         }),
         { 
-          status: 200, // Changed from 401 to 200
+          status: 401, // Return 401 for invalid signature
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
-    // Connect to Supabase - Important: Use service_role key to bypass RLS policies
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
+    // Connect to Supabase
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Process specific webhook events
     switch (event.type) {
@@ -309,18 +297,15 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Webhook general error:', error);
-    
-    // Always return status 200 to avoid Stripe retrying - we want to see the actual error
-    // rather than having it retry multiple times
+    // Provide more detailed error information
     return new Response(
       JSON.stringify({ 
         error: error.message,
         details: error.stack,
-        timestamp: new Date().toISOString(),
-        status: 'acknowledged' // Let Stripe know we received it despite the error
+        timestamp: new Date().toISOString() 
       }),
       { 
-        status: 200, // Changed from 500 to 200
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

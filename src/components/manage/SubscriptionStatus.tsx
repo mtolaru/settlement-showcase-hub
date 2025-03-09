@@ -48,8 +48,7 @@ const SubscriptionStatus = ({
     subscription,
     explicit_status: subscription?.status,
     cancel_at_period_end: subscription?.cancel_at_period_end,
-    ends_at: subscription?.ends_at,
-    is_live_mode: subscription?.is_live_mode
+    ends_at: subscription?.ends_at
   });
 
   // Determine if subscription is canceled but still active (ends_at is in the future)
@@ -64,9 +63,7 @@ const SubscriptionStatus = ({
 
   console.log("Is subscription canceled:", isSubscriptionCanceled, {
     hasEndDate,
-    isExplicitlyCanceled,
-    subscription_status: subscription?.status,
-    cancel_at_period_end: subscription?.cancel_at_period_end
+    isExplicitlyCanceled
   });
 
   // Handle dialog close

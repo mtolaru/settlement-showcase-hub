@@ -37,7 +37,6 @@ function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
-          {/* Make sure NotFound is the last route so it catches all unmatched routes */}
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Footer />

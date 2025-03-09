@@ -1,3 +1,4 @@
+
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,42 +14,12 @@ const NotFound = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [redirectAttempted, setRedirectAttempted] = useState(false);
-  const [redirectTimeout, setRedirectTimeout] = useState<number | null>(null);
 
   useEffect(() => {
-    // Log all URL params for debugging
-    console.log("NotFound: URL parameters:", {
-      search: location.search,
-      pathname: location.pathname,
-      fullURL: window.location.href
-    });
-    
-    // Parse URL query parameters
-    const params = new URLSearchParams(location.search);
-    
     // Check if this is a payment return by looking for session_id parameter
-    let session = params.get("session_id");
-    let tempId = params.get("temporaryId");
-    
-    // Special handling for malformed URLs with double question marks
-    // For example: ?temporaryId=123?session_id=456
-    if (!session && location.search.includes('?session_id=')) {
-      console.log("Detected malformed URL with multiple question marks");
-      const searchParts = location.search.split('?session_id=');
-      if (searchParts.length > 1) {
-        // Get session_id part
-        const sessionPart = searchParts[1].split('&')[0];
-        session = sessionPart;
-        console.log("Extracted session_id from malformed URL:", session);
-      }
-    }
-    
-    // Also check for malformed temporaryId
-    if (tempId && tempId.includes('?')) {
-      console.log("Detected malformed temporaryId with question mark");
-      tempId = tempId.split('?')[0];
-      console.log("Cleaned temporaryId:", tempId);
-    }
+    const params = new URLSearchParams(location.search);
+    const session = params.get("session_id");
+    const tempId = params.get("temporaryId");
     
     if (session) {
       setSessionId(session);
@@ -62,37 +33,21 @@ const NotFound = () => {
         if (tempId) {
           setTemporaryId(tempId);
           console.log("Temporary ID found:", tempId);
+          // Automatically redirect to confirmation page immediately
+          navigate(`/confirmation?session_id=${session}&temporaryId=${tempId}`, { replace: true });
           
-          // Set a short timeout to allow the app to recognize the route change
-          const timeout = window.setTimeout(() => {
-            // Construct a properly formatted URL and redirect
-            const properlyFormattedUrl = `/confirmation?session_id=${encodeURIComponent(session || '')}&temporaryId=${encodeURIComponent(tempId || '')}`;
-            console.log("Redirecting to properly formatted URL:", properlyFormattedUrl);
-            
-            navigate(properlyFormattedUrl, { replace: true });
-            
-            toast({
-              title: "Payment successful!",
-              description: "Redirecting to confirmation page...",
-            });
-          }, 300); // Reduced timeout for faster redirect
-          
-          setRedirectTimeout(timeout);
+          toast({
+            title: "Payment successful!",
+            description: "Redirecting to confirmation page...",
+          });
         } else {
           // Try to redirect with just session ID
-          const timeout = window.setTimeout(() => {
-            const properlyFormattedUrl = `/confirmation?session_id=${encodeURIComponent(session || '')}`;
-            console.log("Redirecting to properly formatted URL with session only:", properlyFormattedUrl);
-            
-            navigate(properlyFormattedUrl, { replace: true });
-            
-            toast({
-              title: "Payment processed",
-              description: "Redirecting to confirmation page...",
-            });
-          }, 300); // Reduced timeout for faster redirect
+          navigate(`/confirmation?session_id=${session}`, { replace: true });
           
-          setRedirectTimeout(timeout);
+          toast({
+            title: "Payment processed",
+            description: "Redirecting to confirmation page...",
+          });
         }
       }
     }
@@ -108,13 +63,6 @@ const NotFound = () => {
         window.location.href
       );
     }
-    
-    // Clean up timeout if component unmounts
-    return () => {
-      if (redirectTimeout) {
-        window.clearTimeout(redirectTimeout);
-      }
-    };
   }, [location.pathname, location.search, navigate, redirectAttempted, toast]);
 
   // If this is a payment return, show a specific message and auto-redirect
@@ -132,10 +80,7 @@ const NotFound = () => {
           
           <div className="space-y-4">
             <Button 
-              onClick={() => {
-                const properUrl = `/confirmation?session_id=${encodeURIComponent(sessionId || '')}&temporaryId=${encodeURIComponent(temporaryId || '')}`;
-                navigate(properUrl);
-              }}
+              onClick={() => navigate(`/confirmation?session_id=${sessionId}${temporaryId ? `&temporaryId=${temporaryId}` : ''}`)}
               className="block w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
             >
               Go to Confirmation Now

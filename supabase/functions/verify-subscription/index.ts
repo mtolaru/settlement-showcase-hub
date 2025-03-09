@@ -1,4 +1,3 @@
-
 // Follow this setup guide to integrate the Deno runtime into your application:
 // https://deno.land/manual/examples/typescript
 
@@ -19,13 +18,12 @@ console.log("Checking for Stripe subscriptions...");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*", 
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log("Handling OPTIONS preflight request");
     return new Response(null, {
       headers: corsHeaders,
     });
@@ -45,9 +43,6 @@ serve(async (req) => {
     }
 
     const { userId, email, includeDetails } = payload;
-    
-    console.log(`Verifying subscription for user ${userId || 'unknown'} with email ${email || 'unknown'}`);
-    console.log("Stripe API key available:", !!Deno.env.get("STRIPE_SECRET_KEY"));
 
     if (!userId && !email) {
       console.error("Missing required parameters: userId or email required");
@@ -56,6 +51,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
+
+    console.log(`Verifying subscription for user ${userId} with email ${email}`);
 
     // First, try to find a subscription by user_id in our database
     let dbSubscription = null;
@@ -89,7 +86,6 @@ serve(async (req) => {
     // Otherwise look up by email
     else if (email) {
       try {
-        console.log("Looking up customer by email:", email);
         const customers = await stripe.customers.list({
           email: email,
           limit: 1,
@@ -98,19 +94,15 @@ serve(async (req) => {
         if (customers.data.length > 0) {
           stripeCustomerId = customers.data[0].id;
           console.log("Found Stripe customer by email:", stripeCustomerId);
-        } else {
-          console.log("No Stripe customer found with email:", email);
         }
       } catch (err) {
         console.error("Error looking up Stripe customer by email:", err);
-        console.error("Error details:", err.message);
       }
     }
 
     // If we have a customer ID, look up their subscriptions
     if (stripeCustomerId) {
       try {
-        console.log("Looking up subscriptions for customer:", stripeCustomerId);
         const subscriptions = await stripe.subscriptions.list({
           customer: stripeCustomerId,
           status: 'all',
@@ -145,18 +137,13 @@ serve(async (req) => {
             customer_id: stripeCustomerId,
             status: sub.status,
             cancel_at_period_end: sub.cancel_at_period_end,
-            current_period_end: sub.current_period_end,
-            is_live_mode: sub.livemode
+            current_period_end: sub.current_period_end
           };
           
           console.log("Formatted Stripe subscription data:", stripeSubscription);
-        } else {
-          console.log("No valid subscriptions found for customer:", stripeCustomerId);
         }
       } catch (err) {
         console.error("Error looking up Stripe subscriptions:", err);
-        console.error("Error details:", err.message);
-        console.error("Stack trace:", err.stack);
       }
     }
 
@@ -188,11 +175,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("Final response:", {
-      subscription: finalSubscription,
-      hasActiveSubscription: !!finalSubscription
-    });
-
     return new Response(
       JSON.stringify({
         subscription: finalSubscription,
@@ -203,14 +185,8 @@ serve(async (req) => {
 
   } catch (err) {
     console.error("Unexpected error in verify-subscription:", err);
-    console.error("Error details:", err.message);
-    console.error("Stack trace:", err.stack);
     return new Response(
-      JSON.stringify({ 
-        error: "Internal server error", 
-        details: err.message,
-        stack: err.stack
-      }),
+      JSON.stringify({ error: "Internal server error", details: err.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }

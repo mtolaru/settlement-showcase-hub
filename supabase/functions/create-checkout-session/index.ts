@@ -49,14 +49,6 @@ serve(async (req) => {
     // Get the origin for this request
     const requestOrigin = req.headers.get('origin');
     
-    // Log the request details for debugging
-    console.log("Request details:", {
-      temporaryId,
-      userId,
-      returnUrl,
-      origin: requestOrigin || "unknown"
-    });
-    
     // Determine the environment based on the request origin
     const isProduction = requestOrigin?.includes('settlementwins.com') || 
                          requestOrigin?.includes('vercel.app') ||
@@ -76,10 +68,6 @@ serve(async (req) => {
     let validatedReturnUrl = returnUrl;
     if (!validatedReturnUrl) {
       validatedReturnUrl = `${baseUrl}/confirmation`;
-    } 
-    // If returnUrl is provided but doesn't include the base, add it
-    else if (!returnUrl.startsWith('http')) {
-      validatedReturnUrl = `${baseUrl}${returnUrl.startsWith('/') ? '' : '/'}${returnUrl}`;
     }
     
     // Set cancel URL based on same base URL
@@ -114,7 +102,6 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      // Fix URL parameter formatting here - use & instead of another ? for session_id
       success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${temporaryId}`,
       cancel_url: cancelUrl,
       client_reference_id: temporaryId,
