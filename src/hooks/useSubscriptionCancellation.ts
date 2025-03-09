@@ -81,6 +81,22 @@ export const useSubscriptionCancellation = (
       if (data.error) {
         console.error("Error returned from edge function:", data.error, data.details || '');
         
+        // Special handling for Stripe portal configuration error
+        if (data.error.includes('No configuration provided') || 
+            data.error.includes('invalid_request_error') ||
+            data.details?.includes('dashboard.stripe.com/settings/billing/portal')) {
+          setCancelError(
+            "Stripe Customer Portal is not configured. Please contact support and provide the following information: " +
+            "The Stripe Customer Portal needs to be configured in the Stripe Dashboard."
+          );
+          toast({
+            variant: "destructive",
+            title: "Configuration Error",
+            description: "Stripe portal is not properly configured. Our team has been notified.",
+          });
+          return;
+        }
+        
         if (data.redirectUrl) {
           console.log("Redirect URL provided, will redirect to:", data.redirectUrl);
           // Wait a moment to show error before redirecting
@@ -120,6 +136,8 @@ export const useSubscriptionCancellation = (
         errorMessage = 'We could not find your Stripe customer record. Please contact support for assistance.';
       } else if (errorMessage.includes('non-2xx status code')) {
         errorMessage = 'The server encountered an issue processing your request. Please try again later.';
+      } else if (errorMessage.includes('No configuration provided')) {
+        errorMessage = 'The Stripe Customer Portal is not configured properly. Our support team has been notified.';
       }
       
       setCancelError(errorMessage);
