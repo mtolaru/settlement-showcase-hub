@@ -22,6 +22,12 @@ export const useSubscriptionCancellation = (
     try {
       console.log("Requesting Stripe Customer Portal for subscription:", subscription.id);
       
+      // Get current user's email
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email;
+      
+      console.log("Current user email for portal request:", userEmail);
+      
       // Prepare customer ID or subscription ID to send to the edge function
       let customerId = subscription.customer_id;
       
@@ -39,17 +45,11 @@ export const useSubscriptionCancellation = (
         customerId = subscription.id;
       }
       
-      if (!customerId) {
-        console.error("No customer_id or valid subscription ID available:", subscription);
-        throw new Error('No Stripe customer ID found for this subscription');
-      }
-      
-      console.log("Using customer ID for portal request:", customerId);
-      
       // Request Stripe Customer Portal URL via Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('create-customer-portal', {
         body: { 
-          subscription_id: customerId,
+          subscription_id: customerId || undefined,
+          user_email: userEmail,
           return_url: window.location.origin + '/manage'
         }
       });

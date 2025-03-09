@@ -16,15 +16,18 @@ serve(async (req) => {
   try {
     // Get the request body
     const requestData = await req.json();
-    const { subscription_id, return_url } = requestData;
+    const { subscription_id, return_url, user_email } = requestData;
 
-    console.log('Creating Stripe customer portal session for subscription:', subscription_id);
-    console.log('Return URL:', return_url);
+    console.log('Creating Stripe customer portal session with data:', {
+      subscription_id,
+      return_url,
+      user_email
+    });
 
-    if (!subscription_id) {
-      console.error('Missing subscription_id in request');
+    if (!subscription_id && !user_email) {
+      console.error('Missing required parameters - need either subscription_id or user_email');
       return new Response(
-        JSON.stringify({ error: 'Missing subscription_id parameter' }),
+        JSON.stringify({ error: 'Missing subscription_id or user_email parameter' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -49,39 +52,94 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     });
 
-    // First, retrieve the subscription to get the customer ID
-    console.log('Retrieving Stripe subscription details...');
+    // First, try to find customer
+    console.log('Attempting to identify Stripe customer...');
     let customerId;
     
-    // Check if this is a direct customer ID or a subscription ID
-    if (subscription_id.startsWith('cus_')) {
+    // Try several approaches to find the customer ID
+    // 1. Check if subscription_id is a direct customer ID
+    if (subscription_id?.startsWith('cus_')) {
       console.log('Direct customer ID provided:', subscription_id);
       customerId = subscription_id;
-    } else {
+    } 
+    // 2. Try to retrieve subscription details from Stripe
+    else if (subscription_id) {
       try {
-        // Try to retrieve subscription details from Stripe
         const subscription = await stripe.subscriptions.retrieve(subscription_id);
         console.log('Subscription retrieved:', subscription.id);
         customerId = subscription.customer as string;
       } catch (error) {
-        // If subscription retrieval fails, try using it directly as a customer ID
-        console.log('Could not retrieve subscription, using ID directly as customer ID');
-        customerId = subscription_id;
+        console.log('Could not retrieve subscription with ID:', subscription_id, error);
+        
+        // 3. Try using it directly as a customer ID even if it doesn't start with cus_
+        try {
+          const customer = await stripe.customers.retrieve(subscription_id);
+          if (customer && !customer.deleted) {
+            console.log('Successfully retrieved customer using ID:', subscription_id);
+            customerId = subscription_id;
+          }
+        } catch (customerError) {
+          console.log('Not a valid customer ID either:', subscription_id);
+        }
+      }
+    }
+    
+    // 4. If user_email is provided, try to find customer by email
+    if (!customerId && user_email) {
+      console.log('Searching for customer by email:', user_email);
+      try {
+        const customers = await stripe.customers.list({
+          email: user_email,
+          limit: 1,
+        });
+        
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          console.log('Found customer by email:', customerId);
+        } else {
+          console.log('No customer found with email:', user_email);
+        }
+      } catch (emailLookupError) {
+        console.error('Error looking up customer by email:', emailLookupError);
       }
     }
 
     if (!customerId) {
-      console.error('No customer ID found for subscription:', subscription_id);
+      console.error('Could not identify a valid Stripe customer with the provided information');
       return new Response(
-        JSON.stringify({ error: 'No customer ID found for this subscription' }),
+        JSON.stringify({ 
+          error: 'No valid Stripe customer found',
+          details: 'We could not find a Stripe customer record associated with your account.'
+        }),
         { 
-          status: 400, 
+          status: 404, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
-    console.log('Creating portal session for customer:', customerId);
+    // Verify the customer actually exists in Stripe
+    try {
+      console.log('Verifying customer exists:', customerId);
+      const customer = await stripe.customers.retrieve(customerId);
+      if (customer.deleted) {
+        throw new Error('Customer has been deleted');
+      }
+    } catch (error) {
+      console.error('Customer verification failed:', error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Customer verification failed',
+          details: 'The Stripe customer record could not be found or has been deleted.'
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('Creating portal session for verified customer:', customerId);
     
     // Create a billing portal session
     const session = await stripe.billingPortal.sessions.create({
