@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,12 @@ export const ShareButton = ({
     shareUrl.searchParams.append('utm_source', source);
     shareUrl.searchParams.append('utm_medium', 'social');
     shareUrl.searchParams.append('utm_campaign', 'settlement_share');
+    
+    // Add a cache-busting parameter for LinkedIn - helps with OG tag refresh
+    if (source === 'linkedin') {
+      shareUrl.searchParams.append('t', Date.now().toString());
+    }
+    
     return shareUrl.toString();
   };
 
@@ -66,10 +73,14 @@ export const ShareButton = ({
   };
 
   const handleLinkedInShare = () => {
-    // LinkedIn's sharing API - Using separate URL & text params for better compatibility
+    // LinkedIn's sharing API - using the official /sharing/share-offsite endpoint
+    // This ensures proper Open Graph tag processing by LinkedIn
     const linkedinUrl = new URL('https://www.linkedin.com/sharing/share-offsite/');
+    
+    // LinkedIn requires the url parameter
     linkedinUrl.searchParams.append('url', getShareUrl('linkedin'));
     
+    // Open in a popup window of fixed size
     window.open(linkedinUrl.toString(), '_blank', 'noopener,noreferrer,width=600,height=600');
     
     toast({
