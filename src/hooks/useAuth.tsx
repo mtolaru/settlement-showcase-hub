@@ -54,6 +54,12 @@ export const useAuth = (): AuthReturn => {
       console.log("Auth state changed:", _event);
       console.log("New session:", session ? `User ID: ${session.user.id}` : "No session");
       
+      // Log auth event details for debugging
+      if (_event === 'PASSWORD_RECOVERY') {
+        console.log("Password recovery event detected");
+        console.log("Current URL:", window.location.href);
+      }
+      
       if (session?.user) {
         setUser(session.user);
         setIsAuthenticated(true);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -28,7 +27,6 @@ export function LoginDialog() {
   const location = useLocation();
 
   useEffect(() => {
-    // Prevent body scroll when dialog is open
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -41,7 +39,6 @@ export function LoginDialog() {
   }, [isOpen]);
 
   useEffect(() => {
-    // Clear error message when switching between login/register/forgot password modes
     setErrorMessage("");
   }, [isRegisterMode, isForgotPasswordMode]);
 
@@ -98,8 +95,13 @@ export function LoginDialog() {
     try {
       if (isForgotPasswordMode) {
         const siteUrl = getSiteUrl();
+        console.log("Using site URL for password reset:", siteUrl);
+        
+        const resetRedirectUrl = `${siteUrl}/auth/reset-password`;
+        console.log("Reset redirect URL:", resetRedirectUrl);
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${siteUrl}/auth/reset-password`,
+          redirectTo: resetRedirectUrl,
         });
         
         if (error) throw error;
@@ -113,11 +115,16 @@ export function LoginDialog() {
         try {
           validatePassword(password);
           const siteUrl = getSiteUrl();
+          console.log("Using site URL for registration:", siteUrl);
+          
+          const signupRedirectUrl = `${siteUrl}/auth/callback`;
+          console.log("Signup redirect URL:", signupRedirectUrl);
+          
           const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              emailRedirectTo: `${siteUrl}/auth/callback`,
+              emailRedirectTo: signupRedirectUrl,
             },
           });
           if (error) throw error;
@@ -146,7 +153,6 @@ export function LoginDialog() {
           description: "Welcome back!",
         });
         
-        // Redirect to manage page if not already there
         if (location.pathname !== "/manage") {
           navigate("/manage");
         }
@@ -154,7 +160,6 @@ export function LoginDialog() {
       }
     } catch (error: any) {
       console.log("Auth error:", error);
-      // Error toast is now only shown for unexpected errors
       if (!errorMessage) {
         toast({
           variant: "destructive",

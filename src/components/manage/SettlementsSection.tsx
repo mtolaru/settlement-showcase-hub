@@ -5,6 +5,7 @@ import SettlementsList from "@/components/manage/SettlementsList";
 import { settlementService } from "@/services/settlementService";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { numberParam, stringParam, updateObj, safeGet } from "@/utils/dbTypeHelpers";
 
 interface SettlementsSectionProps {
   settlements: Settlement[];
@@ -39,7 +40,7 @@ const SettlementsSection = ({
       const { data: settlementData, error: fetchError } = await supabase
         .from('settlements')
         .select('id, user_id, attorney_email, temporary_id')
-        .eq('id', settlementId)
+        .eq('id', numberParam(settlementId))
         .maybeSingle();
       
       if (fetchError) {
@@ -66,20 +67,25 @@ const SettlementsSection = ({
       const { data: { user } } = await supabase.auth.getUser();
       const userEmail = user?.email;
       
-      if (!settlementData.user_id || settlementData.user_id !== userId) {
+      // Check if the settlement doesn't belong to the current user
+      const settlementUserId = safeGet(settlementData, 'user_id', null);
+      const settlementEmail = safeGet(settlementData, 'attorney_email', null);
+      
+      if (!settlementUserId || settlementUserId !== userId) {
         console.log(`Settlement doesn't belong to current user. 
-          Settlement user_id: ${settlementData.user_id || 'null'}, 
+          Settlement user_id: ${settlementUserId || 'null'}, 
           Current user_id: ${userId},
-          Settlement attorney_email: ${settlementData.attorney_email || 'null'},
+          Settlement attorney_email: ${settlementEmail || 'null'},
           User email: ${userEmail || 'null'}`);
         
-        if (userEmail && settlementData.attorney_email === userEmail) {
+        // If user's email matches settlement attorney_email, attempt to claim
+        if (userEmail && settlementEmail === userEmail) {
           console.log("User's email matches settlement attorney_email, attempting to claim");
           
           const { error: claimError } = await supabase
             .from('settlements')
-            .update({ user_id: userId })
-            .eq('id', settlementId);
+            .update(updateObj({ user_id: userId }))
+            .eq('id', numberParam(settlementId));
             
           if (claimError) {
             console.error("Error claiming settlement by email:", claimError);
@@ -133,3 +139,4 @@ const SettlementsSection = ({
 };
 
 export default SettlementsSection;
+

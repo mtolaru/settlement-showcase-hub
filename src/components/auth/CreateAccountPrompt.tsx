@@ -7,6 +7,7 @@ import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { stringParam, updateObj, safeGet } from "@/utils/dbTypeHelpers";
 
 interface CreateAccountPromptProps {
   temporaryId: string;
@@ -31,7 +32,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         const { data, error } = await supabase
           .from('settlements')
           .select('attorney_email')
-          .eq('temporary_id', temporaryId)
+          .eq('temporary_id', stringParam(temporaryId))
           .maybeSingle();
           
         if (error) {
@@ -39,13 +40,14 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           return;
         }
         
-        if (data?.attorney_email) {
-          console.log("Pre-populating email from settlement:", data.attorney_email);
-          setEmail(data.attorney_email);
+        const attorneyEmail = safeGet(data, 'attorney_email', '');
+        if (attorneyEmail) {
+          console.log("Pre-populating email from settlement:", attorneyEmail);
+          setEmail(attorneyEmail);
           
           // Check if this email already exists in auth
           const { data: userData, error: userError } = await supabase.auth.signInWithOtp({
-            email: data.attorney_email,
+            email: attorneyEmail,
             options: {
               shouldCreateUser: false // Just check if user exists, don't send email
             }
@@ -168,8 +170,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       // Update the settlement with the user ID
       const { error: updateError } = await supabase
         .from('settlements')
-        .update({ user_id: userId })
-        .eq('temporary_id', temporaryId);
+        .update(updateObj({ user_id: userId }))
+        .eq('temporary_id', stringParam(temporaryId));
 
       if (updateError) {
         console.error("Error updating settlement:", updateError);
@@ -191,9 +193,9 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         console.log(`Checking for additional settlements with email ${email}`);
         const { data: emailSettlements, error: emailError } = await supabase
           .from('settlements')
-          .update({ user_id: userId })
+          .update(updateObj({ user_id: userId }))
           .is('user_id', null)
-          .eq('attorney_email', email)
+          .eq('attorney_email', stringParam(email))
           .select('id');
           
         if (emailError) {
@@ -210,8 +212,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       // Also update any subscription record with the same temporary_id
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
-        .update({ user_id: userId })
-        .eq('temporary_id', temporaryId);
+        .update(updateObj({ user_id: userId }))
+        .eq('temporary_id', stringParam(temporaryId));
 
       if (subscriptionError) {
         console.error("Error updating subscription:", subscriptionError);

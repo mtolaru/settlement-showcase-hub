@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { stringParam, updateObj, safeGet } from "@/utils/dbTypeHelpers";
 
 export const useSettlementConfirmation = () => {
   const location = useLocation();
@@ -65,8 +66,8 @@ export const useSettlementConfirmation = () => {
       
       const { error: updateError } = await supabase
         .from('settlements')
-        .update({ user_id: user.id })
-        .eq('temporary_id', temporaryId)
+        .update(updateObj({ user_id: user.id }))
+        .eq('temporary_id', stringParam(temporaryId))
         .is('user_id', null); // Only update if user_id is null
         
       if (updateError) {
@@ -89,16 +90,17 @@ export const useSettlementConfirmation = () => {
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('temporary_id, user_id')
-        .eq('payment_id', sessionId)
+        .eq('payment_id', stringParam(sessionId))
         .maybeSingle();
       
       if (subscriptionError) {
         console.error("Error fetching subscription:", subscriptionError);
       }
       
-      if (subscriptionData?.temporary_id) {
-        console.log("Found temporary_id from subscription:", subscriptionData.temporary_id);
-        fetchSettlementData(subscriptionData.temporary_id);
+      const tempId = safeGet(subscriptionData, 'temporary_id', null);
+      if (tempId) {
+        console.log("Found temporary_id from subscription:", tempId);
+        fetchSettlementData(tempId);
         return;
       }
       
@@ -115,9 +117,12 @@ export const useSettlementConfirmation = () => {
         }
         
         if (recentSubscriptions && recentSubscriptions.length > 0) {
-          console.log("Found recent subscription:", recentSubscriptions[0]);
-          fetchSettlementData(recentSubscriptions[0].temporary_id);
-          return;
+          const tempIdFromRecent = safeGet(recentSubscriptions[0], 'temporary_id', null);
+          if (tempIdFromRecent) {
+            console.log("Found recent subscription:", recentSubscriptions[0]);
+            fetchSettlementData(tempIdFromRecent);
+            return;
+          }
         }
       }
       
@@ -139,7 +144,7 @@ export const useSettlementConfirmation = () => {
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
-        .eq('temporary_id', tempId)
+        .eq('temporary_id', stringParam(tempId))
         .maybeSingle();
       
       if (error) {
@@ -155,13 +160,15 @@ export const useSettlementConfirmation = () => {
       console.log("Found settlement data:", data);
       setSettlementData(data);
       
-      if (!data.payment_completed && !isUpdating) {
+      // Check if payment is completed and update if needed
+      const paymentCompleted = data.payment_completed === true;
+      if (!paymentCompleted && !isUpdating) {
         setIsUpdating(true);
         
         const { error: updateError } = await supabase
           .from('settlements')
-          .update({ payment_completed: true })
-          .eq('temporary_id', tempId)
+          .update(updateObj({ payment_completed: true }))
+          .eq('temporary_id', stringParam(tempId))
           .eq('payment_completed', false);
           
         if (updateError) {
@@ -171,7 +178,7 @@ export const useSettlementConfirmation = () => {
           const { data: refreshedData } = await supabase
             .from('settlements')
             .select('*')
-            .eq('temporary_id', tempId)
+            .eq('temporary_id', stringParam(tempId))
             .maybeSingle();
             
           if (refreshedData) {
