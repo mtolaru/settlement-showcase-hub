@@ -33,7 +33,7 @@ serve(async (req) => {
     const baseUrl = resolveBaseUrl(req);
     
     // Always use the Supabase function URL for webhook endpoints
-    const webhookUrl = `${supabaseUrl}/functions/v1/stripe-webhook`;
+    const webhookUrl = `${supabaseUrl}/functions/v1/webhook-handler`;
     console.log("Webhook URL:", webhookUrl);
     
     // Create checkout session
