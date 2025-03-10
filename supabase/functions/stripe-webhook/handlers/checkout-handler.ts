@@ -43,6 +43,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
     
     if (checkError) {
       console.error('Error checking settlement:', checkError);
+      throw new Error(`Failed to check settlement: ${checkError.message}`);
     }
     
     if (existingSettlement?.payment_completed) {
@@ -58,7 +59,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
     // If no settlement found, return error
     if (!existingSettlement) {
       console.error(`No settlement found with temporaryId: ${temporaryId}. Cannot update.`);
-      return;
+      throw new Error(`No settlement found with temporaryId: ${temporaryId}`);
     }
     
     // Update ONLY the payment fields, preserving all existing data

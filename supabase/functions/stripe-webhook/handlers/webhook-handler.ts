@@ -6,27 +6,34 @@ import Stripe from "https://esm.sh/stripe@13.3.0?target=deno";
 // Process different webhook event types
 export const handleWebhookEvent = async (event: any, supabase: any) => {
   console.log(`Processing event type: ${event.type}`);
+  console.log(`Event ID: ${event.id}`);
+  console.log(`Event API version: ${event.api_version}`);
   
-  switch (event.type) {
-    case 'checkout.session.completed':
-      await handleCheckoutSession(event.data.object, supabase, event.livemode);
-      break;
-      
-    case 'invoice.paid':
-    case 'invoice.payment_succeeded':
-      await handleInvoicePayment(event.data.object, supabase, event.livemode);
-      break;
-      
-    case 'customer.subscription.updated':
-      await handleSubscriptionUpdated(event.data.object, supabase);
-      break;
-      
-    case 'customer.subscription.deleted':
-      await handleSubscriptionDeleted(event.data.object, supabase);
-      break;
-      
-    default:
-      console.log(`Unhandled event type: ${event.type}`);
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleCheckoutSession(event.data.object, supabase, event.livemode);
+        break;
+        
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded':
+        await handleInvoicePayment(event.data.object, supabase, event.livemode);
+        break;
+        
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdated(event.data.object, supabase);
+        break;
+        
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object, supabase);
+        break;
+        
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+  } catch (error) {
+    console.error(`Error processing webhook event ${event.type}:`, error);
+    throw error;
   }
 };
 
@@ -95,5 +102,6 @@ const handleInvoicePayment = async (invoice: any, supabase: any, isLiveMode: boo
     console.log('Finished processing invoice payment event');
   } catch (error) {
     console.error('Error in handleInvoicePayment:', error);
+    throw error;
   }
 };

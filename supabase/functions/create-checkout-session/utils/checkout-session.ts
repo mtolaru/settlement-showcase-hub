@@ -61,6 +61,7 @@ export const createCheckoutSession = async (
     
   if (settlementError) {
     console.error('Error checking settlement:', settlementError);
+    throw new Error(`Failed to check existing settlement: ${settlementError.message}`);
   }
   
   if (settlement?.payment_completed) {
@@ -74,11 +75,16 @@ export const createCheckoutSession = async (
     
     try {
       // Check if settlement record exists
-      const { data: existingSettlement } = await supabase
+      const { data: existingSettlement, error: checkError } = await supabase
         .from('settlements')
         .select('id')
         .eq('temporary_id', temporaryId)
         .maybeSingle();
+        
+      if (checkError) {
+        console.error('Error checking existing settlement:', checkError);
+        throw new Error(`Failed to check if settlement exists: ${checkError.message}`);
+      }
         
       // Format the data for insertion
       const settlementData = {
@@ -115,7 +121,7 @@ export const createCheckoutSession = async (
           
         if (updateError) {
           console.error("Error updating existing settlement:", updateError);
-          throw updateError;
+          throw new Error(`Failed to update settlement: ${updateError.message}`);
         }
         
         console.log("Updated existing settlement record:", updatedRecord);
@@ -136,13 +142,14 @@ export const createCheckoutSession = async (
           
         if (insertError) {
           console.error("Error creating settlement record:", insertError);
-          throw insertError;
+          throw new Error(`Failed to create settlement record: ${insertError.message}`);
         }
         
         console.log("Successfully created settlement record:", data);
       }
     } catch (saveError) {
       console.error('Error saving form data to settlements:', saveError);
+      throw saveError; // Rethrow to handle in the main function
     }
   }
   
@@ -155,7 +162,6 @@ export const createCheckoutSession = async (
   
   try {
     // Create the checkout session
-    // Note: Let Stripe use the webhook endpoint configured in the Stripe Dashboard
     console.log('Creating Stripe checkout session with these parameters:', {
       temporaryId,
       successUrl,
@@ -201,6 +207,6 @@ export const createCheckoutSession = async (
     return { session };
   } catch (stripeError) {
     console.error('Stripe error creating checkout session:', stripeError);
-    throw stripeError;
+    throw new Error(`Stripe error: ${stripeError.message}`);
   }
 };

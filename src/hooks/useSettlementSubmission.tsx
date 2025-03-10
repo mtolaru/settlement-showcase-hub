@@ -40,11 +40,16 @@ export const useSettlementSubmission = ({
       console.log("Saving form data with temporaryId:", temporaryId, formData);
       
       // First check if a record already exists
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord, error: checkError } = await supabase
         .from('settlements')
         .select('id, payment_completed')
         .eq('temporary_id', temporaryId)
         .maybeSingle();
+      
+      if (checkError) {
+        console.error("Error checking existing record:", checkError);
+        throw new Error(`Failed to check if settlement exists: ${checkError.message}`);
+      }
         
       // Prepare the submission data with full form details
       const submissionData = {
@@ -86,7 +91,7 @@ export const useSettlementSubmission = ({
           
         if (updateError) {
           console.error("Error updating existing settlement:", updateError);
-          throw updateError;
+          throw new Error(`Failed to update settlement: ${updateError.message}`);
         }
         
         console.log("Updated existing settlement record:", updatedRecord);
@@ -108,7 +113,7 @@ export const useSettlementSubmission = ({
           
         if (error) {
           console.error("Error creating settlement record:", error);
-          throw error;
+          throw new Error(`Failed to create settlement record: ${error.message}`);
         }
         
         console.log("Successfully created settlement record:", data);
@@ -125,6 +130,11 @@ export const useSettlementSubmission = ({
     try {
       console.log("Creating settlement record with temporaryId:", temporaryId);
       console.log("Form data being submitted:", formData);
+      
+      // Validate required fields
+      if (!formData.amount || !formData.attorneyName || !formData.firmName || !formData.location) {
+        throw new Error("Required fields are missing. Please complete all required fields.");
+      }
       
       // Save form data to localStorage for recovery
       localStorage.setItem('settlement_form_data', JSON.stringify(formData));
@@ -188,10 +198,14 @@ export const useSettlementSubmission = ({
           
           console.log("Checkout session response:", checkoutResponse);
           
+          if (checkoutResponse.error) {
+            throw new Error(`Error from edge function: ${checkoutResponse.error}`);
+          }
+          
           const data = checkoutResponse.data;
           
           if (!data) {
-            throw new Error('No response received from server');
+            throw new Error('No response data received from server');
           }
           
           if (data.error) {
@@ -253,7 +267,7 @@ export const useSettlementSubmission = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to initiate checkout. Please try again.",
+          description: `Failed to initiate checkout: ${error.message || "Please try again"}`,
         });
         setSubmissionLock(false);
       } finally {
@@ -336,7 +350,7 @@ export const useSettlementSubmission = ({
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to submit settlement. Please try again.",
+        description: `Failed to submit settlement: ${error.message || "Please try again"}`,
       });
       setSubmissionLock(false);
     } finally {
