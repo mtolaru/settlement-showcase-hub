@@ -69,6 +69,8 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       }
       
       console.log("Redirecting to:", redirectUrl);
+      console.log("Current URL:", window.location.href);
+      console.log("Current location origin:", window.location.origin);
       
       // Short delay before redirect to ensure state updates
       setTimeout(() => {

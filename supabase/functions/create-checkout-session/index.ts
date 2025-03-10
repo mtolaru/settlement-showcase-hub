@@ -50,6 +50,7 @@ serve(async (req) => {
     
     // Get the origin for this request
     const requestOrigin = req.headers.get('origin');
+    console.log("Request origin:", requestOrigin);
     
     // Determine the environment based on the request origin
     const isProduction = requestOrigin?.includes('settlementwins.com') || 
@@ -61,10 +62,15 @@ serve(async (req) => {
       isProduction 
     });
     
-    // Set appropriate base URL based on environment
-    let baseUrl = isProduction 
-      ? 'https://www.settlementwins.com'
-      : (requestOrigin || 'http://localhost:5173');
+    // Set appropriate base URL based on environment - prioritize www domain
+    let baseUrl = 'https://www.settlementwins.com';
+    
+    // If we're not in production and have a requestOrigin, use that
+    if (!isProduction && requestOrigin) {
+      baseUrl = requestOrigin;
+    }
+    
+    console.log("Using base URL:", baseUrl);
     
     // Make sure we have a valid return URL
     let validatedReturnUrl = returnUrl;

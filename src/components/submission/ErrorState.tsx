@@ -34,6 +34,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
       setIsChecking(true);
       const tempId = temporaryId || localStorage.getItem('temporary_id');
       console.log("Checking settlement status for temporaryId:", tempId);
+      console.log("Current origin:", window.location.origin);
       
       const { data, error: fetchError } = await supabase
         .from('settlements')
