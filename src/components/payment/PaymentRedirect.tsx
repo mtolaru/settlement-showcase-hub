@@ -52,6 +52,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
     };
 
     const { session, tempId } = extractParams();
+    let storedTempId: string | null = null;
     
     if (session) {
       setSessionId(session);
@@ -64,7 +65,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
         console.log("Temporary ID found and saved:", tempId);
       } else {
         // If no tempId in URL but we have a session ID, try to recover from localStorage
-        const storedTempId = localStorage.getItem('temporary_id');
+        storedTempId = localStorage.getItem('temporary_id');
         if (storedTempId) {
           console.log("Recovered temporaryId from localStorage:", storedTempId);
           setTemporaryId(storedTempId);
@@ -98,7 +99,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
   return (
     <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
       <div className="flex justify-center mb-4">
-        <CheckCircle className="h-12 w-12 text-green-500" />
+        <Check className="h-12 w-12 text-green-500" />
       </div>
       <h1 className="text-2xl font-bold mb-4 text-primary-600">Payment Successful!</h1>
       <p className="text-sm text-gray-500 mb-6">
