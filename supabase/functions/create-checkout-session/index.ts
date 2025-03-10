@@ -46,13 +46,14 @@ serve(async (req) => {
     });
 
     // Parse request body
-    const { temporaryId, userId, returnUrl } = await req.json();
+    const { temporaryId, userId } = await req.json();
     
     // Get the origin for this request
     const requestOrigin = req.headers.get('origin');
     console.log("Request origin:", requestOrigin);
     
-    // Determine the environment based on the request origin
+    // Use production URL as default, fallback to request origin for local dev
+    const productionDomain = 'https://www.settlementwins.com';
     const isProduction = requestOrigin?.includes('settlementwins.com') || 
                          requestOrigin?.includes('vercel.app') ||
                          false;
@@ -66,18 +67,15 @@ serve(async (req) => {
     const webhookUrl = `${supabaseUrl}/functions/v1/stripe-webhook`;
     console.log("Webhook URL:", webhookUrl);
     
-    // Set appropriate success URL
-    let successUrl = isProduction 
-      ? 'https://www.settlementwins.com/confirmation'
-      : `${requestOrigin}/confirmation`;
-      
-    // Add query parameters for tracking
-    successUrl = `${successUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodeURIComponent(temporaryId)}`;
+    // Determine the base URL for redirects
+    const baseUrl = isProduction ? productionDomain : (requestOrigin || 'http://localhost:3000');
+    console.log("Using base URL for redirects:", baseUrl);
     
-    // Set cancel URL based on same base URL
-    const cancelUrl = isProduction
-      ? 'https://www.settlementwins.com/submit?step=3&canceled=true'
-      : `${requestOrigin}/submit?step=3&canceled=true`;
+    // Set appropriate success URL with consistent parameters
+    const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodeURIComponent(temporaryId)}`;
+    
+    // Set cancel URL with consistent path
+    const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
 
     console.log("Creating checkout session with params:", { 
       temporaryId, 
@@ -85,6 +83,7 @@ serve(async (req) => {
       successUrl,
       cancelUrl,
       webhookUrl,
+      baseUrl,
       origin: requestOrigin || 'unknown'
     });
 

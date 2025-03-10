@@ -21,7 +21,7 @@ import ScrollToTop from "./components/ScrollToTop";
 function App() {
   return (
     <BrowserRouter>
-      <ScrollToTop /> {/* Add the ScrollToTop component here */}
+      <ScrollToTop />
       <div className="min-h-screen bg-white">
         <Navbar />
         <Routes>
@@ -32,6 +32,11 @@ function App() {
           <Route path="/settlements" element={<Leaderboard />} />
           <Route path="/settlements/:id" element={<SettlementDetail />} />
           <Route path="/confirmation" element={<SubmissionConfirmation />} />
+          
+          {/* Key routes for Stripe integration */}
+          <Route path="/payment/success" element={<SubmissionConfirmation />} />
+          <Route path="/payment/canceled" element={<SubmitSettlement />} />
+          
           <Route path="/about" element={<About />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/terms" element={<Terms />} />
