@@ -18,59 +18,56 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    // Start by parsing the full search string to detect any malformed URLs
-    const searchParams = location.search;
-    console.log("Original search string:", searchParams);
-    
-    // Handle malformed URLs with multiple question marks
-    let sanitizedSearch = searchParams;
-    if (searchParams.split('?').length > 2) {
-      console.log("Detected malformed URL with multiple question marks");
-      // Replace all occurrences after the first ? with &
-      sanitizedSearch = searchParams.replace(/\?(?!.*=$)/g, '&');
-      console.log("Sanitized search string:", sanitizedSearch);
-    }
-    
-    // Create URLSearchParams from sanitized string
-    const params = new URLSearchParams(sanitizedSearch);
-    
-    // Extract parameters
-    const session = params.get("session_id");
-    let tempId = params.get("temporaryId");
-    
-    // Further sanitize temporaryId if it contains a question mark
-    if (tempId && tempId.includes('?')) {
-      console.log("Detected malformed temporaryId:", tempId);
-      tempId = tempId.split('?')[0];
-      console.log("Sanitized temporaryId:", tempId);
-    }
+    // Extract and sanitize URL parameters
+    const extractParams = () => {
+      try {
+        // Start by parsing the full search string
+        const searchParams = location.search;
+        console.log("Original search string:", searchParams);
+        
+        const params = new URLSearchParams(searchParams);
+        
+        // Extract parameters
+        const session = params.get("session_id");
+        let tempId = params.get("temporaryId");
+        
+        console.log("Extracted params:", { session_id: session, temporaryId: tempId });
+        
+        // Handle any malformed parameters
+        if (tempId && tempId.includes('?')) {
+          console.log("Sanitizing malformed temporaryId:", tempId);
+          tempId = tempId.split('?')[0];
+        }
+        
+        return { session, tempId };
+      } catch (error) {
+        console.error("Error parsing URL parameters:", error);
+        return { session: null, tempId: null };
+      }
+    };
+
+    const { session, tempId } = extractParams();
     
     if (session) {
       setSessionId(session);
       console.log("Payment session detected:", session);
       localStorage.setItem('payment_session_id', session);
       
-      setRedirecting(true);
-      
-      // Build a proper URL with correctly formatted parameters
-      let redirectUrl = '/confirmation';
-      const queryParams = [];
-      
-      if (session) queryParams.push(`session_id=${encodeURIComponent(session)}`);
       if (tempId) {
-        queryParams.push(`temporaryId=${encodeURIComponent(tempId)}`);
         setTemporaryId(tempId);
         localStorage.setItem('temporary_id', tempId);
-        console.log("Temporary ID found and saved to localStorage:", tempId);
+        console.log("Temporary ID found and saved:", tempId);
       }
       
-      if (queryParams.length > 0) {
-        redirectUrl += `?${queryParams.join('&')}`;
-      }
+      setRedirecting(true);
       
+      // Build a clean confirmation URL with properly formatted parameters
+      const queryParams = new URLSearchParams();
+      if (session) queryParams.set("session_id", session);
+      if (tempId) queryParams.set("temporaryId", tempId);
+      
+      const redirectUrl = `/confirmation?${queryParams.toString()}`;
       console.log("Redirecting to:", redirectUrl);
-      console.log("Current URL:", window.location.href);
-      console.log("Current location origin:", window.location.origin);
       
       // Short delay before redirect to ensure state updates
       setTimeout(() => {
@@ -80,11 +77,11 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
           title: "Payment successful!",
           description: "Redirecting to confirmation page...",
         });
+        
+        onRedirectAttempted();
       }, 300);
-      
-      onRedirectAttempted();
     }
-  }, [location.pathname, location.search, navigate, toast, onRedirectAttempted]);
+  }, [location.search, navigate, toast, onRedirectAttempted]);
 
   return (
     <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
@@ -97,14 +94,14 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       </p>
       
       <div className="space-y-4">
-        {/* Use proper URL construction with encoded parameters */}
         <Button 
           onClick={() => {
-            const params = [];
-            if (sessionId) params.push(`session_id=${encodeURIComponent(sessionId)}`);
-            if (temporaryId) params.push(`temporaryId=${encodeURIComponent(temporaryId)}`);
-            const queryString = params.length > 0 ? `?${params.join('&')}` : '';
-            navigate(`/confirmation${queryString}`);
+            // Create properly formatted URL parameters
+            const queryParams = new URLSearchParams();
+            if (sessionId) queryParams.set("session_id", sessionId);
+            if (temporaryId) queryParams.set("temporaryId", temporaryId);
+            
+            navigate(`/confirmation?${queryParams.toString()}`);
           }}
           className="block w-full py-2 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
         >

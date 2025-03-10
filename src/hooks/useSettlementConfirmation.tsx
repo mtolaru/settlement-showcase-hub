@@ -15,16 +15,28 @@ export const useSettlementConfirmation = () => {
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   
-  const params = new URLSearchParams(location.search);
-  let temporaryId = params.get("temporaryId");
-  const sessionId = params.get("session_id");
+  // Extract and sanitize URL parameters  
+  const extractUrlParams = useCallback(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      let temporaryId = params.get("temporaryId");
+      const sessionId = params.get("session_id");
+      
+      // Clean up any malformed temporaryId
+      if (temporaryId && temporaryId.includes('?')) {
+        console.log("Cleaning malformed temporaryId:", temporaryId);
+        temporaryId = temporaryId.split('?')[0];
+      }
+      
+      return { temporaryId, sessionId };
+    } catch (error) {
+      console.error("Error extracting URL parameters:", error);
+      return { temporaryId: null, sessionId: null };
+    }
+  }, [location.search]);
   
-  // Clean up any malformed temporaryId
-  if (temporaryId && temporaryId.includes('?')) {
-    console.log("Cleaning malformed temporaryId:", temporaryId);
-    temporaryId = temporaryId.split('?')[0];
-    console.log("Cleaned temporaryId:", temporaryId);
-  }
+  const { temporaryId: initialTemporaryId, sessionId } = extractUrlParams();
+  const [temporaryId, setTemporaryId] = useState<string | null>(initialTemporaryId);
 
   // Store the IDs in localStorage for persistence
   useEffect(() => {
@@ -41,7 +53,7 @@ export const useSettlementConfirmation = () => {
       const storedTempId = localStorage.getItem('temporary_id');
       if (storedTempId) {
         console.log("Recovered temporaryId from localStorage:", storedTempId);
-        temporaryId = storedTempId;
+        setTemporaryId(storedTempId);
       }
     }
   }, [sessionId, temporaryId]);
