@@ -1,4 +1,3 @@
-
 import { useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -37,22 +36,21 @@ export const useSubmitSettlementForm = () => {
   const { subscription, isLoading: isLoadingSubscription } = useSubscription(user);
   const { settlements, getLatestAttorneyInfo } = useSettlements(user);
 
-  // Validate dollar inputs only when formData changes and after initial render
+  const { validateDollarInput, validateAllDollarFields } = useValidateDollarInput(formData, handleInputChange);
+
   useEffect(() => {
     if (initialRenderRef.current) {
       initialRenderRef.current = false;
       return;
     }
-    useValidateDollarInput(formData, handleInputChange);
-  }, [formData, handleInputChange]);
+    validateAllDollarFields();
+  }, [formData]);
 
-  // Memoize subscription status checking with proper dependencies
   const { checkSubscriptionStatus } = useSubscriptionStatus(
     setHasActiveSubscription, 
     setIsCheckingSubscription
   );
 
-  // Pre-populate user data only when auth state changes
   useEffect(() => {
     if (isAuthenticated && user?.email && !clearedFields.has('attorneyEmail') && !emailCheckedRef.current) {
       emailCheckedRef.current = true;
@@ -64,7 +62,6 @@ export const useSubmitSettlementForm = () => {
     }
   }, [isAuthenticated, user?.email, clearedFields, setFormData]);
 
-  // Separate effect for populating attorney info from previous settlements
   useEffect(() => {
     if (isAuthenticated && settlements && settlements.length > 0 && !formData.attorneyName && !clearedFields.has('attorneyName')) {
       const attorneyInfo = getLatestAttorneyInfo();
@@ -79,7 +76,6 @@ export const useSubmitSettlementForm = () => {
     }
   }, [isAuthenticated, settlements, getLatestAttorneyInfo, formData.attorneyName, setFormData, clearedFields]);
 
-  // Handle subscription status only when subscription changes
   useEffect(() => {
     if (!isLoadingSubscription && subscription !== undefined && !subscriptionCheckedRef.current) {
       subscriptionCheckedRef.current = true;
@@ -90,7 +86,6 @@ export const useSubmitSettlementForm = () => {
     }
   }, [subscription, isLoadingSubscription, setHasActiveSubscription, setIsCheckingSubscription]);
 
-  // Clear email validation errors for authenticated users
   useEffect(() => {
     if (isAuthenticated && user?.email === formData.attorneyEmail && errors.attorneyEmail) {
       console.log("Clearing email error for authenticated user using their own email");
@@ -102,26 +97,22 @@ export const useSubmitSettlementForm = () => {
     }
   }, [formData.attorneyEmail, isAuthenticated, user?.email, errors.attorneyEmail, setErrors]);
 
-  // Log errors only when they change
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       console.log("Current form errors state:", errors);
     }
   }, [errors]);
 
-  // Generate temporaryId once on component mount
   useEffect(() => {
     if (!temporaryId) {
       setTemporaryId(crypto.randomUUID());
     }
   }, [temporaryId, setTemporaryId]);
 
-  // Memoize authentication and user data updates - only log once
   useEffect(() => {
     console.log("Auth state in useSubmitSettlementForm:", { isAuthenticated, user });
   }, [isAuthenticated, user]);
 
-  // Email validation state - memoized to prevent unnecessary recalculations
   const { isValidatingEmail, alreadyExists } = useEmailValidation(
     formData.attorneyEmail, 
     isValidEmail, 
