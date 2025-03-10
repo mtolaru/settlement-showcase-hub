@@ -93,19 +93,29 @@ export const getSiteUrl = () => {
   if (typeof window !== 'undefined') {
     const environment = import.meta.env.VITE_APP_ENV || 'development';
     
+    // Check for Vercel URL environment variables first (available in Vercel deployments)
+    if (typeof process !== 'undefined' && process.env && process.env.VERCEL_URL) {
+      console.log(`Using Vercel URL: ${process.env.VERCEL_URL}`);
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    
+    // Check for explicit VITE_SITE_URL environment variable
+    if (import.meta.env.VITE_SITE_URL) {
+      console.log(`Using explicit site URL from env: ${import.meta.env.VITE_SITE_URL}`);
+      return import.meta.env.VITE_SITE_URL;
+    }
+    
     // In development, use the current window location
     if (environment === 'development') {
       return window.location.origin;
     }
     
-    // For production/staging, try to use environment variables if available
+    // For production/staging, use hardcoded values
     if (environment === 'production') {
-      // Use explicit production URL
       return 'https://settleshare.app';
     }
     
     if (environment === 'staging') {
-      // Use explicit staging URL
       return 'https://staging.settleshare.app';
     }
     
@@ -125,6 +135,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     persistSession: true,
     autoRefreshToken: true,
     flowType: 'pkce',
+    // Specify exact redirect URLs for Supabase auth flows
+    redirectTo: getSiteUrl() + '/auth/callback',
   },
 });
 

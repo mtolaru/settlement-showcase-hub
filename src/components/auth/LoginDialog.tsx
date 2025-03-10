@@ -97,8 +97,11 @@ export function LoginDialog() {
         const siteUrl = getSiteUrl();
         console.log("Using site URL for password reset:", siteUrl);
         
+        const resetRedirectUrl = `${siteUrl}/auth/reset-password`;
+        console.log("Reset redirect URL:", resetRedirectUrl);
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${siteUrl}/auth/reset-password`,
+          redirectTo: resetRedirectUrl,
         });
         
         if (error) throw error;
@@ -114,11 +117,14 @@ export function LoginDialog() {
           const siteUrl = getSiteUrl();
           console.log("Using site URL for registration:", siteUrl);
           
+          const signupRedirectUrl = `${siteUrl}/auth/callback`;
+          console.log("Signup redirect URL:", signupRedirectUrl);
+          
           const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              emailRedirectTo: `${siteUrl}/auth/callback`,
+              emailRedirectTo: signupRedirectUrl,
             },
           });
           if (error) throw error;
