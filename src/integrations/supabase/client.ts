@@ -7,17 +7,6 @@ import type { Database } from './types';
 const getSupabaseConfig = () => {
   const environment = import.meta.env.VITE_APP_ENV || 'development';
   
-  // Get the current host for constructing redirect URLs
-  const getRedirectBase = () => {
-    // In the browser
-    if (typeof window !== 'undefined') {
-      // Use the current origin (protocol + hostname + port)
-      return window.location.origin;
-    } 
-    // Fallback for SSR or non-browser environments
-    return 'https://settlementwins.com';
-  };
-  
   // Check for direct environment variables first (for Vercel and other hosting platforms)
   if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_KEY) {
     console.log(`Using direct environment variables for Supabase`);
@@ -32,8 +21,7 @@ const getSupabaseConfig = () => {
       
       return {
         supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-        supabaseKey: import.meta.env.VITE_SUPABASE_KEY,
-        redirectBase: getRedirectBase()
+        supabaseKey: import.meta.env.VITE_SUPABASE_KEY
       };
     } catch (error) {
       console.error(`Invalid VITE_SUPABASE_URL format:`, import.meta.env.VITE_SUPABASE_URL);
@@ -48,7 +36,6 @@ const getSupabaseConfig = () => {
   // Default to development values if direct vars aren't available or invalid
   let supabaseUrl = "https://zxstilrzamzlgswgwlpp.supabase.co";
   let supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4c3RpbHJ6YW16bGdzd2d3bHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1MDAzOTYsImV4cCI6MjA1NjA3NjM5Nn0.WiqcQcQnxfGhE9BwCorEYdZbV3ece7ITv2OwCUufpwI";
-  let redirectBase = getRedirectBase();
 
   if (environment === 'staging') {
     // Staging environment values
@@ -74,7 +61,7 @@ const getSupabaseConfig = () => {
   try {
     // Validate URL format before returning
     new URL(supabaseUrl);
-    return { supabaseUrl, supabaseKey, redirectBase };
+    return { supabaseUrl, supabaseKey };
   } catch (error) {
     console.error(`Invalid Supabase URL format: ${supabaseUrl}`);
     console.error('Error details:', error);
@@ -82,26 +69,53 @@ const getSupabaseConfig = () => {
   }
 };
 
-let supabaseUrl, supabaseKey, redirectBase;
+let supabaseUrl, supabaseKey;
 
 try {
   const config = getSupabaseConfig();
   supabaseUrl = config.supabaseUrl;
   supabaseKey = config.supabaseKey;
-  redirectBase = config.redirectBase;
   
   // Log connection info (without revealing the full key)
   console.log(`Connecting to Supabase URL: ${supabaseUrl}`);
   console.log(`Using key: ${supabaseKey.substring(0, 8)}...`);
-  console.log(`Using redirect base: ${redirectBase}`);
 } catch (error) {
   console.error('Failed to configure Supabase client:', error);
   // Provide fallback values to prevent app from crashing
   supabaseUrl = "https://zxstilrzamzlgswgwlpp.supabase.co";
   supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4c3RpbHJ6YW16bGdzd2d3bHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1MDAzOTYsImV4cCI6MjA1NjA3NjM5Nn0.WiqcQcQnxfGhE9BwCorEYdZbV3ece7ITv2OwCUufpwI";
-  redirectBase = typeof window !== 'undefined' ? window.location.origin : 'https://settlementwins.com';
   console.log('Using fallback Supabase configuration');
 }
+
+// Helper function to get the correct site URL based on the environment
+export const getSiteUrl = () => {
+  // Check if running in a browser environment
+  if (typeof window !== 'undefined') {
+    const environment = import.meta.env.VITE_APP_ENV || 'development';
+    
+    // In development, use the current window location
+    if (environment === 'development') {
+      return window.location.origin;
+    }
+    
+    // For production/staging, try to use environment variables if available
+    if (environment === 'production') {
+      const productionUrl = import.meta.env.VITE_SITE_URL || 'https://settleshare.app';
+      return productionUrl;
+    }
+    
+    if (environment === 'staging') {
+      const stagingUrl = import.meta.env.VITE_STAGING_URL || 'https://staging.settleshare.app';
+      return stagingUrl;
+    }
+    
+    // Fallback to current origin if no specific URL is set
+    return window.location.origin;
+  }
+  
+  // Fallback for server-side rendering or if window is not available
+  return 'https://settleshare.app';
+};
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -110,9 +124,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    flowType: 'pkce',
-    // Use dynamic redirect URLs based on environment
-    redirect_to: `${redirectBase}/auth/callback`,
   },
 });
 

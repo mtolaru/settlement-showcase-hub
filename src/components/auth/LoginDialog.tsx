@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, getSiteUrl } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export function LoginDialog() {
@@ -89,12 +90,6 @@ export function LoginDialog() {
     return errorMessage;
   };
 
-  const getRedirectUrl = (path: string) => {
-    // Get the current origin (protocol + hostname + port)
-    const origin = window.location.origin;
-    return `${origin}${path}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -102,12 +97,9 @@ export function LoginDialog() {
 
     try {
       if (isForgotPasswordMode) {
-        // Use dynamic redirect URL
-        const resetRedirectUrl = getRedirectUrl('/auth/reset-password');
-        console.log(`Using reset password redirect URL: ${resetRedirectUrl}`);
-        
+        const siteUrl = getSiteUrl();
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: resetRedirectUrl,
+          redirectTo: `${siteUrl}/auth/reset-password`,
         });
         
         if (error) throw error;
@@ -120,21 +112,15 @@ export function LoginDialog() {
       } else if (isRegisterMode) {
         try {
           validatePassword(password);
-          
-          // Use dynamic redirect URL
-          const signUpRedirectUrl = getRedirectUrl('/auth/callback');
-          console.log(`Using signup redirect URL: ${signUpRedirectUrl}`);
-          
+          const siteUrl = getSiteUrl();
           const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              emailRedirectTo: signUpRedirectUrl,
+              emailRedirectTo: `${siteUrl}/auth/callback`,
             },
           });
-          
           if (error) throw error;
-          
           toast({
             title: "Registration successful!",
             description: "Please check your email to verify your account.",
