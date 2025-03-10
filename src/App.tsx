@@ -33,8 +33,9 @@ function App() {
           <Route path="/settlements/:id" element={<SettlementDetail />} />
           <Route path="/confirmation" element={<SubmissionConfirmation />} />
           
-          {/* Key routes for Stripe integration */}
+          {/* Payment redirect routes - both map to SubmissionConfirmation with improved parameter handling */}
           <Route path="/payment/success" element={<SubmissionConfirmation />} />
+          <Route path="/payment/redirect" element={<SubmissionConfirmation />} />
           <Route path="/payment/canceled" element={<SubmitSettlement />} />
           
           <Route path="/about" element={<About />} />
