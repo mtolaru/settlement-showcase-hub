@@ -40,72 +40,128 @@ serve(async (req) => {
     }
     
     // Create clients
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    
     const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
     });
 
     // Parse request body
-    const { temporaryId, userId } = await req.json();
+    const requestData = await req.json();
+    const { temporaryId, userId, returnUrl: userReturnUrl, formData } = requestData;
     
-    // Get the origin for this request
+    // Get the origin for this request - Use all available headers for debugging
     const requestOrigin = req.headers.get('origin');
     const requestUrl = req.url;
+    const referrer = req.headers.get('referer');
+    const host = req.headers.get('host');
     
     console.log("Request details:", {
       origin: requestOrigin,
       url: requestUrl,
+      referrer,
+      host,
       temporaryId,
-      userId
+      userId,
+      hasFormData: !!formData
     });
     
-    // Define allowed production domains
+    // Define allowed production domains - EXPANDED LIST
     const productionDomains = [
       'https://www.settlementwins.com', 
       'https://settlementwins.com',
-      'https://settlement-wins-web.vercel.app'
+      'https://settlement-wins-web.vercel.app',
+      'https://payment-redirect-preview.vercel.app'
     ];
     
-    // Determine if we're in production based on request origin
-    const isProduction = productionDomains.some(domain => 
-      requestOrigin?.includes(domain) || requestUrl?.includes(domain)
-    );
+    // Default production domain to use if we can't determine from request
+    const defaultProductionDomain = 'https://www.settlementwins.com';
     
-    console.log("Environment detection:", { 
-      requestOrigin, 
-      isProduction 
-    });
+    // Determine base URL with improved fallback logic
+    let baseUrl;
+    
+    // First try to get it directly from the origin header - highest priority
+    if (requestOrigin && requestOrigin.length > 0) {
+      console.log("Using origin header for base URL:", requestOrigin);
+      baseUrl = requestOrigin;
+    } 
+    // If no origin, try to extract from referrer
+    else if (referrer && referrer.length > 0) {
+      try {
+        const referrerUrl = new URL(referrer);
+        baseUrl = `${referrerUrl.protocol}//${referrerUrl.host}`;
+        console.log("Extracted base URL from referrer:", baseUrl);
+      } catch (e) {
+        console.log("Failed to extract from referrer, using default production domain");
+        baseUrl = defaultProductionDomain;
+      }
+    } 
+    // If we have a host header and URL, try to construct from that
+    else if (host && requestUrl) {
+      try {
+        const urlObj = new URL(requestUrl);
+        baseUrl = `${urlObj.protocol}//${host}`;
+        console.log("Constructed base URL from host and request URL:", baseUrl);
+      } catch (e) {
+        console.log("Failed to construct URL from host, falling back to default");
+        baseUrl = defaultProductionDomain;
+      }
+    }
+    // Last resort fallback to default production domain
+    else {
+      console.log("No origin, referrer or host found, using default production domain");
+      baseUrl = defaultProductionDomain;
+    }
+    
+    // Sanity check - ensure baseUrl has protocol
+    if (!baseUrl.startsWith('http')) {
+      console.log("Adding https:// to baseUrl as it's missing protocol:", baseUrl);
+      baseUrl = 'https://' + baseUrl;
+    }
+    
+    console.log("Final base URL for redirects:", baseUrl);
+    
+    // Check if this temporaryId already has a completed payment
+    const { data: existingSettlement, error: checkError } = await supabase
+      .from('settlements')
+      .select('id, payment_completed')
+      .eq('temporary_id', temporaryId)
+      .eq('payment_completed', true)
+      .maybeSingle();
+
+    if (!checkError && existingSettlement?.id) {
+      console.log("Found existing settlement with this temporaryId:", existingSettlement.id);
+      
+      return new Response(
+        JSON.stringify({ 
+          isExisting: true,
+          message: "This settlement has already been processed"
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
     
     // Always use the Supabase function URL for webhook endpoints
     const webhookUrl = `${supabaseUrl}/functions/v1/stripe-webhook`;
     console.log("Webhook URL:", webhookUrl);
     
-    // Determine the base URL for redirects
-    let baseUrl;
-    if (isProduction) {
-      baseUrl = 'https://www.settlementwins.com';
-    } else if (requestOrigin) {
-      baseUrl = requestOrigin;
-    } else {
-      baseUrl = 'http://localhost:3000';
-    }
-    
-    console.log("Using base URL for redirects:", baseUrl);
-    
     // Make sure temporaryId is properly encoded
     const encodedTempId = encodeURIComponent(temporaryId);
     
-    // Set appropriate success and cancel URLs
-    const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
-    const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
-
-    console.log("Creating checkout session with params:", { 
-      temporaryId, 
-      userId, 
-      successUrl,
-      cancelUrl,
-      webhookUrl
-    });
+    // IMPORTANT: Always use /confirmation as the primary success route for consistency
+    let successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
+    let cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
+    
+    console.log("Success URL:", successUrl);
+    console.log("Cancel URL:", cancelUrl);
 
     // Create the checkout session
     const session = await stripe.checkout.sessions.create({
@@ -133,6 +189,7 @@ serve(async (req) => {
       metadata: {
         temporaryId: temporaryId,
         userId: userId || '',
+        baseUrl: baseUrl // Store the base URL in metadata for reference
       },
       allow_promotion_codes: true,
     });
@@ -141,8 +198,36 @@ serve(async (req) => {
       sessionId: session.id,
       url: session.url,
       successUrl: successUrl,
-      temporaryId: temporaryId
+      temporaryId: temporaryId,
+      baseUrl: baseUrl
     });
+
+    // Save session details for easier retrieval later
+    try {
+      const { error: sessionLogError } = await supabase
+        .from('stripe_sessions')
+        .insert({
+          session_id: session.id,
+          temporary_id: temporaryId,
+          user_id: userId || null,
+          created_at: new Date().toISOString(),
+          session_data: {
+            payment_status: session.payment_status,
+            url: session.url,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+            base_url: baseUrl
+          }
+        });
+        
+      if (sessionLogError) {
+        console.error("Error logging session details:", sessionLogError);
+      } else {
+        console.log("Successfully logged session details");
+      }
+    } catch (logError) {
+      console.error("Exception logging session:", logError);
+    }
 
     return new Response(
       JSON.stringify({ url: session.url }),

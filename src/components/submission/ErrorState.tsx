@@ -27,7 +27,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
       console.log("Checking settlement status:", { 
         tempId, 
         sessionId,
-        location: window.location.href 
+        location: window.location.href,
+        retryCount
       });
       
       if (!tempId && !sessionId) {
@@ -39,7 +40,37 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
         return;
       }
 
-      // First try by temporary ID
+      // First try to directly query Stripe webhook status through the edge function
+      if (sessionId) {
+        try {
+          console.log("Checking Stripe webhook status via edge function");
+          const { data: webhookData, error: webhookError } = await supabase.functions.invoke('check-payment-status', {
+            body: { 
+              session_id: sessionId,
+              temporary_id: tempId || null
+            }
+          });
+          
+          if (webhookError) {
+            console.error("Error checking webhook status:", webhookError);
+          } else if (webhookData?.success) {
+            console.log("Payment status check successful:", webhookData);
+            
+            toast({
+              title: "Payment confirmed!",
+              description: "We've verified your payment. Refreshing the page..."
+            });
+            
+            // Refresh the page after a short delay
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+        } catch (webhookErr) {
+          console.error("Exception checking webhook status:", webhookErr);
+        }
+      }
+
+      // Then try by temporary ID
       if (tempId) {
         const { data: tempData, error: tempError } = await supabase
           .from('settlements')
@@ -53,6 +84,23 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
         
         if (tempData) {
           console.log("Found settlement by temporaryId:", tempData);
+          
+          // If payment not marked as completed but we have a session ID, update it
+          if (!tempData.payment_completed && sessionId) {
+            console.log("Updating payment_completed status manually");
+            
+            const { error: updateError } = await supabase
+              .from('settlements')
+              .update({ payment_completed: true })
+              .eq('id', tempData.id);
+              
+            if (updateError) {
+              console.error("Error updating payment status:", updateError);
+            } else {
+              console.log("Successfully updated payment status");
+            }
+          }
+          
           toast({
             title: "Settlement found!",
             description: "Redirecting to your settlement..."
@@ -109,6 +157,32 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
       setRetryCount(prev => prev + 1);
       
       if (retryCount >= 2) {
+        // Try last resort method with direct function invocation
+        try {
+          console.log("Attempting last resort direct function invocation");
+          
+          const { data: manualFixData, error: manualFixError } = await supabase.functions.invoke('fix-settlement', {
+            body: { 
+              sessionId: sessionId,
+              temporaryId: tempId
+            }
+          });
+          
+          console.log("Manual fix attempt result:", { manualFixData, manualFixError });
+          
+          if (manualFixData?.success) {
+            toast({
+              title: "Settlement recovered!",
+              description: "We were able to recover your settlement. Refreshing..."
+            });
+            
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+        } catch (lastResortError) {
+          console.error("Exception in last resort method:", lastResortError);
+        }
+        
         toast({
           variant: "destructive",
           title: "Settlement not found",

@@ -94,6 +94,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    // Don't set any hard-coded redirect URLs
+    flowType: 'pkce'
   },
 });
 
