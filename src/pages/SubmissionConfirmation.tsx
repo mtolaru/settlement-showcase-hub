@@ -22,11 +22,11 @@ const SubmissionConfirmation = () => {
   };
 
   if (isLoading) {
-    return <LoadingState />;
+    return <LoadingState message="Retrieving your settlement details..." />;
   }
 
   if (error && !settlementData) {
-    return <ErrorState error={error} />;
+    return <ErrorState error={error} temporaryId={temporaryId} />;
   }
 
   return (

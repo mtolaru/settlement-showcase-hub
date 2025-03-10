@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -11,6 +11,7 @@ export const useSettlementConfirmation = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   
@@ -18,71 +19,44 @@ export const useSettlementConfirmation = () => {
   let temporaryId = params.get("temporaryId");
   const sessionId = params.get("session_id");
   
+  // Clean up any malformed temporaryId
   if (temporaryId && temporaryId.includes('?')) {
     console.log("Cleaning malformed temporaryId:", temporaryId);
     temporaryId = temporaryId.split('?')[0];
     console.log("Cleaned temporaryId:", temporaryId);
   }
 
+  // Store the IDs in localStorage for persistence
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem('payment_session_id', sessionId);
+      console.log("Saved session_id to localStorage:", sessionId);
+    }
+    
+    if (temporaryId) {
+      localStorage.setItem('temporary_id', temporaryId);
+      console.log("Saved temporaryId to localStorage:", temporaryId);
+    } else if (!temporaryId && !sessionId) {
+      // If no IDs in URL, try to recover from localStorage
+      const storedTempId = localStorage.getItem('temporary_id');
+      if (storedTempId) {
+        console.log("Recovered temporaryId from localStorage:", storedTempId);
+        temporaryId = storedTempId;
+      }
+    }
+  }, [sessionId, temporaryId]);
+
   useEffect(() => {
     console.log("SubmissionConfirmation - URL parameters:", {
       temporaryId,
       sessionId,
       fullSearch: location.search,
-      pathname: location.pathname
+      pathname: location.pathname,
+      retryCount
     });
-  }, [location, temporaryId, sessionId]);
+  }, [location, temporaryId, sessionId, retryCount]);
 
-  useEffect(() => {
-    if (sessionId && !temporaryId) {
-      console.log("No temporaryId but found sessionId:", sessionId);
-      fetchSettlementBySessionId(sessionId);
-      return;
-    }
-    
-    if (!temporaryId) {
-      setIsLoading(false);
-      setError("No settlement ID found in URL");
-      return;
-    }
-    
-    console.log("Attempting to fetch settlement with temporary ID:", temporaryId);
-    fetchSettlementData();
-  }, [temporaryId, sessionId]);
-  
-  useEffect(() => {
-    if (isAuthenticated && user && settlementData && temporaryId && !settlementData.user_id) {
-      associateUserWithSettlement();
-    }
-  }, [isAuthenticated, user, settlementData, temporaryId]);
-
-  const associateUserWithSettlement = async () => {
-    if (!user?.id || !temporaryId || isUpdating) return;
-    
-    try {
-      setIsUpdating(true);
-      console.log("Associating user ID with settlement:", user.id, temporaryId);
-      
-      const { error: updateError } = await supabase
-        .from('settlements')
-        .update({ user_id: user.id })
-        .eq('temporary_id', temporaryId)
-        .is('user_id', null); // Only update if user_id is null
-        
-      if (updateError) {
-        console.error("Error associating user with settlement:", updateError);
-      } else {
-        console.log("Successfully associated user with settlement");
-        fetchSettlementData();
-      }
-    } catch (error) {
-      console.error("Error in associateUserWithSettlement:", error);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const fetchSettlementBySessionId = async (sessionId: string) => {
+  const fetchSettlementBySessionId = useCallback(async (sessionId: string) => {
     try {
       console.log("Attempting to fetch settlement by session ID:", sessionId);
       
@@ -98,6 +72,7 @@ export const useSettlementConfirmation = () => {
       
       if (subscriptionData?.temporary_id) {
         console.log("Found temporary_id from subscription:", subscriptionData.temporary_id);
+        localStorage.setItem('temporary_id', subscriptionData.temporary_id);
         fetchSettlementData(subscriptionData.temporary_id);
         return;
       }
@@ -116,9 +91,21 @@ export const useSettlementConfirmation = () => {
         
         if (recentSubscriptions && recentSubscriptions.length > 0) {
           console.log("Found recent subscription:", recentSubscriptions[0]);
+          localStorage.setItem('temporary_id', recentSubscriptions[0].temporary_id);
           fetchSettlementData(recentSubscriptions[0].temporary_id);
           return;
         }
+      }
+      
+      // If we've reached here with no success and haven't retried too many times
+      if (retryCount < 3) {
+        console.log(`Settlement not found, scheduling retry #${retryCount + 1}`);
+        setRetryCount(prev => prev + 1);
+        // Wait 2 seconds before retrying
+        setTimeout(() => {
+          fetchSettlementBySessionId(sessionId);
+        }, 2000);
+        return;
       }
       
       setIsLoading(false);
@@ -128,9 +115,9 @@ export const useSettlementConfirmation = () => {
       setIsLoading(false);
       setError("Could not find settlement data. Please try refreshing the page or contact support.");
     }
-  };
+  }, [retryCount]);
 
-  const fetchSettlementData = async (tempId = temporaryId) => {
+  const fetchSettlementData = useCallback(async (tempId = temporaryId) => {
     if (!tempId) return;
     
     try {
@@ -149,6 +136,18 @@ export const useSettlementConfirmation = () => {
       
       if (!data) {
         console.error('Settlement not found for temporaryId:', tempId);
+        
+        // Schedule a retry if we haven't retried too many times
+        if (retryCount < 3) {
+          console.log(`Settlement not found, scheduling retry #${retryCount + 1}`);
+          setRetryCount(prev => prev + 1);
+          // Wait 2 seconds before retrying
+          setTimeout(() => {
+            fetchSettlementData(tempId);
+          }, 2000);
+          return;
+        }
+        
         throw new Error('Settlement not found');
       }
 
@@ -190,6 +189,63 @@ export const useSettlementConfirmation = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
+    }
+  }, [temporaryId, toast, retryCount]);
+
+  useEffect(() => {
+    if (sessionId && !temporaryId) {
+      console.log("No temporaryId but found sessionId:", sessionId);
+      fetchSettlementBySessionId(sessionId);
+      return;
+    }
+    
+    if (!temporaryId) {
+      // Try to recover from localStorage
+      const storedTempId = localStorage.getItem('temporary_id');
+      if (storedTempId) {
+        console.log("Recovered temporaryId from localStorage:", storedTempId);
+        fetchSettlementData(storedTempId);
+        return;
+      }
+      
+      setIsLoading(false);
+      setError("No settlement ID found in URL");
+      return;
+    }
+    
+    console.log("Attempting to fetch settlement with temporary ID:", temporaryId);
+    fetchSettlementData();
+  }, [temporaryId, sessionId, fetchSettlementData, fetchSettlementBySessionId]);
+  
+  useEffect(() => {
+    if (isAuthenticated && user && settlementData && temporaryId && !settlementData.user_id) {
+      associateUserWithSettlement();
+    }
+  }, [isAuthenticated, user, settlementData, temporaryId]);
+
+  const associateUserWithSettlement = async () => {
+    if (!user?.id || !temporaryId || isUpdating) return;
+    
+    try {
+      setIsUpdating(true);
+      console.log("Associating user ID with settlement:", user.id, temporaryId);
+      
+      const { error: updateError } = await supabase
+        .from('settlements')
+        .update({ user_id: user.id })
+        .eq('temporary_id', temporaryId)
+        .is('user_id', null); // Only update if user_id is null
+        
+      if (updateError) {
+        console.error("Error associating user with settlement:", updateError);
+      } else {
+        console.log("Successfully associated user with settlement");
+        fetchSettlementData();
+      }
+    } catch (error) {
+      console.error("Error in associateUserWithSettlement:", error);
+    } finally {
       setIsUpdating(false);
     }
   };
