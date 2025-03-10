@@ -1,10 +1,22 @@
 
 import SubmitSettlementPage from "./settlement/SubmitSettlementPage";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const SubmitSettlement = () => {
+  const [searchParams] = useSearchParams();
+  const [temporaryIdRestored, setTemporaryIdRestored] = useState(false);
+  
   useEffect(() => {
     console.log("SubmitSettlement page mounted");
+    
+    // Check for temporaryId in URL params
+    const temporaryId = searchParams.get('temporaryId');
+    if (temporaryId) {
+      console.log(`Found temporaryId in URL: ${temporaryId}, storing to localStorage`);
+      localStorage.setItem('temporary_id', temporaryId);
+      setTemporaryIdRestored(true);
+    }
     
     // Add console error handler to catch any rendering issues
     const originalConsoleError = console.error;
