@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -67,16 +66,20 @@ export const ShareButton = ({
   };
 
   const handleLinkedInShare = () => {
-    // First, copy the share text to clipboard for LinkedIn
-    navigator.clipboard.writeText(shareMessage);
+    // LinkedIn's sharing API doesn't support text+URL in the same call
+    // So we'll open LinkedIn with custom text and the URL
+    const encodedText = encodeURIComponent(shareMessage);
+    const encodedUrl = encodeURIComponent(getShareUrl('linkedin'));
     
-    // Then open LinkedIn sharing dialog with just the URL
-    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(getShareUrl('linkedin'))}`;
+    // LinkedIn's feed share URL with prefilled content
+    // Using 'feed/share' to support prefilled text
+    const linkedinUrl = `https://www.linkedin.com/feed/share?text=${encodedText}&url=${encodedUrl}`;
+    
     window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
     
     toast({
       title: "Opening LinkedIn",
-      description: "Share text copied to clipboard for LinkedIn sharing",
+      description: "Your LinkedIn share dialog will open with the settlement details",
       variant: "info"
     });
   };
