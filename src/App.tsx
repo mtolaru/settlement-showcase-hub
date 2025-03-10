@@ -35,7 +35,7 @@ function App() {
           <Route path="/settlements/:id" element={<SettlementDetail />} />
           <Route path="/confirmation" element={<SubmissionConfirmation />} />
           
-          {/* Payment redirect routes - both map to SubmissionConfirmation with improved parameter handling */}
+          {/* All payment redirect routes map to SubmissionConfirmation for consistency */}
           <Route path="/payment/success" element={<SubmissionConfirmation />} />
           <Route path="/payment/redirect" element={<SubmissionConfirmation />} />
           <Route path="/payment/canceled" element={<SubmitSettlement />} />

@@ -66,6 +66,18 @@ serve(async (req) => {
       console.log(`Event contains temporaryId: ${event.data.object.metadata.temporaryId}`);
     }
     
+    // Add more specific logging for the event types we care about
+    if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
+      const invoice = event.data.object;
+      console.log(`Invoice payment event details:`, {
+        invoiceId: invoice.id,
+        customerId: invoice.customer,
+        subscriptionId: invoice.subscription,
+        status: invoice.status,
+        total: invoice.total
+      });
+    }
+    
     await handleWebhookEvent(event, supabase);
 
     // Return a success response to Stripe with detailed information
