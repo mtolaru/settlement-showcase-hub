@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, getSiteUrl } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export function LoginDialog() {
@@ -97,8 +97,9 @@ export function LoginDialog() {
 
     try {
       if (isForgotPasswordMode) {
+        const siteUrl = getSiteUrl();
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/reset-password`,
+          redirectTo: `${siteUrl}/auth/reset-password`,
         });
         
         if (error) throw error;
@@ -111,11 +112,12 @@ export function LoginDialog() {
       } else if (isRegisterMode) {
         try {
           validatePassword(password);
+          const siteUrl = getSiteUrl();
           const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/auth/callback`,
+              emailRedirectTo: `${siteUrl}/auth/callback`,
             },
           });
           if (error) throw error;

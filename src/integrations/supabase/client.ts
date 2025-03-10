@@ -87,6 +87,36 @@ try {
   console.log('Using fallback Supabase configuration');
 }
 
+// Helper function to get the correct site URL based on the environment
+export const getSiteUrl = () => {
+  // Check if running in a browser environment
+  if (typeof window !== 'undefined') {
+    const environment = import.meta.env.VITE_APP_ENV || 'development';
+    
+    // In development, use the current window location
+    if (environment === 'development') {
+      return window.location.origin;
+    }
+    
+    // For production/staging, try to use environment variables if available
+    if (environment === 'production') {
+      const productionUrl = import.meta.env.VITE_SITE_URL || 'https://settleshare.app';
+      return productionUrl;
+    }
+    
+    if (environment === 'staging') {
+      const stagingUrl = import.meta.env.VITE_STAGING_URL || 'https://staging.settleshare.app';
+      return stagingUrl;
+    }
+    
+    // Fallback to current origin if no specific URL is set
+    return window.location.origin;
+  }
+  
+  // Fallback for server-side rendering or if window is not available
+  return 'https://settleshare.app';
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
