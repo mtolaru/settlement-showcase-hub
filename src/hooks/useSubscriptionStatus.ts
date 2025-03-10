@@ -3,6 +3,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import debounce from "lodash.debounce";
 
 export const useSubscriptionStatus = (
   setHasActiveSubscription: (value: boolean) => void,
@@ -11,79 +12,66 @@ export const useSubscriptionStatus = (
   const { toast } = useToast();
   const { user } = useAuth();
   const checkRunRef = useRef(false);
+  const isCheckingRef = useRef(false);
 
-  // Memoize the subscription check function
-  const checkSubscriptionStatus = useCallback(async () => {
-    if (!user?.id) {
-      setIsCheckingSubscription(false);
-      return;
-    }
-    
-    try {
-      console.log("Checking subscription status for user:", user.id);
-      
-      const { data: subscriptions, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .gt('ends_at', new Date().toISOString())
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking subscription:', error);
-        throw error;
+  // Debounce the subscription check to prevent rapid API calls
+  const debouncedCheckSubscription = useCallback(
+    debounce(async () => {
+      if (!user?.id || isCheckingRef.current) {
+        return;
       }
       
-      console.log("Subscription query result:", subscriptions);
+      isCheckingRef.current = true;
       
-      const hasActiveSub = !!subscriptions;
-      console.log("Setting hasActiveSubscription to:", hasActiveSub);
-      
-      setHasActiveSubscription(hasActiveSub);
-      
-      if (!hasActiveSub) {
-        const { data: openSubscriptions, error: openError } = await supabase
+      try {
+        console.log("Checking subscription status for user:", user.id);
+        
+        const { data: subscriptions, error } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', user.id)
           .eq('is_active', true)
-          .is('ends_at', null)
+          .gt('ends_at', new Date().toISOString())
           .maybeSingle();
-          
-        if (openError) {
-          console.error('Error checking open-ended subscription:', openError);
-        } else {
-          console.log("Open-ended subscription check result:", openSubscriptions);
-          if (openSubscriptions) {
-            console.log("Found open-ended subscription, setting hasActiveSubscription to true");
-            setHasActiveSubscription(true);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to verify subscription status. Please try again.",
-      });
-    } finally {
-      setIsCheckingSubscription(false);
-    }
-  }, [user?.id, setHasActiveSubscription, setIsCheckingSubscription, toast]);
 
-  // Run subscription check only when user ID changes, using a ref to prevent duplicate calls
+        if (error) {
+          console.error('Error checking subscription:', error);
+          throw error;
+        }
+        
+        console.log("Setting hasActiveSubscription to:", !!subscriptions);
+        setHasActiveSubscription(!!subscriptions);
+        
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to verify subscription status",
+        });
+      } finally {
+        setIsCheckingSubscription(false);
+        isCheckingRef.current = false;
+      }
+    }, 1000),
+    [user?.id, setHasActiveSubscription, setIsCheckingSubscription, toast]
+  );
+
+  // Run subscription check only when user ID changes and hasn't been checked
   useEffect(() => {
     if (user?.id && !checkRunRef.current) {
       checkRunRef.current = true;
       setIsCheckingSubscription(true);
-      checkSubscriptionStatus();
+      debouncedCheckSubscription();
     } else if (!user?.id) {
       checkRunRef.current = false;
       setIsCheckingSubscription(false);
     }
-  }, [user?.id, checkSubscriptionStatus, setIsCheckingSubscription]);
+    
+    return () => {
+      debouncedCheckSubscription.cancel();
+    };
+  }, [user?.id, debouncedCheckSubscription, setIsCheckingSubscription]);
 
-  return { checkSubscriptionStatus };
+  return { checkSubscriptionStatus: debouncedCheckSubscription };
 };
