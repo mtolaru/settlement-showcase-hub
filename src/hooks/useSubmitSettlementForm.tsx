@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,12 +36,16 @@ export const useSubmitSettlementForm = () => {
 
   useValidateDollarInput(formData, handleInputChange);
   const { isValidatingEmail, alreadyExists } = useEmailValidation(formData.attorneyEmail, isValidEmail, setErrors);
+  
+  // Use the hook with its own dependency array
   useSubscriptionStatus(setHasActiveSubscription, setIsCheckingSubscription);
 
+  // Add dependency array for error logging
   useEffect(() => {
     console.log("Current form errors state:", errors);
   }, [errors]);
 
+  // Memoize authentication and user data updates
   useEffect(() => {
     console.log("Auth state in useSubmitSettlementForm:", { isAuthenticated, user });
     setTemporaryId(crypto.randomUUID());
@@ -77,6 +81,7 @@ export const useSubmitSettlementForm = () => {
       console.log("User not authenticated, ensuring email field is editable");
     }
     
+    // This prevents too frequent updates by checking subscription only when needed
     if (!isLoadingSubscription) {
       const hasActiveSub = !!subscription;
       console.log("Setting hasActiveSubscription based on subscription hook:", hasActiveSub, subscription);
@@ -87,6 +92,7 @@ export const useSubmitSettlementForm = () => {
       setHasActiveSubscription, setIsCheckingSubscription, setTemporaryId, 
       getLatestAttorneyInfo, settlements, clearedFields]);
 
+  // Separate effect for email validation handling
   useEffect(() => {
     if (isAuthenticated && user?.email === formData.attorneyEmail && errors.attorneyEmail) {
       console.log("Clearing email error for authenticated user using their own email");
