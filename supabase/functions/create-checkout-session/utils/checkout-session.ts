@@ -33,7 +33,7 @@ export const saveSessionDetails = async (
       console.log('Successfully saved session details');
     }
   } catch (error) {
-    console.error('Error in saveSessionDetails:', error);
+    console.error('Exception in saveSessionDetails:', error);
   }
 };
 
@@ -54,20 +54,25 @@ export const createCheckoutSession = async (
   console.log('Base URL:', baseUrl);
   
   // Check if payment has already been completed
-  const { data: settlement, error: settlementError } = await supabase
-    .from('settlements')
-    .select('payment_completed')
-    .eq('temporary_id', temporaryId)
-    .maybeSingle();
+  try {
+    const { data: settlement, error: settlementError } = await supabase
+      .from('settlements')
+      .select('payment_completed')
+      .eq('temporary_id', temporaryId)
+      .maybeSingle();
+      
+    if (settlementError) {
+      console.error('Error checking settlement:', settlementError);
+      throw new Error(`Failed to check existing settlement: ${settlementError.message}`);
+    }
     
-  if (settlementError) {
-    console.error('Error checking settlement:', settlementError);
-    throw new Error(`Failed to check existing settlement: ${settlementError.message}`);
-  }
-  
-  if (settlement?.payment_completed) {
-    console.log('Settlement already marked as paid. Skipping checkout.');
-    return { isExisting: true };
+    if (settlement?.payment_completed) {
+      console.log('Settlement already marked as paid. Skipping checkout.');
+      return { isExisting: true };
+    }
+  } catch (dbError) {
+    console.error('Database error checking settlement:', dbError);
+    // Continue even if check fails - we'll try to create/update the record
   }
   
   // If form data was included, ensure it's saved to the database
