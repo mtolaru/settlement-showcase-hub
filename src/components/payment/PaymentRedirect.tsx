@@ -16,6 +16,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
   const [temporaryId, setTemporaryId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
+  const [redirectAttempts, setRedirectAttempts] = useState(0);
 
   useEffect(() => {
     // Start by parsing the full search string to detect any malformed URLs
@@ -76,11 +77,30 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
           title: "Payment successful!",
           description: "Redirecting to confirmation page...",
         });
-      }, 300);
+        
+        setRedirectAttempts(prev => prev + 1);
+      }, 500);
       
       onRedirectAttempted();
     }
   }, [location.pathname, location.search, navigate, toast, onRedirectAttempted]);
+
+  // If we've attempted to redirect but we're still on this component,
+  // it means the navigation might have failed
+  useEffect(() => {
+    if (redirectAttempts > 0 && sessionId) {
+      const timer = setTimeout(() => {
+        console.log("Redirect may have failed, attempting manual navigation");
+        const params = [];
+        if (sessionId) params.push(`session_id=${encodeURIComponent(sessionId)}`);
+        if (temporaryId) params.push(`temporaryId=${encodeURIComponent(temporaryId)}`);
+        const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+        window.location.href = `/confirmation${queryString}`;
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [redirectAttempts, sessionId, temporaryId]);
 
   return (
     <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
@@ -108,11 +128,11 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
         </Button>
         
         <Button 
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/settlements")}
           variant="outline"
           className="block w-full"
         >
-          Return to Home
+          View Settlement Gallery
         </Button>
       </div>
     </div>

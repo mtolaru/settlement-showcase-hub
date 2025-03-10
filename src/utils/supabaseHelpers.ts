@@ -1,40 +1,51 @@
 
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/integrations/supabase/types';
-import { extractData, safeGet } from './dbTypeHelpers';
+import { supabase } from "@/integrations/supabase/client";
+import { safeGet } from "@/utils/dbTypeHelpers";
 
 /**
- * Type-safe wrapper for Supabase queries
+ * Helper class for common Supabase operations
  */
-export class SafeSupabaseClient {
-  private client: SupabaseClient<Database>;
-  
-  constructor(client: SupabaseClient<Database>) {
-    this.client = client;
-  }
-  
+export class SupabaseHelper {
   /**
-   * Safely perform a query and extract the data
+   * Check if a user exists with the given email
    */
-  async safeQuery<T>(
-    queryFn: (client: SupabaseClient<Database>) => Promise<{ data: any, error: any }>,
-    defaultValue: T
-  ): Promise<T> {
+  async userExistsByEmail(email: string): Promise<boolean> {
     try {
-      const { data, error } = await queryFn(this.client);
-      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+
       if (error) {
-        console.error('Query error:', error);
-        return defaultValue;
+        console.error('Error checking if user exists by email:', error);
+        return false;
       }
-      
-      return extractData(data, defaultValue);
-    } catch (err) {
-      console.error('Exception in query:', err);
-      return defaultValue;
+
+      return !!data;
+    } catch (error) {
+      console.error('Exception checking if user exists by email:', error);
+      return false;
     }
   }
-  
+
+  /**
+   * Update a user's profile
+   */
+  async updateUserProfile(userId: string, profileData: Record<string, any>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('id', userId);
+
+      return !error;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      return false;
+    }
+  }
+
   /**
    * Safely get a property from a Supabase query result
    */
@@ -42,3 +53,5 @@ export class SafeSupabaseClient {
     return safeGet(obj, key, defaultValue);
   }
 }
+
+export const supabaseHelper = new SupabaseHelper();

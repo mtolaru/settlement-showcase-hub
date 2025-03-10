@@ -15,10 +15,12 @@ export const useSettlementConfirmation = () => {
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   
+  // Parse URL parameters
   const params = new URLSearchParams(location.search);
   let temporaryId = params.get("temporaryId");
   const sessionId = params.get("session_id");
   
+  // Clean up malformed temporaryId if it contains a question mark
   if (temporaryId && temporaryId.includes('?')) {
     console.log("Cleaning malformed temporaryId:", temporaryId);
     temporaryId = temporaryId.split('?')[0];
@@ -64,6 +66,7 @@ export const useSettlementConfirmation = () => {
       setIsUpdating(true);
       console.log("Associating user ID with settlement:", user.id, temporaryId);
       
+      // Use the safer updateObj helper
       const { error: updateError } = await supabase
         .from('settlements')
         .update(updateObj({ user_id: user.id }))
@@ -87,6 +90,7 @@ export const useSettlementConfirmation = () => {
     try {
       console.log("Attempting to fetch settlement by session ID:", sessionId);
       
+      // First try to find the subscription with this payment ID
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('temporary_id, user_id')
@@ -97,41 +101,72 @@ export const useSettlementConfirmation = () => {
         console.error("Error fetching subscription:", subscriptionError);
       }
       
-      const tempId = safeGet(subscriptionData, 'temporary_id', null);
+      // If we found a temporaryId, use it to fetch the settlement
+      const tempId = safeGet(subscriptionData as any, 'temporary_id', null);
       if (tempId) {
         console.log("Found temporary_id from subscription:", tempId);
         fetchSettlementData(tempId);
         return;
       }
       
+      // As a fallback for Stripe checkout sessions, check recent subscriptions
       if (sessionId.startsWith('cs_') && !subscriptionData) {
         console.log("No subscription found by payment_id, checking recent subscriptions");
         const { data: recentSubscriptions, error: recentError } = await supabase
           .from('subscriptions')
           .select('temporary_id, user_id')
-          .order('created_at', { ascending: false })
-          .limit(1);
+          .order('starts_at', { ascending: false })
+          .limit(3);
           
         if (recentError) {
           console.error("Error fetching recent subscriptions:", recentError);
         }
         
         if (recentSubscriptions && recentSubscriptions.length > 0) {
-          const tempIdFromRecent = safeGet(recentSubscriptions[0], 'temporary_id', null);
-          if (tempIdFromRecent) {
-            console.log("Found recent subscription:", recentSubscriptions[0]);
-            fetchSettlementData(tempIdFromRecent);
-            return;
+          console.log("Found recent subscriptions:", recentSubscriptions);
+          
+          for (const sub of recentSubscriptions) {
+            const tempIdFromRecent = safeGet(sub as any, 'temporary_id', null);
+            if (tempIdFromRecent) {
+              console.log("Trying recent subscription temporary_id:", tempIdFromRecent);
+              const settlementFound = await checkSettlementExists(tempIdFromRecent);
+              if (settlementFound) {
+                fetchSettlementData(tempIdFromRecent);
+                return;
+              }
+            }
           }
         }
       }
       
+      // If we got here, we couldn't find a valid settlement
       setIsLoading(false);
       setError("Could not find settlement data. Please try refreshing the page or contact support.");
     } catch (error) {
       console.error("Error in fetchSettlementBySessionId:", error);
       setIsLoading(false);
       setError("Could not find settlement data. Please try refreshing the page or contact support.");
+    }
+  };
+
+  // Helper function to check if a settlement exists for a temporary ID
+  const checkSettlementExists = async (tempId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('settlements')
+        .select('id')
+        .eq('temporary_id', stringParam(tempId))
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error checking settlement:', error);
+        return false;
+      }
+      
+      return !!data;
+    } catch (e) {
+      console.error('Error in checkSettlementExists:', e);
+      return false;
     }
   };
 
@@ -161,7 +196,7 @@ export const useSettlementConfirmation = () => {
       setSettlementData(data);
       
       // Check if payment is completed and update if needed
-      const paymentCompleted = data.payment_completed === true;
+      const paymentCompleted = safeGet(data as any, 'payment_completed', false);
       if (!paymentCompleted && !isUpdating) {
         setIsUpdating(true);
         
@@ -202,13 +237,14 @@ export const useSettlementConfirmation = () => {
   };
 
   const shouldShowCreateAccount = !isAuthenticated && settlementData && 
-    (temporaryId || settlementData.temporary_id) && !settlementData.user_id;
+    (temporaryId || safeGet(settlementData as any, 'temporary_id', null)) && 
+    !safeGet(settlementData as any, 'user_id', null);
 
   return {
     settlementData,
     isLoading,
     error,
     shouldShowCreateAccount,
-    temporaryId: settlementData?.temporary_id || temporaryId,
+    temporaryId: safeGet(settlementData as any, 'temporary_id', temporaryId) || temporaryId,
   };
 };

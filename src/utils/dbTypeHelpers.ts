@@ -1,3 +1,4 @@
+
 /**
  * This file contains type helper functions to work with Supabase
  * and handle TypeScript type safety issues.
