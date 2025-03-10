@@ -100,13 +100,13 @@ export const getSiteUrl = () => {
     
     // For production/staging, try to use environment variables if available
     if (environment === 'production') {
-      const productionUrl = import.meta.env.VITE_SITE_URL || 'https://settleshare.app';
-      return productionUrl;
+      // Use explicit production URL
+      return 'https://settleshare.app';
     }
     
     if (environment === 'staging') {
-      const stagingUrl = import.meta.env.VITE_STAGING_URL || 'https://staging.settleshare.app';
-      return stagingUrl;
+      // Use explicit staging URL
+      return 'https://staging.settleshare.app';
     }
     
     // Fallback to current origin if no specific URL is set
@@ -124,6 +124,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    flowType: 'pkce',
   },
 });
 
