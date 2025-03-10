@@ -61,7 +61,8 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
         stripe_session_id: sessionId,
         stripe_subscription_id: subscriptionId,
         stripe_customer_id: customerId,
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
+        base_url: baseUrl // Store the base URL that was used
       })
       .eq('temporary_id', temporaryId)
       .select()
@@ -85,6 +86,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
             stripe_session_id: sessionId,
             stripe_subscription_id: subscriptionId,
             stripe_customer_id: customerId,
+            base_url: baseUrl, // Store the base URL
             amount: 0, // Placeholder
             type: 'Unknown', // Placeholder
             firm: 'Unknown', // Placeholder

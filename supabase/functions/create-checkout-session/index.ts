@@ -77,16 +77,42 @@ serve(async (req) => {
       'https://payment-redirect-preview.vercel.app'
     ];
     
-    // Determine if we're in production based on request origin
-    const isProduction = productionDomains.some(domain => 
-      requestOrigin?.includes(domain) || requestUrl?.includes(domain) || referrer?.includes(domain)
-    );
+    // Default production domain to use if we can't determine from request
+    const defaultProductionDomain = 'https://www.settlementwins.com';
     
-    console.log("Environment detection:", { 
-      requestOrigin, 
-      isProduction,
-      referrer
-    });
+    // Determine base URL
+    let baseUrl;
+    
+    // First try to get it directly from the origin header
+    if (requestOrigin && requestOrigin.length > 0) {
+      console.log("Using origin header for base URL:", requestOrigin);
+      baseUrl = requestOrigin;
+    } 
+    // If no origin, try to extract from referrer
+    else if (referrer && referrer.length > 0) {
+      try {
+        const referrerUrl = new URL(referrer);
+        baseUrl = `${referrerUrl.protocol}//${referrerUrl.host}`;
+        console.log("Extracted base URL from referrer:", baseUrl);
+      } catch (e) {
+        console.log("Failed to extract from referrer, using default production domain");
+        baseUrl = defaultProductionDomain;
+      }
+    } 
+    // If neither origin nor referrer, check if this is a production URL based on request URL
+    else if (requestUrl && productionDomains.some(domain => requestUrl.includes(domain.replace('https://', '')))) {
+      const matchedDomain = productionDomains.find(domain => 
+        requestUrl.includes(domain.replace('https://', '')));
+      baseUrl = matchedDomain || defaultProductionDomain;
+      console.log("Determined base URL from request URL matching production domain:", baseUrl);
+    } 
+    // Last resort fallback to default production domain
+    else {
+      console.log("No origin or referrer found, using default production domain");
+      baseUrl = defaultProductionDomain;
+    }
+    
+    console.log("Final base URL for redirects:", baseUrl);
     
     // Check if this temporaryId already has a completed payment
     const { data: existingSettlement, error: checkError } = await supabase
@@ -115,48 +141,15 @@ serve(async (req) => {
     const webhookUrl = `${supabaseUrl}/functions/v1/stripe-webhook`;
     console.log("Webhook URL:", webhookUrl);
     
-    // Determine the base URL for redirects
-    let baseUrl;
-    if (requestOrigin) {
-      // Use the actual origin of the request if available
-      baseUrl = requestOrigin;
-    } else if (referrer) {
-      // Try to extract domain from referrer
-      try {
-        const referrerUrl = new URL(referrer);
-        baseUrl = `${referrerUrl.protocol}//${referrerUrl.host}`;
-      } catch {
-        // If parsing fails, use a production domain
-        baseUrl = isProduction ? 'https://www.settlementwins.com' : 'http://localhost:3000';
-      }
-    } else {
-      // Fall back to detected environment
-      baseUrl = isProduction ? 'https://www.settlementwins.com' : 'http://localhost:3000';
-    }
-    
-    console.log("Using base URL for redirects:", baseUrl);
-    
     // Make sure temporaryId is properly encoded
     const encodedTempId = encodeURIComponent(temporaryId);
     
-    // Construct a userReturnUrl or default
-    let returnUrl = userReturnUrl;
-    if (!returnUrl) {
-      returnUrl = `${baseUrl}/confirmation?temporaryId=${encodedTempId}`;
-    }
+    // Construct a return URL with the correct domain
+    let successUrl = `${baseUrl}/payment/redirect?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
+    let cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
     
-    // Set appropriate success and cancel URLs
-    const successUrl = `${baseUrl}/payment/redirect?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
-    const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
-
-    console.log("Creating checkout session with params:", { 
-      temporaryId, 
-      userId, 
-      successUrl,
-      cancelUrl,
-      webhookUrl,
-      baseUrl
-    });
+    console.log("Success URL:", successUrl);
+    console.log("Cancel URL:", cancelUrl);
 
     // Create the checkout session
     const session = await stripe.checkout.sessions.create({
