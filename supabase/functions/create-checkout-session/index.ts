@@ -62,38 +62,33 @@ serve(async (req) => {
       isProduction 
     });
     
-    // Set appropriate base URL based on environment - prioritize www domain
-    let baseUrl = 'https://www.settlementwins.com';
+    // Always use the Supabase function URL for webhook endpoints
+    const webhookUrl = `${supabaseUrl}/functions/v1/stripe-webhook`;
+    console.log("Webhook URL:", webhookUrl);
     
-    // If we're not in production and have a requestOrigin, use that
-    if (!isProduction && requestOrigin) {
-      baseUrl = requestOrigin;
-    }
-    
-    console.log("Using base URL:", baseUrl);
-    
-    // Make sure we have a valid return URL
-    let validatedReturnUrl = returnUrl;
-    if (!validatedReturnUrl) {
-      validatedReturnUrl = `${baseUrl}/confirmation`;
-    }
+    // Set appropriate success URL
+    let successUrl = isProduction 
+      ? 'https://www.settlementwins.com/confirmation'
+      : `${requestOrigin}/confirmation`;
+      
+    // Add query parameters for tracking
+    successUrl = `${successUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodeURIComponent(temporaryId)}`;
     
     // Set cancel URL based on same base URL
-    const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
+    const cancelUrl = isProduction
+      ? 'https://www.settlementwins.com/submit?step=3&canceled=true'
+      : `${requestOrigin}/submit?step=3&canceled=true`;
 
     console.log("Creating checkout session with params:", { 
       temporaryId, 
       userId, 
-      returnUrl: validatedReturnUrl,
+      successUrl,
       cancelUrl,
-      baseUrl,
+      webhookUrl,
       origin: requestOrigin || 'unknown'
     });
-    
-    // Properly encode the temporaryId for URL usage
-    const encodedTempId = encodeURIComponent(temporaryId);
 
-    // Create the checkout session with properly encoded URLs
+    // Create the checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -113,17 +108,22 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${validatedReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`,
+      success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: temporaryId,
       metadata: {
         temporaryId: temporaryId,
         userId: userId || '',
       },
-      allow_promotion_codes: true, // Enable promotion codes
+      allow_promotion_codes: true,
     });
 
-    console.log("Checkout session created:", session.id, "Redirection URL:", session.url);
+    console.log("Checkout session created:", {
+      sessionId: session.id,
+      url: session.url,
+      successUrl: successUrl,
+      temporaryId: temporaryId
+    });
 
     return new Response(
       JSON.stringify({ url: session.url }),
