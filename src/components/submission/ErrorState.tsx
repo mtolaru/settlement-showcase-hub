@@ -15,8 +15,21 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [lastCheckTime, setLastCheckTime] = useState(0); // Track last check time to throttle
 
   const checkSettlementStatus = async () => {
+    // Prevent rapid-fire checks (throttle to once every 3 seconds)
+    const now = Date.now();
+    if (now - lastCheckTime < 3000) {
+      toast({
+        title: "Please wait",
+        description: "You're checking too frequently. Please wait a moment before trying again."
+      });
+      return;
+    }
+    
+    setLastCheckTime(now);
+    
     try {
       setIsChecking(true);
       
@@ -109,6 +122,36 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
           // Refresh the page to trigger confirmation flow
           setTimeout(() => window.location.reload(), 1500);
           return;
+        } else {
+          // Settlement not found by temporary ID, create one if we have a session ID
+          if (sessionId) {
+            try {
+              console.log("Creating settlement record from session ID");
+              
+              const { data: fixData, error: fixError } = await supabase.functions.invoke('fix-settlement', {
+                body: { 
+                  sessionId,
+                  temporaryId: tempId
+                }
+              });
+              
+              if (fixError) {
+                console.error("Error fixing settlement:", fixError);
+              } else if (fixData?.success) {
+                console.log("Successfully created settlement from session:", fixData);
+                
+                toast({
+                  title: "Settlement recovered!",
+                  description: "We've recovered your settlement. Refreshing..."
+                });
+                
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+              }
+            } catch (fixErr) {
+              console.error("Exception fixing settlement:", fixErr);
+            }
+          }
         }
       }
       
@@ -149,6 +192,40 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
             
             setTimeout(() => window.location.reload(), 1500);
             return;
+          } else {
+            // Found subscription but no settlement - create one
+            try {
+              const { data: createData, error: createError } = await supabase
+                .from('settlements')
+                .insert({
+                  temporary_id: subData.temporary_id,
+                  payment_completed: true,
+                  stripe_session_id: sessionId,
+                  amount: 0, 
+                  type: 'Unknown',
+                  firm: 'Unknown',
+                  attorney: 'Unknown',
+                  location: 'Unknown'
+                })
+                .select()
+                .single();
+                
+              if (createError) {
+                console.error("Error creating placeholder settlement:", createError);
+              } else {
+                console.log("Created placeholder settlement:", createData);
+                
+                toast({
+                  title: "Settlement created!",
+                  description: "We've created a placeholder settlement. Refreshing..."
+                });
+                
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+              }
+            } catch (createErr) {
+              console.error("Exception creating placeholder settlement:", createErr);
+            }
           }
         }
       }
@@ -163,7 +240,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
           
           const { data: manualFixData, error: manualFixError } = await supabase.functions.invoke('fix-settlement', {
             body: { 
-              sessionId: sessionId,
+              sessionId,
               temporaryId: tempId
             }
           });
@@ -212,6 +289,16 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
       <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border border-neutral-200">
         <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
         <p className="text-neutral-600 mb-4">{error}</p>
+        
+        {error.includes("429") || error.includes("rate") || error.includes("limit") ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+            <p className="text-amber-800 text-sm">
+              Stripe rate limit detected. The payment system is experiencing high traffic. 
+              Your submission may still have been recorded successfully.
+            </p>
+          </div>
+        ) : null}
+        
         <p className="text-sm text-neutral-500 mb-6">
           If you've completed payment, your settlement has been recorded, but we're having trouble displaying it.
           Please try refreshing this page or checking your settlements later.
