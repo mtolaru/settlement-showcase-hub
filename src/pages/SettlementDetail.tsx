@@ -108,47 +108,17 @@ const SettlementDetail = () => {
     }
   };
 
-  // Format the title for sharing metadata
   const formatShareTitle = (settlement: Settlement | null) => {
     if (!settlement) return '';
     const formattedAmount = formatCurrency(settlement.amount).replace('$', '$');
     return `${formattedAmount} Settlement - ${settlement.type} - ${settlement.firm}`;
   };
 
-  // Format the description for sharing metadata
   const formatShareDescription = (settlement: Settlement | null) => {
     if (!settlement) return '';
     return settlement.case_description || 
            `${settlement.attorney} secured a ${formatCurrency(settlement.amount)} settlement in a ${settlement.type} case.`;
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-primary-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
-          <p className="text-neutral-600">Fetching settlement details</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!settlement) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2 text-red-600">Settlement Not Found</h2>
-          <p className="text-neutral-600 mb-4">
-            The settlement you're looking for couldn't be found or may have been removed.
-          </p>
-          <Link to="/settlements">
-            <Button>View All Settlements</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -189,20 +159,56 @@ const SettlementDetail = () => {
     }
   };
 
+  const getAbsoluteImageUrl = (relativeUrl: string) => {
+    if (relativeUrl.startsWith('http')) {
+      return relativeUrl;
+    }
+    return `${window.location.origin}${relativeUrl}`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+          <p className="text-neutral-600">Fetching settlement details</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settlement) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Settlement Not Found</h2>
+          <p className="text-neutral-600 mb-4">
+            The settlement you're looking for couldn't be found or may have been removed.
+          </p>
+          <Link to="/settlements">
+            <Button>View All Settlements</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Helmet>
-        {/* OpenGraph tags for LinkedIn and other platforms */}
         <meta property="og:title" content={formatShareTitle(settlement)} />
         <meta property="og:description" content={formatShareDescription(settlement)} />
-        <meta property="og:image" content={imageUrl} />
+        <meta property="og:image" content={getAbsoluteImageUrl(imageUrl)} />
         <meta property="og:url" content={window.location.href} />
         <meta property="og:type" content="article" />
         
-        {/* LinkedIn specific tags */}
         <meta name="linkedin:title" content={formatShareTitle(settlement)} />
         <meta name="linkedin:description" content={formatShareDescription(settlement)} />
-        <meta name="linkedin:image" content={imageUrl} />
+        <meta name="linkedin:image" content={getAbsoluteImageUrl(imageUrl)} />
+        
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image:alt" content={`${settlement?.type || 'Legal'} settlement case`} />
       </Helmet>
 
       <div className="min-h-screen bg-neutral-50">

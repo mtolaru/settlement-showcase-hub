@@ -66,16 +66,11 @@ export const ShareButton = ({
   };
 
   const handleLinkedInShare = () => {
-    // LinkedIn's sharing API doesn't support text+URL in the same call
-    // So we'll open LinkedIn with custom text and the URL
-    const encodedText = encodeURIComponent(shareMessage);
-    const encodedUrl = encodeURIComponent(getShareUrl('linkedin'));
+    // LinkedIn's sharing API - Using separate URL & text params for better compatibility
+    const linkedinUrl = new URL('https://www.linkedin.com/sharing/share-offsite/');
+    linkedinUrl.searchParams.append('url', getShareUrl('linkedin'));
     
-    // LinkedIn's feed share URL with prefilled content
-    // Using 'feed/share' to support prefilled text
-    const linkedinUrl = `https://www.linkedin.com/feed/share?text=${encodedText}&url=${encodedUrl}`;
-    
-    window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
+    window.open(linkedinUrl.toString(), '_blank', 'noopener,noreferrer,width=600,height=600');
     
     toast({
       title: "Opening LinkedIn",
@@ -369,3 +364,4 @@ export const ShareButton = ({
     </div>
   );
 };
+
