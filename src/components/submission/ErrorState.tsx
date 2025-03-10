@@ -109,6 +109,36 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
           // Refresh the page to trigger confirmation flow
           setTimeout(() => window.location.reload(), 1500);
           return;
+        } else {
+          // Settlement not found by temporary ID, create one if we have a session ID
+          if (sessionId) {
+            try {
+              console.log("Creating settlement record from session ID");
+              
+              const { data: fixData, error: fixError } = await supabase.functions.invoke('fix-settlement', {
+                body: { 
+                  sessionId,
+                  temporaryId: tempId
+                }
+              });
+              
+              if (fixError) {
+                console.error("Error fixing settlement:", fixError);
+              } else if (fixData?.success) {
+                console.log("Successfully created settlement from session:", fixData);
+                
+                toast({
+                  title: "Settlement recovered!",
+                  description: "We've recovered your settlement. Refreshing..."
+                });
+                
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+              }
+            } catch (fixErr) {
+              console.error("Exception fixing settlement:", fixErr);
+            }
+          }
         }
       }
       
@@ -149,6 +179,40 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
             
             setTimeout(() => window.location.reload(), 1500);
             return;
+          } else {
+            // Found subscription but no settlement - create one
+            try {
+              const { data: createData, error: createError } = await supabase
+                .from('settlements')
+                .insert({
+                  temporary_id: subData.temporary_id,
+                  payment_completed: true,
+                  stripe_session_id: sessionId,
+                  amount: 0, 
+                  type: 'Unknown',
+                  firm: 'Unknown',
+                  attorney: 'Unknown',
+                  location: 'Unknown'
+                })
+                .select()
+                .single();
+                
+              if (createError) {
+                console.error("Error creating placeholder settlement:", createError);
+              } else {
+                console.log("Created placeholder settlement:", createData);
+                
+                toast({
+                  title: "Settlement created!",
+                  description: "We've created a placeholder settlement. Refreshing..."
+                });
+                
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+              }
+            } catch (createErr) {
+              console.error("Exception creating placeholder settlement:", createErr);
+            }
           }
         }
       }
@@ -163,7 +227,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
           
           const { data: manualFixData, error: manualFixError } = await supabase.functions.invoke('fix-settlement', {
             body: { 
-              sessionId: sessionId,
+              sessionId,
               temporaryId: tempId
             }
           });

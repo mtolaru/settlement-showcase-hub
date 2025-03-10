@@ -78,35 +78,61 @@ export const createCheckoutSession = async (
 
   // Create the checkout session
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Professional Plan Subscription',
-              description: 'Monthly subscription for publishing settlements',
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    let session = null;
+    
+    while (retryCount < MAX_RETRIES) {
+      try {
+        session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: 'Professional Plan Subscription',
+                  description: 'Monthly subscription for publishing settlements',
+                },
+                unit_amount: 19900, // $199.00
+                recurring: {
+                  interval: 'month',
+                },
+              },
+              quantity: 1,
             },
-            unit_amount: 19900, // $199.00
-            recurring: {
-              interval: 'month',
-            },
+          ],
+          mode: 'subscription',
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          client_reference_id: temporaryId,
+          metadata: {
+            temporaryId: temporaryId,
+            userId: userId || '',
+            baseUrl: baseUrl // Store the base URL in metadata for reference
           },
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      client_reference_id: temporaryId,
-      metadata: {
-        temporaryId: temporaryId,
-        userId: userId || '',
-        baseUrl: baseUrl // Store the base URL in metadata for reference
-      },
-      allow_promotion_codes: true,
-    });
+          allow_promotion_codes: true,
+        });
+        
+        // If we got here, the session was created successfully
+        break;
+      } catch (error) {
+        if (error.type === 'StripeRateLimitError' && retryCount < MAX_RETRIES - 1) {
+          // Wait with exponential backoff
+          retryCount++;
+          const waitTime = 1000 * Math.pow(2, retryCount);
+          console.log(`Rate limit hit, retrying in ${waitTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          // If it's not a rate limit error or we've exceeded max retries, throw
+          throw error;
+        }
+      }
+    }
+    
+    if (!session) {
+      throw new Error("Failed to create Stripe session after multiple attempts");
+    }
 
     console.log("Checkout session created:", {
       sessionId: session.id,
