@@ -16,8 +16,11 @@ serve(async (req) => {
   }
 
   try {
-    // Log request details for debugging
-    console.log(`Webhook request received: ${req.method} ${req.url}`);
+    // Log webhook request details for better debugging
+    console.log(`Webhook request received from: ${req.headers.get('origin') || 'unknown origin'}`);
+    console.log(`Request URL: ${req.url}`);
+    console.log(`Host header: ${req.headers.get('host')}`);
+    console.log(`User-Agent: ${req.headers.get('user-agent')}`);
     
     // Validate environment variables
     const envVars = validateEnvVars();
@@ -32,7 +35,9 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'No stripe-signature header found', 
-          availableHeaders: [...req.headers.keys()]
+          availableHeaders: [...req.headers.keys()],
+          message: 'This webhook endpoint requires a valid Stripe signature',
+          receivedAt: new Date().toISOString()
         }),
         { 
           status: 200, // Return 200 instead of 400 to avoid Stripe retries
@@ -53,7 +58,14 @@ serve(async (req) => {
     // Create Supabase client
     const supabase = createSupabaseClient(envVars.supabaseUrl, envVars.supabaseKey);
 
-    // Process the webhook event
+    // Process the webhook event with improved logging
+    console.log(`Processing event type: ${event.type}, event ID: ${event.id}`);
+    console.log(`Event received timestamp: ${new Date().toISOString()}`);
+    
+    if (event.data?.object?.metadata?.temporaryId) {
+      console.log(`Event contains temporaryId: ${event.data.object.metadata.temporaryId}`);
+    }
+    
     await handleWebhookEvent(event, supabase);
 
     // Return a success response to Stripe with detailed information
@@ -63,7 +75,8 @@ serve(async (req) => {
         success: true, 
         event_type: event.type,
         processed_at: new Date().toISOString(),
-        event_id: event.id
+        event_id: event.id,
+        supabase_connection: "success"
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
