@@ -35,9 +35,7 @@ serve(async (req) => {
     });
 
     // Parse request body
-    const { session_id, temporary_id } = await req.json();
-    
-    console.log('Checking payment status for:', { session_id, temporary_id });
+    const { session_id } = await req.json();
     
     if (!session_id) {
       return new Response(
@@ -52,141 +50,134 @@ serve(async (req) => {
       );
     }
     
-    // Check if we have an existing subscription with this payment ID
-    const { data: existingSubscription } = await supabase
-      .from('subscriptions')
+    console.log('Checking payment status for session:', session_id);
+    
+    // First check if we have a record of this session in our stripe_sessions table
+    const { data: sessionRecord, error: sessionError } = await supabase
+      .from('stripe_sessions')
       .select('*')
-      .eq('payment_id', session_id)
+      .eq('session_id', session_id)
       .maybeSingle();
       
-    if (existingSubscription) {
-      console.log('Found existing subscription:', existingSubscription);
+    if (sessionError) {
+      console.error('Error fetching session record:', sessionError);
+    } else if (sessionRecord) {
+      console.log('Found session record:', sessionRecord);
       
-      // Return success
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Subscription already exists for this payment',
-          subscription: existingSubscription
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      );
-    }
-    
-    // Check if the session exists in Stripe
-    try {
-      const session = await stripe.checkout.sessions.retrieve(session_id);
-      
-      if (!session) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Session not found in Stripe'
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 404 
-          }
-        );
-      }
-      
-      console.log('Found Stripe session:', {
-        id: session.id,
-        paymentStatus: session.payment_status,
-        status: session.status,
-        metadata: session.metadata
-      });
-      
-      // Extract metadata
-      const sessionTemporaryId = session.metadata?.temporaryId;
-      const userId = session.metadata?.userId;
-      const customerId = session.customer;
-      const subscriptionId = session.subscription;
-      
-      // Use either the provided temporaryId or the one from the session
-      const temporaryId = temporary_id || sessionTemporaryId;
-      
-      if (!temporaryId) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'No temporary ID available'
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400 
-          }
-        );
-      }
-      
-      if (session.payment_status === 'paid') {
-        // Session is paid, check/update our database
-        
-        // First check if a settlement exists
-        const { data: settlement } = await supabase
+      // Check if the associated settlement exists and is paid
+      if (sessionRecord.temporary_id) {
+        const { data: settlement, error: settlementError } = await supabase
           .from('settlements')
           .select('*')
-          .eq('temporary_id', temporaryId)
+          .eq('temporary_id', sessionRecord.temporary_id)
           .maybeSingle();
           
-        if (settlement) {
-          // If settlement exists but payment is not marked complete, update it
+        if (settlementError) {
+          console.error('Error fetching settlement:', settlementError);
+        } else if (settlement) {
+          console.log('Found settlement:', settlement);
+          
           if (!settlement.payment_completed) {
-            console.log('Updating settlement payment status:', settlement.id);
-            
+            // Update the settlement to mark payment as completed
             const { error: updateError } = await supabase
               .from('settlements')
-              .update({
+              .update({ 
                 payment_completed: true,
                 stripe_session_id: session_id,
-                stripe_subscription_id: subscriptionId,
-                stripe_customer_id: customerId
+                paid_at: new Date().toISOString()
               })
               .eq('id', settlement.id);
               
             if (updateError) {
-              console.error('Error updating settlement:', updateError);
+              console.error('Error updating settlement payment status:', updateError);
             } else {
-              console.log('Successfully updated settlement payment status');
-            }
-          }
-          
-          // Make sure we have a subscription record
-          const { data: existingSub } = await supabase
-            .from('subscriptions')
-            .select('id')
-            .eq('payment_id', session_id)
-            .maybeSingle();
-            
-          if (!existingSub) {
-            console.log('Creating missing subscription record');
-            
-            const { error: subError } = await supabase
-              .from('subscriptions')
-              .insert({
-                user_id: userId || null,
-                temporary_id: temporaryId,
-                payment_id: session_id,
-                customer_id: customerId,
-                is_active: true,
-                created_at: new Date().toISOString(),
-                starts_at: new Date().toISOString()
-              });
-              
-            if (subError) {
-              console.error('Error creating subscription record:', subError);
-            } else {
-              console.log('Successfully created subscription record');
+              console.log('Updated settlement payment status to completed');
             }
           }
           
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: 'Payment verified and settlement updated'
+              temporaryId: sessionRecord.temporary_id,
+              settlementId: settlement.id,
+              payment_completed: true
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200 
+            }
+          );
+        }
+      }
+    }
+    
+    // If we don't have a record in our database, check with Stripe
+    try {
+      const session = await stripe.checkout.sessions.retrieve(session_id);
+      
+      console.log('Stripe session retrieved:', {
+        id: session.id,
+        status: session.status,
+        payment_status: session.payment_status,
+        metadata: session.metadata
+      });
+      
+      if (session.payment_status === 'paid' && session.metadata?.temporaryId) {
+        console.log('Session is paid and has temporaryId:', session.metadata.temporaryId);
+        
+        // Check if the settlement exists
+        const { data: settlement, error: settlementError } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('temporary_id', session.metadata.temporaryId)
+          .maybeSingle();
+          
+        if (settlementError) {
+          console.error('Error fetching settlement:', settlementError);
+        } else if (settlement) {
+          console.log('Found settlement:', settlement);
+          
+          if (!settlement.payment_completed) {
+            // Update the settlement to mark payment as completed
+            const { error: updateError } = await supabase
+              .from('settlements')
+              .update({ 
+                payment_completed: true,
+                stripe_session_id: session_id,
+                stripe_customer_id: session.customer,
+                stripe_subscription_id: session.subscription,
+                paid_at: new Date().toISOString()
+              })
+              .eq('id', settlement.id);
+              
+            if (updateError) {
+              console.error('Error updating settlement payment status:', updateError);
+            } else {
+              console.log('Updated settlement payment status to completed');
+            }
+          }
+          
+          // Save this session for future reference
+          const { error: saveError } = await supabase
+            .from('stripe_sessions')
+            .upsert({
+              session_id: session.id,
+              temporary_id: session.metadata.temporaryId,
+              user_id: session.metadata.userId || null,
+              created_at: new Date().toISOString(),
+              session_data: session
+            });
+            
+          if (saveError) {
+            console.error('Error saving session:', saveError);
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              temporaryId: session.metadata.temporaryId,
+              settlementId: settlement.id,
+              payment_completed: true
             }),
             { 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -194,109 +185,78 @@ serve(async (req) => {
             }
           );
         } else {
-          // No settlement found - this should be rare
-          console.log('No settlement found for temporaryId:', temporaryId);
+          console.log('Settlement not found with temporaryId:', session.metadata.temporaryId);
           
-          // Create a placeholder settlement
-          try {
-            const { data: newSettlement, error: createError } = await supabase
-              .from('settlements')
-              .insert({
-                temporary_id: temporaryId,
-                payment_completed: true,
-                stripe_session_id: session_id,
-                stripe_subscription_id: subscriptionId,
-                stripe_customer_id: customerId,
-                amount: 0, // Placeholder
-                type: 'Unknown', // Placeholder
-                firm: 'Unknown', // Placeholder
-                attorney: 'Unknown', // Placeholder
-                location: 'Unknown', // Placeholder
-                paid_at: new Date().toISOString()
-              })
-              .select()
-              .single();
-              
-            if (createError) {
-              console.error('Error creating placeholder settlement:', createError);
-              throw createError;
-            }
+          // Create a basic settlement record if it doesn't exist
+          const { data: newSettlement, error: createError } = await supabase
+            .from('settlements')
+            .insert({
+              temporary_id: session.metadata.temporaryId,
+              payment_completed: true,
+              stripe_session_id: session_id,
+              stripe_customer_id: session.customer,
+              stripe_subscription_id: session.subscription,
+              amount: 0, // Placeholder
+              type: 'Unknown', // Placeholder
+              firm: 'Unknown', // Placeholder
+              attorney: 'Unknown', // Placeholder
+              location: 'Unknown', // Placeholder
+              paid_at: new Date().toISOString()
+            })
+            .select()
+            .single();
             
-            console.log('Created placeholder settlement:', newSettlement.id);
-            
-            // Also create subscription record
-            const { error: subError } = await supabase
-              .from('subscriptions')
-              .insert({
-                user_id: userId || null,
-                temporary_id: temporaryId,
-                payment_id: session_id,
-                customer_id: customerId,
-                is_active: true,
-                created_at: new Date().toISOString(),
-                starts_at: new Date().toISOString()
-              });
-              
-            if (subError) {
-              console.error('Error creating subscription record:', subError);
-            }
-            
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                message: 'Created placeholder settlement and subscription'
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200 
-              }
-            );
-          } catch (createError) {
+          if (createError) {
             console.error('Error creating placeholder settlement:', createError);
+            throw createError;
+          }
+          
+          console.log('Created placeholder settlement:', newSettlement);
+          
+          // Save this session for future reference
+          const { error: saveError } = await supabase
+            .from('stripe_sessions')
+            .upsert({
+              session_id: session.id,
+              temporary_id: session.metadata.temporaryId,
+              user_id: session.metadata.userId || null,
+              created_at: new Date().toISOString(),
+              session_data: session
+            });
             
-            return new Response(
-              JSON.stringify({ 
-                success: false, 
-                error: 'Failed to create placeholder settlement'
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 500 
-              }
-            );
+          if (saveError) {
+            console.error('Error saving session:', saveError);
           }
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              temporaryId: session.metadata.temporaryId,
+              settlementId: newSettlement.id,
+              payment_completed: true,
+              note: 'Created placeholder settlement'
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200 
+            }
+          );
         }
-      } else {
-        // Payment not completed
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Payment not completed',
-            status: session.payment_status
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400 
-          }
-        );
       }
-      
     } catch (stripeError) {
       console.error('Error retrieving Stripe session:', stripeError);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Error retrieving Stripe session',
-          details: stripeError.message
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
-        }
-      );
     }
     
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Could not verify payment or find associated settlement.'
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404 
+      }
+    );
   } catch (error) {
     console.error('General error:', error);
     
