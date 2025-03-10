@@ -17,10 +17,20 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
   const [retryCount, setRetryCount] = useState(0);
 
   const checkSettlementStatus = async () => {
-    if (!temporaryId) {
-      // Try to retrieve from localStorage if not provided as prop
-      const storedTemporaryId = localStorage.getItem('temporary_id');
-      if (!storedTemporaryId) {
+    try {
+      setIsChecking(true);
+      
+      // Try to get temporaryId from props or localStorage
+      const tempId = temporaryId || localStorage.getItem('temporary_id');
+      const sessionId = localStorage.getItem('payment_session_id');
+      
+      console.log("Checking settlement status:", { 
+        tempId, 
+        sessionId,
+        location: window.location.href 
+      });
+      
+      if (!tempId && !sessionId) {
         toast({
           variant: "destructive",
           title: "Missing settlement reference",
@@ -28,60 +38,96 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, temporaryId }) =>
         });
         return;
       }
-    }
 
-    try {
-      setIsChecking(true);
-      const tempId = temporaryId || localStorage.getItem('temporary_id');
-      console.log("Checking settlement status for temporaryId:", tempId);
-      console.log("Current origin:", window.location.origin);
-      
-      const { data, error: fetchError } = await supabase
-        .from('settlements')
-        .select('*')
-        .eq('temporary_id', tempId)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error("Error checking settlement status:", fetchError);
-        toast({
-          variant: "destructive",
-          title: "Error checking status",
-          description: "There was a problem checking your settlement status. Please try again."
-        });
-        return;
-      }
-
-      if (data) {
-        console.log("Settlement found:", data);
-        toast({
-          title: "Settlement found!",
-          description: "Redirecting to your settlement..."
-        });
+      // First try by temporary ID
+      if (tempId) {
+        const { data: tempData, error: tempError } = await supabase
+          .from('settlements')
+          .select('*')
+          .eq('temporary_id', tempId)
+          .maybeSingle();
+          
+        if (tempError) {
+          console.error("Error checking by temporaryId:", tempError);
+        }
         
-        // Refresh the page after a short delay to trigger the confirmation flow again
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        setRetryCount(prev => prev + 1);
-        console.log("Settlement not found, retry count:", retryCount + 1);
-        
-        if (retryCount >= 2) {
+        if (tempData) {
+          console.log("Found settlement by temporaryId:", tempData);
           toast({
-            variant: "destructive",
-            title: "Settlement not found",
-            description: "We couldn't locate your settlement. It may still be processing or there may be an issue."
+            title: "Settlement found!",
+            description: "Redirecting to your settlement..."
           });
-        } else {
-          toast({
-            title: "Still processing",
-            description: "Your settlement may still be processing. Please try again in a moment."
-          });
+          
+          // Refresh the page to trigger confirmation flow
+          setTimeout(() => window.location.reload(), 1500);
+          return;
         }
       }
+      
+      // Then try by session ID
+      if (sessionId) {
+        console.log("Checking by session ID:", sessionId);
+        
+        const { data: subData, error: subError } = await supabase
+          .from('subscriptions')
+          .select('temporary_id')
+          .eq('payment_id', sessionId)
+          .maybeSingle();
+          
+        if (subError) {
+          console.error("Error checking by sessionId:", subError);
+        }
+        
+        if (subData?.temporary_id) {
+          console.log("Found subscription by sessionId:", subData);
+          
+          // Now look up the settlement
+          const { data: settlementData } = await supabase
+            .from('settlements')
+            .select('*')
+            .eq('temporary_id', subData.temporary_id)
+            .maybeSingle();
+            
+          if (settlementData) {
+            console.log("Found settlement via subscription:", settlementData);
+            
+            // Store the temporaryId in localStorage and reload
+            localStorage.setItem('temporary_id', subData.temporary_id);
+            
+            toast({
+              title: "Settlement found!",
+              description: "Redirecting to your settlement..."
+            });
+            
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+        }
+      }
+      
+      // If we get here, we didn't find a settlement
+      setRetryCount(prev => prev + 1);
+      
+      if (retryCount >= 2) {
+        toast({
+          variant: "destructive",
+          title: "Settlement not found",
+          description: "We couldn't locate your settlement after multiple attempts. The payment may have been processed, but there was an issue finding your submission."
+        });
+      } else {
+        toast({
+          title: "Still processing",
+          description: "Your settlement may still be processing. Please try again in a moment."
+        });
+      }
+      
     } catch (err) {
       console.error("Exception checking settlement status:", err);
+      toast({
+        variant: "destructive",
+        title: "Error checking status",
+        description: "There was a technical problem checking your settlement status."
+      });
     } finally {
       setIsChecking(false);
     }

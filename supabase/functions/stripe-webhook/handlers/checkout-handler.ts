@@ -76,6 +76,29 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
     
     console.log(`Successfully updated settlement: ${data.id} with payment information`);
     
+    // Create a record in the subscriptions table
+    try {
+      const { error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: userId || null,
+          temporary_id: temporaryId,
+          payment_id: sessionId,
+          customer_id: customerId,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          starts_at: new Date().toISOString()
+        });
+        
+      if (subscriptionError) {
+        console.error('Error creating subscription record:', subscriptionError);
+      } else {
+        console.log('Successfully created subscription record');
+      }
+    } catch (subError) {
+      console.error('Exception creating subscription record:', subError);
+    }
+    
     // Create user association with settlement if userId is provided
     if (userId) {
       console.log(`Associating settlement with user: ${userId}`);

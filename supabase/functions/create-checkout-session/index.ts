@@ -50,16 +50,29 @@ serve(async (req) => {
     
     // Get the origin for this request
     const requestOrigin = req.headers.get('origin');
-    console.log("Request origin:", requestOrigin);
+    const requestUrl = req.url;
     
-    // Use production URL as default, fallback to request origin for local dev
-    const productionDomain = 'https://www.settlementwins.com';
-    const isProduction = requestOrigin?.includes('settlementwins.com') || 
-                         requestOrigin?.includes('vercel.app') ||
-                         false;
+    console.log("Request details:", {
+      origin: requestOrigin,
+      url: requestUrl,
+      temporaryId,
+      userId
+    });
+    
+    // Define allowed production domains
+    const productionDomains = [
+      'https://www.settlementwins.com', 
+      'https://settlementwins.com',
+      'https://settlement-wins-web.vercel.app'
+    ];
+    
+    // Determine if we're in production based on request origin
+    const isProduction = productionDomains.some(domain => 
+      requestOrigin?.includes(domain) || requestUrl?.includes(domain)
+    );
     
     console.log("Environment detection:", { 
-      requestOrigin: requestOrigin || 'unknown', 
+      requestOrigin, 
       isProduction 
     });
     
@@ -68,13 +81,22 @@ serve(async (req) => {
     console.log("Webhook URL:", webhookUrl);
     
     // Determine the base URL for redirects
-    const baseUrl = isProduction ? productionDomain : (requestOrigin || 'http://localhost:3000');
+    let baseUrl;
+    if (isProduction) {
+      baseUrl = 'https://www.settlementwins.com';
+    } else if (requestOrigin) {
+      baseUrl = requestOrigin;
+    } else {
+      baseUrl = 'http://localhost:3000';
+    }
+    
     console.log("Using base URL for redirects:", baseUrl);
     
-    // Set appropriate success URL with consistent parameters
-    const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodeURIComponent(temporaryId)}`;
+    // Make sure temporaryId is properly encoded
+    const encodedTempId = encodeURIComponent(temporaryId);
     
-    // Set cancel URL with consistent path
+    // Set appropriate success and cancel URLs
+    const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
     const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
 
     console.log("Creating checkout session with params:", { 
@@ -82,9 +104,7 @@ serve(async (req) => {
       userId, 
       successUrl,
       cancelUrl,
-      webhookUrl,
-      baseUrl,
-      origin: requestOrigin || 'unknown'
+      webhookUrl
     });
 
     // Create the checkout session

@@ -179,6 +179,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          created_at: string | null
           customer_id: string | null
           ends_at: string | null
           id: string
@@ -189,6 +190,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          created_at?: string | null
           customer_id?: string | null
           ends_at?: string | null
           id?: string
@@ -199,6 +201,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          created_at?: string | null
           customer_id?: string | null
           ends_at?: string | null
           id?: string

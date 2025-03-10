@@ -21,17 +21,22 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
     // Extract and sanitize URL parameters
     const extractParams = () => {
       try {
-        // Start by parsing the full search string
+        // Get raw search string and record for debugging
         const searchParams = location.search;
-        console.log("Original search string:", searchParams);
+        console.log("Payment redirect processing URL:", {
+          fullUrl: window.location.href,
+          searchParams,
+          origin: window.location.origin,
+          pathname: location.pathname
+        });
         
         const params = new URLSearchParams(searchParams);
         
-        // Extract parameters
+        // Extract parameters directly from URL
         const session = params.get("session_id");
         let tempId = params.get("temporaryId");
         
-        console.log("Extracted params:", { session_id: session, temporaryId: tempId });
+        console.log("Extracted payment params:", { session_id: session, temporaryId: tempId });
         
         // Handle any malformed parameters
         if (tempId && tempId.includes('?')) {
@@ -47,6 +52,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
     };
 
     const { session, tempId } = extractParams();
+    let storedTempId: string | null = null;
     
     if (session) {
       setSessionId(session);
@@ -57,6 +63,13 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
         setTemporaryId(tempId);
         localStorage.setItem('temporary_id', tempId);
         console.log("Temporary ID found and saved:", tempId);
+      } else {
+        // If no tempId in URL but we have a session ID, try to recover from localStorage
+        storedTempId = localStorage.getItem('temporary_id');
+        if (storedTempId) {
+          console.log("Recovered temporaryId from localStorage:", storedTempId);
+          setTemporaryId(storedTempId);
+        }
       }
       
       setRedirecting(true);
@@ -64,10 +77,10 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       // Build a clean confirmation URL with properly formatted parameters
       const queryParams = new URLSearchParams();
       if (session) queryParams.set("session_id", session);
-      if (tempId) queryParams.set("temporaryId", tempId);
+      if (tempId || storedTempId) queryParams.set("temporaryId", tempId || storedTempId || '');
       
       const redirectUrl = `/confirmation?${queryParams.toString()}`;
-      console.log("Redirecting to:", redirectUrl);
+      console.log("Redirecting to:", redirectUrl, "Full URL:", window.location.origin + redirectUrl);
       
       // Short delay before redirect to ensure state updates
       setTimeout(() => {
@@ -81,7 +94,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
         onRedirectAttempted();
       }, 300);
     }
-  }, [location.search, navigate, toast, onRedirectAttempted]);
+  }, [location, navigate, toast, onRedirectAttempted]);
 
   return (
     <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
