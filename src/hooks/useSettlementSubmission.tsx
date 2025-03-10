@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from "react";
+
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { settlementService } from "@/services/settlementService";
@@ -63,21 +64,21 @@ export const useSettlementSubmission = ({
         const { data: updatedRecord, error: updateError } = await supabase
           .from('settlements')
           .update({
-            amount: Number(unformatNumber(formData.amount)),
-            attorney: formData.attorneyName,
-            firm: formData.firmName,
-            firm_website: formData.firmWebsite,
-            location: formData.location,
-            type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
-            description: formData.caseDescription,
-            case_description: formData.caseDescription,
-            initial_offer: Number(unformatNumber(formData.initialOffer)),
-            policy_limit: Number(unformatNumber(formData.policyLimit)),
-            medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
-            settlement_phase: formData.settlementPhase,
-            settlement_date: formData.settlementDate,
-            photo_url: formData.photoUrl,
-            attorney_email: formData.attorneyEmail,
+            amount: Number(unformatNumber(formData.amount)) || 0,
+            attorney: formData.attorneyName || '',
+            firm: formData.firmName || '',
+            firm_website: formData.firmWebsite || '',
+            location: formData.location || '',
+            type: formData.caseType === "Other" ? formData.otherCaseType || 'Other' : formData.caseType || 'Other',
+            description: formData.caseDescription || '',
+            case_description: formData.caseDescription || '',
+            initial_offer: formData.initialOffer ? Number(unformatNumber(formData.initialOffer)) : null,
+            policy_limit: formData.policyLimit ? Number(unformatNumber(formData.policyLimit)) : null,
+            medical_expenses: formData.medicalExpenses ? Number(unformatNumber(formData.medicalExpenses)) : null,
+            settlement_phase: formData.settlementPhase || '',
+            settlement_date: formData.settlementDate || null,
+            photo_url: formData.photoUrl || '',
+            attorney_email: formData.attorneyEmail || '',
             updated_at: new Date().toISOString()
           })
           .eq('id', existingRecord.id)
@@ -90,32 +91,38 @@ export const useSettlementSubmission = ({
         }
         
         console.log("Updated existing settlement record:", updatedRecord);
+        
+        // Save form data to localStorage for recovery
+        localStorage.setItem('settlement_form_data', JSON.stringify(formData));
+        localStorage.setItem('temporary_id', temporaryId);
+        console.log("Form data saved to localStorage for recovery");
+        
         return { success: true, existing: false, data: updatedRecord };
       }
       
       // Create new settlement record with all form data
       const submissionData = {
-        amount: Number(unformatNumber(formData.amount)),
-        attorney: formData.attorneyName,
-        firm: formData.firmName,
-        firm_website: formData.firmWebsite,
-        location: formData.location,
-        type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
-        description: formData.caseDescription,
-        case_description: formData.caseDescription,
-        initial_offer: Number(unformatNumber(formData.initialOffer)),
-        policy_limit: Number(unformatNumber(formData.policyLimit)),
-        medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
-        settlement_phase: formData.settlementPhase,
-        settlement_date: formData.settlementDate,
-        photo_url: formData.photoUrl,
-        attorney_email: formData.attorneyEmail,
+        amount: Number(unformatNumber(formData.amount)) || 0,
+        attorney: formData.attorneyName || '',
+        firm: formData.firmName || '',
+        firm_website: formData.firmWebsite || '',
+        location: formData.location || '',
+        type: formData.caseType === "Other" ? formData.otherCaseType || 'Other' : formData.caseType || 'Other',
+        description: formData.caseDescription || '',
+        case_description: formData.caseDescription || '',
+        initial_offer: formData.initialOffer ? Number(unformatNumber(formData.initialOffer)) : null,
+        policy_limit: formData.policyLimit ? Number(unformatNumber(formData.policyLimit)) : null,
+        medical_expenses: formData.medicalExpenses ? Number(unformatNumber(formData.medicalExpenses)) : null,
+        settlement_phase: formData.settlementPhase || '',
+        settlement_date: formData.settlementDate || null,
+        photo_url: formData.photoUrl || '',
         temporary_id: temporaryId,
+        attorney_email: formData.attorneyEmail || '',
         payment_completed: false,
         created_at: new Date().toISOString()
       };
       
-      console.log("Inserting new settlement record with data:", submissionData);
+      console.log("Inserting new settlement record:", submissionData);
       
       const { data, error } = await supabase
         .from('settlements')
@@ -129,8 +136,12 @@ export const useSettlementSubmission = ({
       }
       
       console.log("Successfully created settlement record:", data);
-      localStorage.setItem('temporary_id', temporaryId);
+      
+      // Save form data to localStorage for recovery
       localStorage.setItem('settlement_form_data', JSON.stringify(formData));
+      localStorage.setItem('temporary_id', temporaryId);
+      console.log("Form data saved to localStorage for recovery");
+      
       return { success: true, existing: false, data };
     } catch (error) {
       console.error("Error in createSettlementRecord:", error);
