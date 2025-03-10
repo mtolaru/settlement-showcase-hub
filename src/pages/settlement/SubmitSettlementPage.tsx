@@ -8,8 +8,13 @@ import { LoadingState } from "@/components/settlement/LoadingState";
 import { SettlementFormHeader } from "@/components/settlement/SettlementFormHeader";
 import { FormNavigation } from "@/components/settlement/FormNavigation";
 import { useSubmitSettlementContainer } from "@/hooks/useSubmitSettlementContainer";
-import { useEffect } from "react";
+import { useEffect, memo, useMemo } from "react";
 import { Toaster } from "@/components/ui/toaster";
+
+// Memoize form components to prevent unnecessary re-renders
+const MemoizedSettlementDetailsForm = memo(SettlementDetailsForm);
+const MemoizedAttorneyInformationForm = memo(AttorneyInformationForm);
+const MemoizedReviewStep = memo(ReviewStep);
 
 const SubmitSettlementPage = () => {
   const {
@@ -32,6 +37,7 @@ const SubmitSettlementPage = () => {
     clearedFields
   } = useSubmitSettlementContainer();
 
+  // Use effect for logging with dependency array
   useEffect(() => {
     console.log("SubmitSettlementPage rendering, current step:", step);
     // Log errors whenever they change
@@ -49,7 +55,10 @@ const SubmitSettlementPage = () => {
     }
   }, [step, errors]);
 
-  if (isCheckingSubscription) {
+  // Memoize the loading state check
+  const isLoaderVisible = useMemo(() => isCheckingSubscription, [isCheckingSubscription]);
+
+  if (isLoaderVisible) {
     return <LoadingState />;
   }
 
@@ -68,7 +77,7 @@ const SubmitSettlementPage = () => {
             className="bg-white rounded-lg shadow-md p-6"
           >
             {step === 1 && (
-              <SettlementDetailsForm
+              <MemoizedSettlementDetailsForm
                 formData={formData}
                 errors={errors}
                 handleInputChange={handleInputChange}
@@ -76,7 +85,7 @@ const SubmitSettlementPage = () => {
             )}
 
             {step === 2 && (
-              <AttorneyInformationForm
+              <MemoizedAttorneyInformationForm
                 formData={formData}
                 errors={errors}
                 handleInputChange={handleInputChange}
@@ -89,7 +98,7 @@ const SubmitSettlementPage = () => {
             )}
 
             {step === 3 && (
-              <ReviewStep 
+              <MemoizedReviewStep 
                 formData={formData}
                 hasActiveSubscription={hasActiveSubscription === true}
                 onCreateCheckout={handleCreateCheckout}

@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useSubmitSettlementForm } from "@/hooks/useSubmitSettlementForm";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +35,7 @@ export const useSubmitSettlementContainer = () => {
     clearedFields
   } = useSubmitSettlementForm();
 
+  // Memoize handlers to prevent recreating on every render
   const { handleSubmitWithSubscription, handleCreateCheckout } = useSettlementSubmission({
     temporaryId,
     formData,
@@ -60,6 +61,7 @@ export const useSubmitSettlementContainer = () => {
     updateCurrentStep(step);
   }, [step, updateCurrentStep]);
 
+  // Memoize subscription status logging to prevent cyclic dependencies
   useEffect(() => {
     console.log("SubmitSettlement component - Current subscription status:", {
       isAuthenticated,
