@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { settlementService } from "@/services/settlementService";
@@ -33,10 +33,11 @@ export const useSettlementSubmission = ({
   const checkoutInProgressRef = useRef(false);
   const MAX_RETRIES = 3;
 
-  // Save settlement data first before redirecting to checkout
+  // Create settlement record first
   const createSettlementRecord = async () => {
     try {
       console.log("Creating settlement record with temporaryId:", temporaryId);
+      console.log("Form data being submitted:", formData);
       
       // First check if a record already exists
       const { data: existingRecord } = await supabase
@@ -49,7 +50,7 @@ export const useSettlementSubmission = ({
         console.log("Found existing settlement record:", existingRecord);
         
         if (existingRecord.payment_completed) {
-          console.log("Settlement already marked as paid, redirecting to confirmation");
+          console.log("Settlement already marked as paid");
           toast({
             title: "Already Submitted",
             description: "This settlement has already been processed."
@@ -58,10 +59,41 @@ export const useSettlementSubmission = ({
           return { success: true, existing: true };
         }
         
-        return { success: true, existing: false };
+        // Update existing record with current form data
+        const { data: updatedRecord, error: updateError } = await supabase
+          .from('settlements')
+          .update({
+            amount: Number(unformatNumber(formData.amount)),
+            attorney: formData.attorneyName,
+            firm: formData.firmName,
+            firm_website: formData.firmWebsite,
+            location: formData.location,
+            type: formData.caseType === "Other" ? formData.otherCaseType : formData.caseType,
+            description: formData.caseDescription,
+            case_description: formData.caseDescription,
+            initial_offer: Number(unformatNumber(formData.initialOffer)),
+            policy_limit: Number(unformatNumber(formData.policyLimit)),
+            medical_expenses: Number(unformatNumber(formData.medicalExpenses)),
+            settlement_phase: formData.settlementPhase,
+            settlement_date: formData.settlementDate,
+            photo_url: formData.photoUrl,
+            attorney_email: formData.attorneyEmail,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
+          
+        if (updateError) {
+          console.error("Error updating existing settlement:", updateError);
+          throw updateError;
+        }
+        
+        console.log("Updated existing settlement record:", updatedRecord);
+        return { success: true, existing: false, data: updatedRecord };
       }
       
-      // Create new settlement record
+      // Create new settlement record with all form data
       const submissionData = {
         amount: Number(unformatNumber(formData.amount)),
         attorney: formData.attorneyName,
@@ -83,7 +115,7 @@ export const useSettlementSubmission = ({
         created_at: new Date().toISOString()
       };
       
-      console.log("Inserting new settlement record:", submissionData);
+      console.log("Inserting new settlement record with data:", submissionData);
       
       const { data, error } = await supabase
         .from('settlements')
@@ -98,6 +130,7 @@ export const useSettlementSubmission = ({
       
       console.log("Successfully created settlement record:", data);
       localStorage.setItem('temporary_id', temporaryId);
+      localStorage.setItem('settlement_form_data', JSON.stringify(formData));
       return { success: true, existing: false, data };
     } catch (error) {
       console.error("Error in createSettlementRecord:", error);
@@ -316,4 +349,3 @@ export const useSettlementSubmission = ({
     handleCreateCheckout
   };
 };
-
