@@ -55,6 +55,7 @@ export type Database = {
           settlement_phase: string | null
           temporary_id: string | null
           type: string
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -78,6 +79,7 @@ export type Database = {
           settlement_phase?: string | null
           temporary_id?: string | null
           type: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -101,6 +103,7 @@ export type Database = {
           settlement_phase?: string | null
           temporary_id?: string | null
           type?: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []

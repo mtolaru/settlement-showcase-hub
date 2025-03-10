@@ -8,6 +8,7 @@ export interface Settlement {
   attorney: string;
   location: string;
   created_at: string;
+  updated_at?: string;
   settlement_date: string | null;
   description: string | null;
   case_description: string | null;
@@ -18,6 +19,7 @@ export interface Settlement {
   temporary_id?: string;
   user_id?: string;
   payment_completed?: boolean;
+  subscription_status?: string;
   photo_url?: string;
   attorney_email?: string;
   hidden?: boolean;

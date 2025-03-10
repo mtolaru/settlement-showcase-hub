@@ -71,6 +71,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
         stripe_subscription_id: subscriptionId,
         stripe_customer_id: customerId,
         paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         base_url: baseUrl || 'https://www.settlementwins.com' // Store the base URL that was used with a fallback
       })
       .eq('temporary_id', temporaryId)
@@ -95,6 +96,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
           customer_id: customerId,
           is_active: true,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           starts_at: new Date().toISOString()
         });
         
@@ -115,7 +117,8 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
         .upsert({
           settlement_id: data.id,
           user_id: userId,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
       
       if (userError) {
