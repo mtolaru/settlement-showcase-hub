@@ -17,6 +17,8 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Pricing from "./pages/Pricing";
 import ScrollToTop from "./components/ScrollToTop";
+import AuthCallback from "./pages/auth/AuthCallback";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 function App() {
   return (
@@ -37,6 +39,10 @@ function App() {
           <Route path="/payment/success" element={<SubmissionConfirmation />} />
           <Route path="/payment/redirect" element={<SubmissionConfirmation />} />
           <Route path="/payment/canceled" element={<SubmitSettlement />} />
+          
+          {/* Auth routes for Supabase redirects */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
           
           <Route path="/about" element={<About />} />
           <Route path="/faq" element={<FAQ />} />

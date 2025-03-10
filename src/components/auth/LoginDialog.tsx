@@ -21,11 +21,22 @@ export function LoginDialog() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
+  const [isResetPasswordMode, setIsResetPasswordMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    // Check if we're in a password reset flow from localStorage
+    const showResetUI = localStorage.getItem("show_reset_ui");
+    if (showResetUI === "true") {
+      setIsResetPasswordMode(true);
+      setIsOpen(true);
+      localStorage.removeItem("show_reset_ui");
+    }
+  }, []);
 
   useEffect(() => {
     // Prevent body scroll when dialog is open
@@ -41,9 +52,9 @@ export function LoginDialog() {
   }, [isOpen]);
 
   useEffect(() => {
-    // Clear error message when switching between login/register/forgot password modes
+    // Clear error message when switching between modes
     setErrorMessage("");
-  }, [isRegisterMode, isForgotPasswordMode]);
+  }, [isRegisterMode, isForgotPasswordMode, isResetPasswordMode]);
 
   const resetForm = () => {
     setEmail("");
@@ -57,6 +68,7 @@ export function LoginDialog() {
     setIsOpen(false);
     resetForm();
     setIsForgotPasswordMode(false);
+    setIsResetPasswordMode(false);
   };
 
   const validatePassword = (password: string) => {
@@ -96,7 +108,24 @@ export function LoginDialog() {
     setErrorMessage("");
 
     try {
-      if (isForgotPasswordMode) {
+      if (isResetPasswordMode) {
+        try {
+          validatePassword(password);
+          const { error } = await supabase.auth.updateUser({ password });
+          
+          if (error) throw error;
+          
+          toast({
+            title: "Password updated successfully",
+            description: "You can now log in with your new password.",
+          });
+          
+          setIsResetPasswordMode(false);
+          resetForm();
+        } catch (error: any) {
+          setErrorMessage(mapAuthErrorToMessage(error.message));
+        }
+      } else if (isForgotPasswordMode) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth/reset-password`,
         });
@@ -167,6 +196,7 @@ export function LoginDialog() {
 
   const goBack = () => {
     setIsForgotPasswordMode(false);
+    setIsResetPasswordMode(false);
     setResetSent(false);
   };
 
@@ -180,15 +210,58 @@ export function LoginDialog() {
       <DialogContent className="sm:max-w-md bg-white border-none shadow-lg">
         <DialogHeader className="pb-4 border-b">
           <DialogTitle className="text-xl font-semibold text-primary-900">
-            {isForgotPasswordMode 
-              ? "Reset Password" 
-              : isRegisterMode 
-                ? "Create Account" 
-                : "Login"}
+            {isResetPasswordMode 
+              ? "Set New Password" 
+              : isForgotPasswordMode 
+                ? "Reset Password" 
+                : isRegisterMode 
+                  ? "Create Account" 
+                  : "Login"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-          {isForgotPasswordMode ? (
+          {isResetPasswordMode ? (
+            <>
+              <div>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Enter your new password below.
+                </p>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
+                  <Input
+                    type="password"
+                    placeholder="New Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-white"
+                    required
+                    minLength={8}
+                  />
+                </div>
+                <p className="text-xs text-neutral-500 mt-2">
+                  Password must be at least 8 characters long and contain uppercase, lowercase, and numbers
+                </p>
+              </div>
+              
+              {errorMessage && (
+                <div className="flex items-center p-3 rounded-md bg-red-50 border border-red-100 text-red-600 text-sm">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating Password...
+                  </>
+                ) : (
+                  "Set New Password"
+                )}
+              </Button>
+            </>
+          ) : isForgotPasswordMode ? (
             <>
               {!resetSent ? (
                 <>
