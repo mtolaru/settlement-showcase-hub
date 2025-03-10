@@ -179,18 +179,13 @@ export const createCheckoutSession = async (
       }
     });
     
+    // IMPORTANT: Using a price ID for subscription mode instead of creating price data dynamically
+    // For subscription mode, you must use an existing price from your Stripe dashboard
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Settlement Submission',
-              description: 'One-time fee to submit your settlement information',
-            },
-            unit_amount: 9900, // $99.00
-          },
+          price: 'price_1PHIVVLiTXRxjg7JlCjvYm3C', // Replace with your actual price ID from Stripe dashboard
           quantity: 1,
         },
       ],
