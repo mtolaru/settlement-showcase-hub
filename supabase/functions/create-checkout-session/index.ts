@@ -55,15 +55,17 @@ serve(async (req) => {
     const requestData = await req.json();
     const { temporaryId, userId, returnUrl: userReturnUrl, formData } = requestData;
     
-    // Get the origin for this request
-    const requestOrigin = req.headers.get('origin') || '';
-    const requestUrl = req.url || '';
-    const referrer = req.headers.get('referer') || '';
+    // Get the origin for this request - Use all available headers for debugging
+    const requestOrigin = req.headers.get('origin');
+    const requestUrl = req.url;
+    const referrer = req.headers.get('referer');
+    const host = req.headers.get('host');
     
     console.log("Request details:", {
       origin: requestOrigin,
       url: requestUrl,
       referrer,
+      host,
       temporaryId,
       userId,
       hasFormData: !!formData
@@ -80,10 +82,10 @@ serve(async (req) => {
     // Default production domain to use if we can't determine from request
     const defaultProductionDomain = 'https://www.settlementwins.com';
     
-    // Determine base URL
+    // Determine base URL with improved fallback logic
     let baseUrl;
     
-    // First try to get it directly from the origin header
+    // First try to get it directly from the origin header - highest priority
     if (requestOrigin && requestOrigin.length > 0) {
       console.log("Using origin header for base URL:", requestOrigin);
       baseUrl = requestOrigin;
@@ -99,17 +101,27 @@ serve(async (req) => {
         baseUrl = defaultProductionDomain;
       }
     } 
-    // If neither origin nor referrer, check if this is a production URL based on request URL
-    else if (requestUrl && productionDomains.some(domain => requestUrl.includes(domain.replace('https://', '')))) {
-      const matchedDomain = productionDomains.find(domain => 
-        requestUrl.includes(domain.replace('https://', '')));
-      baseUrl = matchedDomain || defaultProductionDomain;
-      console.log("Determined base URL from request URL matching production domain:", baseUrl);
-    } 
+    // If we have a host header and URL, try to construct from that
+    else if (host && requestUrl) {
+      try {
+        const urlObj = new URL(requestUrl);
+        baseUrl = `${urlObj.protocol}//${host}`;
+        console.log("Constructed base URL from host and request URL:", baseUrl);
+      } catch (e) {
+        console.log("Failed to construct URL from host, falling back to default");
+        baseUrl = defaultProductionDomain;
+      }
+    }
     // Last resort fallback to default production domain
     else {
-      console.log("No origin or referrer found, using default production domain");
+      console.log("No origin, referrer or host found, using default production domain");
       baseUrl = defaultProductionDomain;
+    }
+    
+    // Sanity check - ensure baseUrl has protocol
+    if (!baseUrl.startsWith('http')) {
+      console.log("Adding https:// to baseUrl as it's missing protocol:", baseUrl);
+      baseUrl = 'https://' + baseUrl;
     }
     
     console.log("Final base URL for redirects:", baseUrl);
@@ -144,8 +156,8 @@ serve(async (req) => {
     // Make sure temporaryId is properly encoded
     const encodedTempId = encodeURIComponent(temporaryId);
     
-    // Construct a return URL with the correct domain
-    let successUrl = `${baseUrl}/payment/redirect?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
+    // IMPORTANT CHANGE: Always use /confirmation as the primary success route for consistency
+    let successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
     let cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
     
     console.log("Success URL:", successUrl);

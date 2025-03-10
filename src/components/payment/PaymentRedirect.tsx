@@ -71,7 +71,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       
       setRedirecting(true);
       
-      // Build a clean confirmation URL with properly formatted parameters
+      // IMPORTANT: Always redirect to /confirmation for consistency
       const queryParams = new URLSearchParams();
       if (session) queryParams.set("session_id", session);
       if (tempId || storedTempId) queryParams.set("temporaryId", tempId || storedTempId || '');
@@ -106,7 +106,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       <div className="space-y-4">
         <Button 
           onClick={() => {
-            // Create properly formatted URL parameters
+            // Always redirect to /confirmation for consistency
             const queryParams = new URLSearchParams();
             if (sessionId) queryParams.set("session_id", sessionId);
             if (temporaryId) queryParams.set("temporaryId", temporaryId);

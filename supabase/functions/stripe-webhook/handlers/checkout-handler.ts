@@ -62,7 +62,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
         stripe_subscription_id: subscriptionId,
         stripe_customer_id: customerId,
         paid_at: new Date().toISOString(),
-        base_url: baseUrl // Store the base URL that was used
+        base_url: baseUrl || 'https://www.settlementwins.com' // Store the base URL that was used with a fallback
       })
       .eq('temporary_id', temporaryId)
       .select()
@@ -86,7 +86,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
             stripe_session_id: sessionId,
             stripe_subscription_id: subscriptionId,
             stripe_customer_id: customerId,
-            base_url: baseUrl, // Store the base URL
+            base_url: baseUrl || 'https://www.settlementwins.com', // Store the base URL with fallback
             amount: 0, // Placeholder
             type: 'Unknown', // Placeholder
             firm: 'Unknown', // Placeholder
