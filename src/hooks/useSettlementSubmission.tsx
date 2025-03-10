@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { settlementService } from "@/services/settlementService";
@@ -28,12 +29,22 @@ export const useSettlementSubmission = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const isProcessingRef = useRef(false);
 
   const debouncedCreateCheckout = useCallback(
     debounce(async () => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+      
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id;
+        
+        console.log("Creating checkout session with data:", {
+          temporaryId,
+          userId: userId || "undefined",
+          formData: { ...formData, email: formData.attorneyEmail }
+        });
         
         const response = await supabase.functions.invoke('create-checkout-session', {
           body: {
@@ -83,13 +94,14 @@ export const useSettlementSubmission = ({
       } finally {
         setIsLoading(false);
         setSubmitting(false);
+        isProcessingRef.current = false;
       }
     }, 1000),
     [temporaryId, formData, navigate, toast, setSubmissionLock, setIsLoading]
   );
 
   const handleCreateCheckout = async () => {
-    if (submitting) return;
+    if (submitting || isProcessingRef.current) return;
     setSubmitting(true);
     setSubmissionLock(true);
     setIsLoading(true);
@@ -120,10 +132,11 @@ export const useSettlementSubmission = ({
   };
 
   const handleSubmitWithSubscription = async () => {
-    if (submitting) return;
+    if (submitting || isProcessingRef.current) return;
     setSubmitting(true);
     setSubmissionLock(true);
     setIsSubmitting(true);
+    isProcessingRef.current = true;
     
     try {
       const result = await settlementService.submitWithSubscription(
@@ -156,8 +169,16 @@ export const useSettlementSubmission = ({
     } finally {
       setIsSubmitting(false);
       setSubmitting(false);
+      isProcessingRef.current = false;
     }
   };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      debouncedCreateCheckout.cancel();
+    };
+  }, [debouncedCreateCheckout]);
 
   return {
     handleSubmitWithSubscription,

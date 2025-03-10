@@ -68,6 +68,7 @@ export const useSubscriptionStatus = (
       setIsCheckingSubscription(false);
     }
     
+    // Clean up debounced function when component unmounts
     return () => {
       debouncedCheckSubscription.cancel();
     };
