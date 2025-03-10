@@ -99,7 +99,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
   return (
     <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
       <div className="flex justify-center mb-4">
-        <Check className="h-12 w-12 text-green-500" />
+        <CheckCircle className="h-12 w-12 text-green-500" />
       </div>
       <h1 className="text-2xl font-bold mb-4 text-primary-600">Payment Successful!</h1>
       <p className="text-sm text-gray-500 mb-6">
