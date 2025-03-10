@@ -1,7 +1,8 @@
 
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, Undo, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useState } from "react";
 
 interface ErrorStateProps {
   error: string;
@@ -10,6 +11,30 @@ interface ErrorStateProps {
 }
 
 export const ErrorState = ({ error, temporaryId, onRecoveryAttempt }: ErrorStateProps) => {
+  const [isRecovering, setIsRecovering] = useState(false);
+  
+  const handleRecoveryAttempt = () => {
+    if (onRecoveryAttempt) {
+      setIsRecovering(true);
+      try {
+        onRecoveryAttempt();
+      } catch (error) {
+        console.error("Error during recovery attempt:", error);
+      } finally {
+        // Reset after a timeout to allow for UI feedback
+        setTimeout(() => setIsRecovering(false), 2000);
+      }
+    }
+  };
+  
+  const handleManualRecoveryWithEmail = () => {
+    const email = prompt("Please enter the email you used during submission:");
+    if (email) {
+      localStorage.setItem('recovery_email', email);
+      window.location.href = `/confirmation${temporaryId ? `?temporaryId=${temporaryId}` : ''}`;
+    }
+  };
+  
   return (
     <Card className="p-8 max-w-xl mx-auto text-center">
       <div className="flex flex-col items-center gap-4">
@@ -36,23 +61,36 @@ export const ErrorState = ({ error, temporaryId, onRecoveryAttempt }: ErrorState
           )}
         </div>
         
-        {onRecoveryAttempt && (
-          <Button 
-            onClick={onRecoveryAttempt} 
-            className="mt-4 w-full flex items-center justify-center gap-2"
+        <div className="grid grid-cols-1 gap-3 w-full mt-2">
+          {onRecoveryAttempt && (
+            <Button 
+              onClick={handleRecoveryAttempt} 
+              className="w-full flex items-center justify-center gap-2"
+              disabled={isRecovering}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRecovering ? 'animate-spin' : ''}`} />
+              {isRecovering ? 'Attempting Recovery...' : 'Attempt Recovery'}
+            </Button>
+          )}
+          
+          <Button
+            variant="outline" 
+            onClick={handleManualRecoveryWithEmail} 
+            className="w-full flex items-center justify-center gap-2"
           >
-            <RefreshCw className="h-4 w-4" />
-            Attempt Recovery
+            <Undo className="h-4 w-4" />
+            Recover Using Email
           </Button>
-        )}
-        
-        <Button
-          variant="outline" 
-          onClick={() => window.location.href = '/'}
-          className="mt-2 w-full"
-        >
-          Return to Home
-        </Button>
+          
+          <Button
+            variant="outline" 
+            onClick={() => window.location.href = '/'}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <Home className="h-4 w-4" />
+            Return to Home
+          </Button>
+        </div>
         
         <p className="text-sm text-gray-500 mt-4">
           If this issue persists, please contact our support team for assistance.
