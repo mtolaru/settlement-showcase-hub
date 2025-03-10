@@ -37,7 +37,7 @@ const SubmitSettlementPage = () => {
     clearedFields
   } = useSubmitSettlementContainer();
 
-  // Use effect for logging with dependency array - only log when these values change
+  // Logging outside of any hook functions
   useEffect(() => {
     console.log("SubmitSettlementPage rendering, current step:", step);
     
@@ -51,8 +51,8 @@ const SubmitSettlementPage = () => {
     }
   }, [step, errors]);
 
-  // Memoize the loading state check to prevent unnecessary rerenders
-  const isLoaderVisible = useMemo(() => isCheckingSubscription, [isCheckingSubscription]);
+  // Calculate if loader is visible outside of any hook functions
+  const isLoaderVisible = isCheckingSubscription;
 
   if (isLoaderVisible) {
     return <LoadingState />;

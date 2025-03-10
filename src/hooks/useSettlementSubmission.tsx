@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -173,7 +172,6 @@ export const useSettlementSubmission = ({
     }
   };
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       debouncedCreateCheckout.cancel();
