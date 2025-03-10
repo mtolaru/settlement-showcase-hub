@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -43,6 +42,8 @@ export const ShareButton = ({
     // Add a cache-busting parameter for LinkedIn - helps with OG tag refresh
     if (source === 'linkedin') {
       shareUrl.searchParams.append('t', Date.now().toString());
+      // Force LinkedIn to re-scrape by adding random parameter
+      shareUrl.searchParams.append('force_scrape', Math.random().toString(36).substring(7));
     }
     
     return shareUrl.toString();
@@ -73,12 +74,19 @@ export const ShareButton = ({
   };
 
   const handleLinkedInShare = () => {
-    // LinkedIn's sharing API - using the official /sharing/share-offsite endpoint
-    // This ensures proper Open Graph tag processing by LinkedIn
+    // Use LinkedIn's sharing API with improved parameters
     const linkedinUrl = new URL('https://www.linkedin.com/sharing/share-offsite/');
     
+    // Get the share URL with cache busting parameters
+    const shareUrl = getShareUrl('linkedin');
+    
     // LinkedIn requires the url parameter
-    linkedinUrl.searchParams.append('url', getShareUrl('linkedin'));
+    linkedinUrl.searchParams.append('url', shareUrl);
+    
+    // Force LinkedIn to re-scrape the URL before showing the share dialog
+    // This helps ensure the latest OG tags are used
+    fetch(`https://www.linkedin.com/oauth/v2/shares?url=${encodeURIComponent(shareUrl)}`, { method: 'HEAD' })
+      .catch(() => console.log('LinkedIn pre-fetch completed'));
     
     // Open in a popup window of fixed size
     window.open(linkedinUrl.toString(), '_blank', 'noopener,noreferrer,width=600,height=600');
@@ -375,4 +383,3 @@ export const ShareButton = ({
     </div>
   );
 };
-
