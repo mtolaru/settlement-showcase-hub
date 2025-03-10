@@ -32,10 +32,6 @@ serve(async (req) => {
     // Determine base URL for this request
     const baseUrl = resolveBaseUrl(req);
     
-    // Always use the Supabase function URL for webhook endpoints
-    const webhookUrl = `${supabaseUrl}/functions/v1/webhook-handler`;
-    console.log("Webhook URL:", webhookUrl);
-    
     // Create checkout session
     const result = await createCheckoutSession(stripe, supabase, requestData, baseUrl);
     
