@@ -44,4 +44,12 @@ BEGIN
                  AND column_name = 'paid_at') THEN
     ALTER TABLE public.settlements ADD COLUMN paid_at TIMESTAMP WITH TIME ZONE;
   END IF;
+  
+  -- Add base_url field to help track domain information
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'settlements' 
+                 AND column_name = 'base_url') THEN
+    ALTER TABLE public.settlements ADD COLUMN base_url TEXT;
+  END IF;
 END $$;

@@ -3,7 +3,7 @@
 export const handleCheckoutSession = async (session: any, supabase: any, isLiveMode: boolean) => {
   try {
     // Extract metadata from the session
-    const { temporaryId, userId } = session.metadata || {};
+    const { temporaryId, userId, baseUrl } = session.metadata || {};
     const sessionId = session.id;
     const subscriptionId = session.subscription;
     const customerId = session.customer;
@@ -14,6 +14,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
       subscriptionId,
       customerId,
       isLiveMode,
+      baseUrl,
       mode: session.mode,
       paymentStatus: session.payment_status,
       subscriptionStatus: session.subscription_status || 'N/A',

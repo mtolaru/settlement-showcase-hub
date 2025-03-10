@@ -58,30 +58,34 @@ serve(async (req) => {
     // Get the origin for this request
     const requestOrigin = req.headers.get('origin') || '';
     const requestUrl = req.url || '';
+    const referrer = req.headers.get('referer') || '';
     
     console.log("Request details:", {
       origin: requestOrigin,
       url: requestUrl,
+      referrer,
       temporaryId,
       userId,
       hasFormData: !!formData
     });
     
-    // Define allowed production domains
+    // Define allowed production domains - EXPANDED LIST
     const productionDomains = [
       'https://www.settlementwins.com', 
       'https://settlementwins.com',
-      'https://settlement-wins-web.vercel.app'
+      'https://settlement-wins-web.vercel.app',
+      'https://payment-redirect-preview.vercel.app'
     ];
     
     // Determine if we're in production based on request origin
     const isProduction = productionDomains.some(domain => 
-      requestOrigin?.includes(domain) || requestUrl?.includes(domain)
+      requestOrigin?.includes(domain) || requestUrl?.includes(domain) || referrer?.includes(domain)
     );
     
     console.log("Environment detection:", { 
       requestOrigin, 
-      isProduction 
+      isProduction,
+      referrer
     });
     
     // Check if this temporaryId already has a completed payment
@@ -113,12 +117,21 @@ serve(async (req) => {
     
     // Determine the base URL for redirects
     let baseUrl;
-    if (isProduction) {
-      baseUrl = 'https://www.settlementwins.com';
-    } else if (requestOrigin) {
+    if (requestOrigin) {
+      // Use the actual origin of the request if available
       baseUrl = requestOrigin;
+    } else if (referrer) {
+      // Try to extract domain from referrer
+      try {
+        const referrerUrl = new URL(referrer);
+        baseUrl = `${referrerUrl.protocol}//${referrerUrl.host}`;
+      } catch {
+        // If parsing fails, use a production domain
+        baseUrl = isProduction ? 'https://www.settlementwins.com' : 'http://localhost:3000';
+      }
     } else {
-      baseUrl = 'http://localhost:3000';
+      // Fall back to detected environment
+      baseUrl = isProduction ? 'https://www.settlementwins.com' : 'http://localhost:3000';
     }
     
     console.log("Using base URL for redirects:", baseUrl);
@@ -133,7 +146,7 @@ serve(async (req) => {
     }
     
     // Set appropriate success and cancel URLs
-    const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
+    const successUrl = `${baseUrl}/payment/redirect?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
     const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
 
     console.log("Creating checkout session with params:", { 
@@ -141,7 +154,8 @@ serve(async (req) => {
       userId, 
       successUrl,
       cancelUrl,
-      webhookUrl
+      webhookUrl,
+      baseUrl
     });
 
     // Create the checkout session
@@ -170,6 +184,7 @@ serve(async (req) => {
       metadata: {
         temporaryId: temporaryId,
         userId: userId || '',
+        baseUrl: baseUrl // Store the base URL in metadata for reference
       },
       allow_promotion_codes: true,
     });
@@ -178,7 +193,8 @@ serve(async (req) => {
       sessionId: session.id,
       url: session.url,
       successUrl: successUrl,
-      temporaryId: temporaryId
+      temporaryId: temporaryId,
+      baseUrl: baseUrl
     });
 
     // Save session details for easier retrieval later
@@ -194,7 +210,8 @@ serve(async (req) => {
             payment_status: session.payment_status,
             url: session.url,
             success_url: successUrl,
-            cancel_url: cancelUrl
+            cancel_url: cancelUrl,
+            base_url: baseUrl
           }
         });
         

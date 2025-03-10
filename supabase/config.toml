@@ -38,21 +38,30 @@ additional_redirect_urls = [
     "https://localhost:3000/confirmation",
     "https://localhost:3000/payment/success",
     "https://localhost:3000/payment/redirect",
+    "https://settlementwins.com",
     "https://settlementwins.com/auth/callback",
     "https://settlementwins.com/auth/reset-password",
     "https://settlementwins.com/confirmation",
     "https://settlementwins.com/payment/success",
     "https://settlementwins.com/payment/redirect",
+    "https://www.settlementwins.com",
     "https://www.settlementwins.com/auth/callback",
     "https://www.settlementwins.com/auth/reset-password",
     "https://www.settlementwins.com/confirmation",
     "https://www.settlementwins.com/payment/success",
     "https://www.settlementwins.com/payment/redirect",
+    "https://settlement-wins-web.vercel.app",
     "https://settlement-wins-web.vercel.app/auth/callback",
     "https://settlement-wins-web.vercel.app/auth/reset-password",
     "https://settlement-wins-web.vercel.app/confirmation",
     "https://settlement-wins-web.vercel.app/payment/success",
-    "https://settlement-wins-web.vercel.app/payment/redirect"
+    "https://settlement-wins-web.vercel.app/payment/redirect",
+    "https://payment-redirect-preview.vercel.app",
+    "https://payment-redirect-preview.vercel.app/auth/callback",
+    "https://payment-redirect-preview.vercel.app/auth/reset-password",
+    "https://payment-redirect-preview.vercel.app/confirmation",
+    "https://payment-redirect-preview.vercel.app/payment/success",
+    "https://payment-redirect-preview.vercel.app/payment/redirect"
 ]
 jwt_expiry = 3600
 enable_signup = true
