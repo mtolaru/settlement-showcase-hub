@@ -48,6 +48,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
     if (session) {
       setSessionId(session);
       console.log("Payment session detected:", session);
+      localStorage.setItem('payment_session_id', session);
       
       setRedirecting(true);
       
@@ -59,7 +60,8 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       if (tempId) {
         queryParams.push(`temporaryId=${encodeURIComponent(tempId)}`);
         setTemporaryId(tempId);
-        console.log("Temporary ID found:", tempId);
+        localStorage.setItem('temporary_id', tempId);
+        console.log("Temporary ID found and saved to localStorage:", tempId);
       }
       
       if (queryParams.length > 0) {
@@ -67,6 +69,8 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
       }
       
       console.log("Redirecting to:", redirectUrl);
+      console.log("Current URL:", window.location.href);
+      console.log("Current location origin:", window.location.origin);
       
       // Short delay before redirect to ensure state updates
       setTimeout(() => {
