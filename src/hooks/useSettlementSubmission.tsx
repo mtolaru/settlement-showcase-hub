@@ -139,7 +139,7 @@ export const useSettlementSubmission = ({
     }
   };
 
-  // NEW: Create a throttled checkout session creator that runs at most once every 5 seconds
+  // Create a throttled checkout session creator that runs at most once every 5 seconds
   const throttledCreateCheckout = useCallback(
     debounce(async () => {
       if (isProcessingRef.current || checkoutInProgressRef.current) return;
@@ -154,6 +154,11 @@ export const useSettlementSubmission = ({
         
         // If already paid, we're done
         if (settlementResult.existing && settlementResult.success) {
+          toast({
+            title: "Already Submitted",
+            description: "This settlement has already been processed. Redirecting to settlements page.",
+          });
+          navigate('/settlements');
           isProcessingRef.current = false;
           checkoutInProgressRef.current = false;
           setIsLoading(false);
@@ -170,9 +175,9 @@ export const useSettlementSubmission = ({
         });
         
         // Try to create checkout session
-        let checkoutResponse;
         try {
-          checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
+          console.log("Calling create-checkout-session edge function");
+          const checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
             body: {
               temporaryId,
               userId: userId || undefined,
@@ -180,6 +185,42 @@ export const useSettlementSubmission = ({
               formData: formData // Send full form data as backup
             }
           });
+          
+          console.log("Checkout session response:", checkoutResponse);
+          
+          const data = checkoutResponse.data;
+          
+          if (!data) {
+            throw new Error('No response received from server');
+          }
+          
+          if (data.error) {
+            console.error("Error creating checkout session:", data.error);
+            throw new Error(data.error);
+          }
+          
+          if (data.isExisting) {
+            toast({
+              title: "Already Submitted",
+              description: "This settlement has already been processed. Redirecting to settlements page.",
+            });
+            navigate('/settlements');
+            return;
+          }
+          
+          const { url } = data;
+          if (url) {
+            // Store session info in localStorage for recovery
+            if (data.session && data.session.id) {
+              localStorage.setItem('payment_session_id', data.session.id);
+            }
+            
+            // Navigate to Stripe checkout
+            console.log("Redirecting to Stripe checkout URL:", url);
+            window.location.href = url;
+          } else {
+            throw new Error('No checkout URL received');
+          }
         } catch (stripeError) {
           console.error("Stripe checkout creation error:", stripeError);
           
@@ -206,41 +247,6 @@ export const useSettlementSubmission = ({
           }
           
           throw stripeError;
-        }
-        
-        console.log("Checkout session response:", checkoutResponse);
-        
-        const data = checkoutResponse.data;
-        
-        if (!data) {
-          throw new Error('No response received from server');
-        }
-        
-        if (data.error) {
-          console.error("Error creating checkout session:", data.error);
-          throw new Error(data.error);
-        }
-        
-        if (data.isExisting) {
-          toast({
-            title: "Already Submitted",
-            description: "This settlement has already been processed. Redirecting to settlements page.",
-          });
-          navigate('/settlements');
-          return;
-        }
-        
-        const { url } = data;
-        if (url) {
-          // Store session info in localStorage for recovery
-          if (data.session && data.session.id) {
-            localStorage.setItem('payment_session_id', data.session.id);
-          }
-          
-          // Navigate to Stripe checkout
-          window.location.href = url;
-        } else {
-          throw new Error('No checkout URL received');
         }
       } catch (error: any) {
         console.error('Error creating checkout session:', error);
@@ -291,6 +297,7 @@ export const useSettlementSubmission = ({
       throttledCreateCheckout();
       
     } catch (error) {
+      console.error("Error in handleCreateCheckout:", error);
       setIsLoading(false);
       setSubmissionLock(false);
       setSubmitting(false);

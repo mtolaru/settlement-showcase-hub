@@ -103,30 +103,43 @@ export const createCheckoutSession = async (
       };
       
       if (existingSettlement) {
-        // Update existing record
-        const { error: updateError } = await supabase
+        console.log("Found existing settlement record, updating:", existingSettlement);
+        
+        // Update existing record with current form data
+        const { data: updatedRecord, error: updateError } = await supabase
           .from('settlements')
           .update(settlementData)
-          .eq('id', existingSettlement.id);
+          .eq('id', existingSettlement.id)
+          .select()
+          .single();
           
         if (updateError) {
-          console.error('Error updating settlement with form data:', updateError);
-        } else {
-          console.log('Updated existing settlement with form data');
+          console.error("Error updating existing settlement:", updateError);
+          throw updateError;
         }
-      } else {
-        // Create new record
-        settlementData.created_at = new Date().toISOString();
         
-        const { error: insertError } = await supabase
+        console.log("Updated existing settlement record:", updatedRecord);
+      } else {
+        // Create a new record that includes created_at
+        const newSubmissionData = {
+          ...settlementData,
+          created_at: new Date().toISOString()
+        };
+        
+        console.log("Inserting new settlement record:", newSubmissionData);
+        
+        const { data, error: insertError } = await supabase
           .from('settlements')
-          .insert(settlementData);
+          .insert(newSubmissionData)
+          .select()
+          .single();
           
         if (insertError) {
-          console.error('Error creating settlement with form data:', insertError);
-        } else {
-          console.log('Created new settlement with form data');
+          console.error("Error creating settlement record:", insertError);
+          throw insertError;
         }
+        
+        console.log("Successfully created settlement record:", data);
       }
     } catch (saveError) {
       console.error('Error saving form data to settlements:', saveError);
@@ -140,37 +153,54 @@ export const createCheckoutSession = async (
     : `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
   const cancelUrl = `${baseUrl}/submit?step=3&canceled=true&temporaryId=${encodedTempId}`;
   
-  // Create the checkout session
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Settlement Submission',
-            description: 'One-time fee to submit your settlement information',
-          },
-          unit_amount: 9900, // $99.00
-        },
-        quantity: 1,
-      },
-    ],
-    mode: 'subscription',
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
+  try {
+    // Create the checkout session
+    // Note: Let Stripe use the webhook endpoint configured in the Stripe Dashboard
+    console.log('Creating Stripe checkout session with these parameters:', {
       temporaryId,
-      userId: userId || undefined,
-      baseUrl
-    },
-  });
-  
-  console.log('Created checkout session:', {
-    id: session.id,
-    url: session.url,
-    metadata: session.metadata
-  });
-  
-  return { session };
+      successUrl,
+      cancelUrl,
+      metadata: {
+        temporaryId,
+        userId: userId || undefined,
+        baseUrl
+      }
+    });
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Settlement Submission',
+              description: 'One-time fee to submit your settlement information',
+            },
+            unit_amount: 9900, // $99.00
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        temporaryId,
+        userId: userId || undefined,
+        baseUrl
+      },
+    });
+    
+    console.log('Created checkout session:', {
+      id: session.id,
+      url: session.url,
+      metadata: session.metadata
+    });
+    
+    return { session };
+  } catch (stripeError) {
+    console.error('Stripe error creating checkout session:', stripeError);
+    throw stripeError;
+  }
 };
