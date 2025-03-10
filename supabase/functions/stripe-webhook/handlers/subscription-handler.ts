@@ -1,77 +1,123 @@
 
-// Handle customer.subscription.updated events
+// Process subscription updated events
 export const handleSubscriptionUpdated = async (subscription: any, supabase: any) => {
-  console.log('Processing subscription update:', subscription.id, 'Status:', subscription.status);
-  
-  // Try to find any subscription record with this customer
-  const { data: subscriptions, error: findError } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('customer_id', subscription.customer)
-    .order('created_at', { ascending: false })
-    .limit(1);
-  
-  if (findError) {
-    console.error('Error finding subscription by customer ID:', findError);
-  } else if (subscriptions && subscriptions.length > 0) {
-    // Found a subscription with this customer ID, update it
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({
-        is_active: subscription.status === 'active',
-        ends_at: subscription.current_period_end 
-          ? new Date(subscription.current_period_end * 1000).toISOString() 
-          : null
-      })
-      .eq('id', subscriptions[0].id);
-      
-    if (updateError) {
-      console.error('Error updating subscription:', updateError);
-    } else {
-      console.log('Successfully updated subscription for customer', subscription.customer);
-    }
-  } else {
-    // Fallback: try to update by payment_id if it matches the latest invoice
-    console.log('No subscription found with customer ID, trying alternative lookup methods');
+  try {
+    console.log(`Processing subscription.updated webhook:`, {
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      customerId: subscription.customer
+    });
     
-    if (subscription.latest_invoice) {
+    // Get customer ID and subscription ID
+    const customerId = subscription.customer;
+    const subscriptionId = subscription.id;
+    
+    if (!customerId || !subscriptionId) {
+      console.error('Missing customer or subscription ID in webhook');
+      return;
+    }
+    
+    // Find all settlements associated with this customer
+    const { data: settlements, error } = await supabase
+      .from('settlements')
+      .select('id, stripe_subscription_id, stripe_customer_id')
+      .eq('stripe_customer_id', customerId)
+      .eq('stripe_subscription_id', subscriptionId);
+    
+    if (error) {
+      console.error('Error finding settlements for customer:', error);
+      throw error;
+    }
+    
+    if (!settlements || settlements.length === 0) {
+      console.log(`No settlements found for customer ${customerId} with subscription ${subscriptionId}`);
+      return;
+    }
+    
+    console.log(`Found ${settlements.length} settlements for customer ${customerId}`);
+    
+    // Update subscription status for all matching settlements
+    for (const settlement of settlements) {
+      console.log(`Updating subscription status for settlement ${settlement.id}`);
+      
       const { error: updateError } = await supabase
-        .from('subscriptions')
+        .from('settlements')
         .update({
-          is_active: subscription.status === 'active',
-          ends_at: subscription.current_period_end 
-            ? new Date(subscription.current_period_end * 1000).toISOString() 
-            : null,
-          // Also update the customer ID for future reference
-          customer_id: subscription.customer
+          subscription_status: subscription.status,
+          updated_at: new Date().toISOString()
         })
-        .eq('payment_id', subscription.latest_invoice);
-        
+        .eq('id', settlement.id);
+      
       if (updateError) {
-        console.error('Error updating subscription by invoice:', updateError);
+        console.error(`Error updating settlement ${settlement.id}:`, updateError);
       } else {
-        console.log('Successfully updated subscription by invoice reference');
+        console.log(`Successfully updated settlement ${settlement.id} with subscription status: ${subscription.status}`);
       }
     }
+    
+  } catch (error) {
+    console.error('Error in handleSubscriptionUpdated:', error);
+    throw error;
   }
 };
 
-// Handle customer.subscription.deleted events
+// Process subscription deleted events
 export const handleSubscriptionDeleted = async (subscription: any, supabase: any) => {
-  console.log('Processing subscription deletion:', subscription.id);
-  
-  // Try to find and update any subscription with this customer ID
-  const { error: updateError } = await supabase
-    .from('subscriptions')
-    .update({
-      is_active: false,
-      ends_at: new Date().toISOString() // End immediately
-    })
-    .eq('customer_id', subscription.customer);
+  try {
+    console.log(`Processing subscription.deleted webhook:`, {
+      subscriptionId: subscription.id,
+      customerId: subscription.customer
+    });
     
-  if (updateError) {
-    console.error('Error marking subscription as inactive:', updateError);
-  } else {
-    console.log('Successfully marked subscription as inactive for customer', subscription.customer);
+    // Get customer ID and subscription ID
+    const customerId = subscription.customer;
+    const subscriptionId = subscription.id;
+    
+    if (!customerId || !subscriptionId) {
+      console.error('Missing customer or subscription ID in webhook');
+      return;
+    }
+    
+    // Find all settlements associated with this customer and subscription
+    const { data: settlements, error } = await supabase
+      .from('settlements')
+      .select('id, stripe_subscription_id, stripe_customer_id')
+      .eq('stripe_customer_id', customerId)
+      .eq('stripe_subscription_id', subscriptionId);
+    
+    if (error) {
+      console.error('Error finding settlements for customer:', error);
+      throw error;
+    }
+    
+    if (!settlements || settlements.length === 0) {
+      console.log(`No settlements found for customer ${customerId} with subscription ${subscriptionId}`);
+      return;
+    }
+    
+    console.log(`Found ${settlements.length} settlements to update for canceled subscription`);
+    
+    // Update subscription status for all matching settlements
+    for (const settlement of settlements) {
+      console.log(`Marking subscription as canceled for settlement ${settlement.id}`);
+      
+      const { error: updateError } = await supabase
+        .from('settlements')
+        .update({
+          subscription_status: 'canceled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', settlement.id);
+      
+      if (updateError) {
+        console.error(`Error updating settlement ${settlement.id}:`, updateError);
+      } else {
+        console.log(`Successfully marked subscription as canceled for settlement ${settlement.id}`);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error in handleSubscriptionDeleted:', error);
+    throw error;
   }
 };
