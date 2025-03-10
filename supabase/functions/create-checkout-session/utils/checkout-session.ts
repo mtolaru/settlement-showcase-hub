@@ -22,6 +22,7 @@ export const saveSessionDetails = async (
         success_url: successUrl,
         cancel_url: cancelUrl,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         base_url: baseUrl,
         session_data: session
       });
