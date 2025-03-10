@@ -31,14 +31,14 @@ export const createCheckoutSession = async (
   if (!sessionCheckError && existingSession?.session_data?.url) {
     console.log("Found existing checkout session for this temporaryId:", existingSession.session_data);
     
-    // If session exists and was created recently (within last hour), reuse it
+    // IMPORTANT CHANGE: Extend session reuse window to 24 hours to avoid rate limiting
     const sessionCreatedAt = existingSession.session_data.created_at ? 
       new Date(existingSession.session_data.created_at) : 
       null;
     
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
-    if (sessionCreatedAt && sessionCreatedAt > oneHourAgo) {
+    if (sessionCreatedAt && sessionCreatedAt > twentyFourHoursAgo) {
       console.log("Reusing recent checkout session to avoid rate limiting");
       return {
         session: {
@@ -84,6 +84,28 @@ export const createCheckoutSession = async (
     
     while (retryCount < MAX_RETRIES) {
       try {
+        // IMPORTANT CHANGE: Check again for existing session before creating a new one
+        // This double-check helps prevent race conditions in high-traffic scenarios
+        if (retryCount > 0) {
+          const { data: lastMinuteSession } = await supabase
+            .from('stripe_sessions')
+            .select('session_data')
+            .eq('temporary_id', temporaryId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+          if (lastMinuteSession?.session_data?.url) {
+            console.log("Found session created by another request, using it instead");
+            return {
+              session: {
+                id: lastMinuteSession.session_data.session_id,
+                url: lastMinuteSession.session_data.url
+              }
+            };
+          }
+        }
+      
         session = await stripe.checkout.sessions.create({
           payment_method_types: ['card'],
           line_items: [
@@ -193,6 +215,18 @@ export const saveSessionDetails = async (
   baseUrl: string
 ) => {
   try {
+    // IMPORTANT CHANGE: Check for existing sessions with the same ID to prevent duplicates
+    const { data: existingSessionRecord } = await supabase
+      .from('stripe_sessions')
+      .select('id')
+      .eq('session_id', session.id)
+      .maybeSingle();
+      
+    if (existingSessionRecord?.id) {
+      console.log("Session already logged with ID:", session.id);
+      return true;
+    }
+    
     const { error: sessionLogError } = await supabase
       .from('stripe_sessions')
       .insert({

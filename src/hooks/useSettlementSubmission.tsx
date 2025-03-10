@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -31,6 +30,7 @@ export const useSettlementSubmission = ({
   const [submitting, setSubmitting] = useState(false);
   const isProcessingRef = useRef(false);
   const retryCountRef = useRef(0);
+  const checkoutInProgressRef = useRef(false);
   const MAX_RETRIES = 3;
 
   // Save settlement data first before redirecting to checkout
@@ -105,12 +105,15 @@ export const useSettlementSubmission = ({
     }
   };
 
-  const debouncedCreateCheckout = useCallback(
+  // NEW: Create a throttled checkout session creator that runs at most once every 5 seconds
+  const throttledCreateCheckout = useCallback(
     debounce(async () => {
-      if (isProcessingRef.current) return;
-      isProcessingRef.current = true;
+      if (isProcessingRef.current || checkoutInProgressRef.current) return;
       
       try {
+        checkoutInProgressRef.current = true;
+        isProcessingRef.current = true;
+        
         // First save the settlement data
         const settlementResult = await createSettlementRecord();
         console.log("Settlement record creation result:", settlementResult);
@@ -118,6 +121,7 @@ export const useSettlementSubmission = ({
         // If already paid, we're done
         if (settlementResult.existing && settlementResult.success) {
           isProcessingRef.current = false;
+          checkoutInProgressRef.current = false;
           setIsLoading(false);
           setSubmitting(false);
           return;
@@ -128,8 +132,7 @@ export const useSettlementSubmission = ({
         
         console.log("Creating checkout session with data:", {
           temporaryId,
-          userId: userId || "undefined",
-          formData: { ...formData, email: formData.attorneyEmail }
+          userId: userId || "undefined"
         });
         
         // Try to create checkout session
@@ -140,7 +143,7 @@ export const useSettlementSubmission = ({
               temporaryId,
               userId: userId || undefined,
               returnUrl: window.location.origin + '/confirmation',
-              formData
+              formData: null
             }
           });
         } catch (stripeError) {
@@ -150,7 +153,7 @@ export const useSettlementSubmission = ({
           if (retryCountRef.current < MAX_RETRIES) {
             retryCountRef.current++;
             
-            const waitTime = 2000 * retryCountRef.current; // Exponential backoff
+            const waitTime = 2000 * Math.pow(2, retryCountRef.current);
             console.log(`Rate limit detected. Retrying in ${waitTime}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`);
             
             toast({
@@ -158,10 +161,12 @@ export const useSettlementSubmission = ({
               description: `Setting up payment gateway (attempt ${retryCountRef.current}/${MAX_RETRIES})...`,
             });
             
+            // Reset in-progress flag but keep processing flag
+            checkoutInProgressRef.current = false;
+            
             // Wait and retry
             setTimeout(() => {
-              isProcessingRef.current = false;
-              debouncedCreateCheckout();
+              throttledCreateCheckout();
             }, waitTime);
             return;
           }
@@ -215,13 +220,17 @@ export const useSettlementSubmission = ({
         setIsLoading(false);
         setSubmitting(false);
         isProcessingRef.current = false;
+        checkoutInProgressRef.current = false;
       }
-    }, 1000),
-    [temporaryId, formData, navigate, toast, setSubmissionLock, setIsLoading]
+    }, 5000, { leading: true, trailing: false }),
+    [temporaryId, navigate, toast, setSubmissionLock, setIsLoading]
   );
 
   const handleCreateCheckout = async () => {
-    if (submitting || isProcessingRef.current) return;
+    if (submitting || isProcessingRef.current || checkoutInProgressRef.current) {
+      console.log("Checkout already in progress, ignoring duplicate request");
+      return;
+    }
     
     setSubmitting(true);
     setSubmissionLock(true);
@@ -244,24 +253,8 @@ export const useSettlementSubmission = ({
         }
       }
       
-      // First create the settlement record
-      try {
-        await createSettlementRecord();
-      } catch (createError) {
-        console.error("Failed to create settlement record:", createError);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to save settlement data. Please try again.",
-        });
-        setIsLoading(false);
-        setSubmissionLock(false);
-        setSubmitting(false);
-        return;
-      }
-      
-      // Then proceed with checkout
-      debouncedCreateCheckout();
+      // Launch the throttled checkout creator
+      throttledCreateCheckout();
       
     } catch (error) {
       setIsLoading(false);
@@ -314,12 +307,13 @@ export const useSettlementSubmission = ({
 
   useEffect(() => {
     return () => {
-      debouncedCreateCheckout.cancel();
+      throttledCreateCheckout.cancel();
     };
-  }, [debouncedCreateCheckout]);
+  }, [throttledCreateCheckout]);
 
   return {
     handleSubmitWithSubscription,
     handleCreateCheckout
   };
 };
+
