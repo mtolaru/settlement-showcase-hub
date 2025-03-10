@@ -127,6 +127,12 @@ export const getSiteUrl = () => {
   return 'https://settleshare.app';
 };
 
+// Type helper functions for safely casting column values
+export const safeStringParam = (value: string) => value as any;
+export const safeNumberParam = (value: number) => value as any;
+export const safeBooleanParam = (value: boolean) => value as any;
+export const safeUpdateObj = (obj: Record<string, any>) => obj as any;
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -135,10 +141,49 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     persistSession: true,
     autoRefreshToken: true,
     flowType: 'pkce',
-    // Specify exact redirect URLs for Supabase auth flows
-    redirectTo: getSiteUrl() + '/auth/callback',
+    detectSessionInUrl: true,
+    // Specify exact redirect URLs for Supabase auth flows through options
+    storage: {
+      getItem: (key) => {
+        try {
+          return Promise.resolve(localStorage.getItem(key));
+        } catch (error) {
+          return Promise.resolve(null);
+        }
+      },
+      setItem: (key, value) => {
+        try {
+          localStorage.setItem(key, value);
+          return Promise.resolve();
+        } catch (error) {
+          return Promise.resolve();
+        }
+      },
+      removeItem: (key) => {
+        try {
+          localStorage.removeItem(key);
+          return Promise.resolve();
+        } catch (error) {
+          return Promise.resolve();
+        }
+      },
+    },
   },
 });
+
+// Add a helper to handle error checking for DB query responses
+export const isQueryError = (data: any): boolean => {
+  return data && (data.error === true || data.code || data.message || data.details);
+};
+
+// Add a helper to safely extract data from a query response
+export const extractQueryData = <T>(response: any, defaultValue: T): T => {
+  if (isQueryError(response) || !response) {
+    console.error("Query error or null response:", response);
+    return defaultValue;
+  }
+  return response as T;
+};
 
 // Add a health check function to verify connection
 export const checkSupabaseConnection = async () => {
