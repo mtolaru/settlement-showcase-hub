@@ -38,7 +38,7 @@ export class SafeSupabaseClient {
   /**
    * Safely get a property from a Supabase query result
    */
-  safeProperty<T, K extends keyof T>(obj: T | null | undefined, key: K, defaultValue: T[K]): T[K] {
+  safeProperty<T extends object, K extends keyof T>(obj: T | null | undefined, key: K, defaultValue: T[K]): T[K] {
     return safeGet(obj, key, defaultValue);
   }
 }
