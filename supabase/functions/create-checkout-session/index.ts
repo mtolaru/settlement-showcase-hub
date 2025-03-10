@@ -26,14 +26,52 @@ serve(async (req) => {
     });
 
     // Parse request body
-    const requestData = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
+    
     const { temporaryId, userId, returnUrl: userReturnUrl, formData } = requestData;
+    
+    if (!temporaryId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing temporaryId in request' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
     
     // Determine base URL for this request
     const baseUrl = resolveBaseUrl(req);
     
     // Create checkout session
-    const result = await createCheckoutSession(stripe, supabase, requestData, baseUrl);
+    let result;
+    try {
+      result = await createCheckoutSession(stripe, supabase, requestData, baseUrl);
+    } catch (checkoutError) {
+      console.error('Error creating checkout session:', checkoutError);
+      return new Response(
+        JSON.stringify({ 
+          error: checkoutError.message,
+          details: checkoutError.stack
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      );
+    }
     
     // If settlement already exists with payment completed
     if (result.isExisting) {

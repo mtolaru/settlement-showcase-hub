@@ -71,12 +71,22 @@ export const ReviewStep = ({
   
   const handleCheckout = () => {
     setIsSubmitting(true);
-    onCreateCheckout();
+    try {
+      onCreateCheckout();
+    } catch (error) {
+      console.error("Error in handleCheckout:", error);
+      setIsSubmitting(false);
+    }
   };
   
   const handleSubmit = () => {
     setIsSubmitting(true);
-    onSubmitWithSubscription();
+    try {
+      onSubmitWithSubscription();
+    } catch (error) {
+      console.error("Error in handleSubmit:", error);
+      setIsSubmitting(false);
+    }
   };
 
   // Add this for better debugging
@@ -161,7 +171,7 @@ export const ReviewStep = ({
         <div className="bg-primary-50 border border-primary-100 p-6 rounded-lg">
           <h4 className="font-medium text-primary-900 mb-2">Professional Plan Subscription</h4>
           <p className="text-sm text-primary-700 mb-4">
-            Subscribe to our Professional Plan for $199/month to submit and showcase your settlements.
+            Subscribe to our Professional Plan for $99/month to submit and showcase your settlements.
           </p>
           <Button 
             onClick={handleCheckout}
