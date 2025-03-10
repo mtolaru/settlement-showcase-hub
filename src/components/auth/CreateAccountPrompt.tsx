@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         const { data, error } = await supabase
           .from('settlements')
           .select('attorney_email')
-          .eq('temporary_id', temporaryId)
+          .eq('temporary_id', temporaryId as string)
           .maybeSingle();
           
         if (error) {
@@ -38,7 +39,7 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
           return;
         }
         
-        if (data?.attorney_email) {
+        if (data && data.attorney_email) {
           console.log("Pre-populating email from settlement:", data.attorney_email);
           setEmail(data.attorney_email);
           
@@ -179,8 +180,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       // Update the settlement with the user ID
       const { error: updateError } = await supabase
         .from('settlements')
-        .update({ user_id: userId })
-        .eq('temporary_id', temporaryId);
+        .update({ user_id: userId } as any)
+        .eq('temporary_id', temporaryId as string);
 
       if (updateError) {
         console.error("Error updating settlement:", updateError);
@@ -202,9 +203,9 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         console.log(`Checking for additional settlements with email ${email}`);
         const { data: emailSettlements, error: emailError } = await supabase
           .from('settlements')
-          .update({ user_id: userId })
+          .update({ user_id: userId } as any)
           .is('user_id', null)
-          .eq('attorney_email', email)
+          .eq('attorney_email', email as string)
           .select('id');
           
         if (emailError) {
@@ -221,8 +222,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
       // Also update any subscription record with the same temporary_id
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
-        .update({ user_id: userId })
-        .eq('temporary_id', temporaryId);
+        .update({ user_id: userId } as any)
+        .eq('temporary_id', temporaryId as string);
 
       if (subscriptionError) {
         console.error("Error updating subscription:", subscriptionError);

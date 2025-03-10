@@ -111,8 +111,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     persistSession: true,
     autoRefreshToken: true,
     flowType: 'pkce',
-    // Use dynamic redirect URLs based on environment
-    redirect_to: `${redirectBase}/auth/callback`,
+    // Set up auth redirect URL
+    detectSessionInUrl: true,
+    // Configured redirect callbacks through Supabase dashboard
   },
 });
 
@@ -121,10 +122,12 @@ export const checkSupabaseConnection = async () => {
   try {
     console.log(`Attempting to connect to Supabase at: ${supabaseUrl}`);
     const { data, error } = await supabase.from('settlements').select('count').limit(1);
+    
     if (error) {
       console.error('Supabase connection check failed:', error);
       return { success: false, error: error.message };
     }
+    
     console.log('Supabase connection successful', data);
     return { success: true, data };
   } catch (error) {
