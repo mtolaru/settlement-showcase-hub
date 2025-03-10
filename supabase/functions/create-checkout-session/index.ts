@@ -156,7 +156,7 @@ serve(async (req) => {
     // Make sure temporaryId is properly encoded
     const encodedTempId = encodeURIComponent(temporaryId);
     
-    // IMPORTANT CHANGE: Always use /confirmation as the primary success route for consistency
+    // IMPORTANT: Always use /confirmation as the primary success route for consistency
     let successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
     let cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
     
