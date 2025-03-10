@@ -1,213 +1,10 @@
 
 import Stripe from 'https://esm.sh/stripe@12.1.1?target=deno';
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Types for request data
-export interface CheckoutRequestData {
-  temporaryId: string;
-  userId?: string;
-  returnUrl?: string;
-  formData?: any;
-}
-
-// Create Stripe checkout session
-export const createCheckoutSession = async (
-  stripe: Stripe,
-  supabase: SupabaseClient,
-  data: CheckoutRequestData,
-  baseUrl: string
-) => {
-  const { temporaryId, userId } = data;
-  
-  // First check for existing sessions for this temporaryId to avoid rate-limiting
-  const { data: existingSession, error: sessionCheckError } = await supabase
-    .from('stripe_sessions')
-    .select('session_data')
-    .eq('temporary_id', temporaryId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-    
-  if (!sessionCheckError && existingSession?.session_data?.url) {
-    console.log("Found existing checkout session for this temporaryId:", existingSession.session_data);
-    
-    // IMPORTANT CHANGE: Extend session reuse window to 24 hours to avoid rate limiting
-    const sessionCreatedAt = existingSession.session_data.created_at ? 
-      new Date(existingSession.session_data.created_at) : 
-      null;
-    
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-    if (sessionCreatedAt && sessionCreatedAt > twentyFourHoursAgo) {
-      console.log("Reusing recent checkout session to avoid rate limiting");
-      return {
-        session: {
-          id: existingSession.session_data.session_id,
-          url: existingSession.session_data.url
-        }
-      };
-    }
-  }
-  
-  // Check if this temporaryId already has a completed payment
-  const { data: existingSettlement, error: checkError } = await supabase
-    .from('settlements')
-    .select('id, payment_completed')
-    .eq('temporary_id', temporaryId)
-    .eq('payment_completed', true)
-    .maybeSingle();
-
-  if (!checkError && existingSettlement?.id) {
-    console.log("Found existing settlement with this temporaryId:", existingSettlement.id);
-    
-    return {
-      isExisting: true,
-      message: "This settlement has already been processed"
-    };
-  }
-  
-  // Make sure temporaryId is properly encoded
-  const encodedTempId = encodeURIComponent(temporaryId);
-  
-  // IMPORTANT: Always use /confirmation as the primary success route directly
-  const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
-  const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
-  
-  console.log("Success URL:", successUrl);
-  console.log("Cancel URL:", cancelUrl);
-
-  // Create the checkout session
-  try {
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-    let session = null;
-    
-    while (retryCount < MAX_RETRIES) {
-      try {
-        // IMPORTANT CHANGE: Check again for existing session before creating a new one
-        // This double-check helps prevent race conditions in high-traffic scenarios
-        if (retryCount > 0) {
-          const { data: lastMinuteSession } = await supabase
-            .from('stripe_sessions')
-            .select('session_data')
-            .eq('temporary_id', temporaryId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-            
-          if (lastMinuteSession?.session_data?.url) {
-            console.log("Found session created by another request, using it instead");
-            return {
-              session: {
-                id: lastMinuteSession.session_data.session_id,
-                url: lastMinuteSession.session_data.url
-              }
-            };
-          }
-        }
-      
-        session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency: 'usd',
-                product_data: {
-                  name: 'Professional Plan Subscription',
-                  description: 'Monthly subscription for publishing settlements',
-                },
-                unit_amount: 19900, // $199.00
-                recurring: {
-                  interval: 'month',
-                },
-              },
-              quantity: 1,
-            },
-          ],
-          mode: 'subscription',
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-          client_reference_id: temporaryId,
-          metadata: {
-            temporaryId: temporaryId,
-            userId: userId || '',
-            baseUrl: baseUrl // Store the base URL in metadata for reference
-          },
-          allow_promotion_codes: true,
-        });
-        
-        // If we got here, the session was created successfully
-        break;
-      } catch (error) {
-        if (error.type === 'StripeRateLimitError' && retryCount < MAX_RETRIES - 1) {
-          // Wait with exponential backoff
-          retryCount++;
-          const waitTime = 1000 * Math.pow(2, retryCount);
-          console.log(`Rate limit hit, retrying in ${waitTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        } else {
-          // If it's not a rate limit error or we've exceeded max retries, throw
-          throw error;
-        }
-      }
-    }
-    
-    if (!session) {
-      throw new Error("Failed to create Stripe session after multiple attempts");
-    }
-
-    console.log("Checkout session created:", {
-      sessionId: session.id,
-      url: session.url,
-      successUrl: successUrl,
-      temporaryId: temporaryId,
-      baseUrl: baseUrl
-    });
-    
-    // Save session details for potential reuse
-    await saveSessionDetails(
-      supabase,
-      session,
-      temporaryId,
-      userId,
-      successUrl,
-      cancelUrl,
-      baseUrl
-    );
-    
-    return { session };
-  } catch (error) {
-    console.error("Error creating Stripe checkout session:", error);
-    
-    if (error.type === 'StripeRateLimitError') {
-      // If rate limited, wait and try to fetch existing session as fallback
-      const { data: latestSession } = await supabase
-        .from('stripe_sessions')
-        .select('session_data')
-        .eq('temporary_id', temporaryId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-        
-      if (latestSession?.session_data?.url) {
-        console.log("Using existing session due to rate limiting");
-        return {
-          session: {
-            id: latestSession.session_data.session_id,
-            url: latestSession.session_data.url
-          }
-        };
-      }
-    }
-    
-    throw error;
-  }
-};
-
-// Save session details to database
+// Save session details for easier retrieval later
 export const saveSessionDetails = async (
-  supabase: SupabaseClient,
-  session: Stripe.Checkout.Session,
+  supabase: any,
+  session: any,
   temporaryId: string,
   userId: string | undefined,
   successUrl: string,
@@ -215,45 +12,165 @@ export const saveSessionDetails = async (
   baseUrl: string
 ) => {
   try {
-    // IMPORTANT CHANGE: Check for existing sessions with the same ID to prevent duplicates
-    const { data: existingSessionRecord } = await supabase
+    // Store session details
+    const { error } = await supabase
       .from('stripe_sessions')
-      .select('id')
-      .eq('session_id', session.id)
-      .maybeSingle();
-      
-    if (existingSessionRecord?.id) {
-      console.log("Session already logged with ID:", session.id);
-      return true;
-    }
-    
-    const { error: sessionLogError } = await supabase
-      .from('stripe_sessions')
-      .insert({
+      .upsert({
         session_id: session.id,
         temporary_id: temporaryId,
         user_id: userId || null,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         created_at: new Date().toISOString(),
-        session_data: {
-          payment_status: session.payment_status,
-          url: session.url,
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-          base_url: baseUrl,
-          session_id: session.id,
-          created_at: new Date().toISOString()
-        }
+        base_url: baseUrl,
+        session_data: session
       });
       
-    if (sessionLogError) {
-      console.error("Error logging session details:", sessionLogError);
-      return false;
+    if (error) {
+      console.error('Error saving session details:', error);
     } else {
-      console.log("Successfully logged session details");
-      return true;
+      console.log('Successfully saved session details');
     }
-  } catch (logError) {
-    console.error("Exception logging session:", logError);
-    return false;
+  } catch (error) {
+    console.error('Error in saveSessionDetails:', error);
   }
+};
+
+// Create checkout session
+export const createCheckoutSession = async (
+  stripe: Stripe,
+  supabase: any,
+  requestData: any,
+  baseUrl: string
+) => {
+  const { temporaryId, userId, returnUrl: userReturnUrl, formData } = requestData;
+  
+  if (!temporaryId) {
+    throw new Error('Missing temporaryId in request');
+  }
+  
+  console.log('Creating checkout session for temporaryId:', temporaryId);
+  console.log('Base URL:', baseUrl);
+  
+  // Check if payment has already been completed
+  const { data: settlement, error: settlementError } = await supabase
+    .from('settlements')
+    .select('payment_completed')
+    .eq('temporary_id', temporaryId)
+    .maybeSingle();
+    
+  if (settlementError) {
+    console.error('Error checking settlement:', settlementError);
+  }
+  
+  if (settlement?.payment_completed) {
+    console.log('Settlement already marked as paid. Skipping checkout.');
+    return { isExisting: true };
+  }
+  
+  // If form data was included, ensure it's saved to the database
+  if (formData) {
+    console.log('Form data included in request, ensuring it is saved to database');
+    
+    try {
+      // Check if settlement record exists
+      const { data: existingSettlement } = await supabase
+        .from('settlements')
+        .select('id')
+        .eq('temporary_id', temporaryId)
+        .maybeSingle();
+        
+      // Format the data for insertion
+      const settlementData = {
+        temporary_id: temporaryId,
+        amount: Number(formData.amount?.replace?.(/[^0-9.]/g, '') || 0) || 0,
+        attorney: formData.attorneyName || '',
+        firm: formData.firmName || '',
+        firm_website: formData.firmWebsite || '',
+        location: formData.location || '',
+        type: formData.caseType === "Other" ? formData.otherCaseType || 'Other' : formData.caseType || 'Other',
+        description: formData.caseDescription || '',
+        case_description: formData.caseDescription || '',
+        initial_offer: formData.initialOffer ? Number(formData.initialOffer.replace(/[^0-9.]/g, '')) : null,
+        policy_limit: formData.policyLimit ? Number(formData.policyLimit.replace(/[^0-9.]/g, '')) : null,
+        medical_expenses: formData.medicalExpenses ? Number(formData.medicalExpenses.replace(/[^0-9.]/g, '')) : null,
+        settlement_phase: formData.settlementPhase || '',
+        settlement_date: formData.settlementDate || null,
+        photo_url: formData.photoUrl || '',
+        attorney_email: formData.attorneyEmail || '',
+        payment_completed: false,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (existingSettlement) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('settlements')
+          .update(settlementData)
+          .eq('id', existingSettlement.id);
+          
+        if (updateError) {
+          console.error('Error updating settlement with form data:', updateError);
+        } else {
+          console.log('Updated existing settlement with form data');
+        }
+      } else {
+        // Create new record
+        settlementData.created_at = new Date().toISOString();
+        
+        const { error: insertError } = await supabase
+          .from('settlements')
+          .insert(settlementData);
+          
+        if (insertError) {
+          console.error('Error creating settlement with form data:', insertError);
+        } else {
+          console.log('Created new settlement with form data');
+        }
+      }
+    } catch (saveError) {
+      console.error('Error saving form data to settlements:', saveError);
+    }
+  }
+  
+  // Define success and cancel URLs
+  const encodedTempId = encodeURIComponent(temporaryId);
+  const successUrl = userReturnUrl 
+    ? `${userReturnUrl}?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}` 
+    : `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
+  const cancelUrl = `${baseUrl}/submit?step=3&canceled=true&temporaryId=${encodedTempId}`;
+  
+  // Create the checkout session
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Settlement Submission',
+            description: 'One-time fee to submit your settlement information',
+          },
+          unit_amount: 9900, // $99.00
+        },
+        quantity: 1,
+      },
+    ],
+    mode: 'subscription',
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: {
+      temporaryId,
+      userId: userId || undefined,
+      baseUrl
+    },
+  });
+  
+  console.log('Created checkout session:', {
+    id: session.id,
+    url: session.url,
+    metadata: session.metadata
+  });
+  
+  return { session };
 };

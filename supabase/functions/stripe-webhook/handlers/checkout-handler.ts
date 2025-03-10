@@ -29,7 +29,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
     // First check if the settlement has already been updated
     const { data: existingSettlement, error: checkError } = await supabase
       .from('settlements')
-      .select('id, payment_completed')
+      .select('id, payment_completed, amount, attorney, firm, type, location')
       .eq('temporary_id', temporaryId)
       .maybeSingle();
       
@@ -37,7 +37,8 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
       found: !!existingSettlement, 
       paymentCompleted: existingSettlement?.payment_completed,
       error: checkError,
-      temporaryId
+      temporaryId,
+      data: existingSettlement
     });
     
     if (checkError) {
@@ -49,11 +50,18 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
       return;
     }
 
-    // Log the customer and subscription details for debugging
-    console.log(`Updating settlement for temporary ID: ${temporaryId}`);
-    console.log(`Checkout session details - ID: ${sessionId}, Customer: ${customerId}, Subscription: ${subscriptionId}`);
+    // If the settlement exists but data is missing, log and proceed
+    if (existingSettlement && (!existingSettlement.attorney || !existingSettlement.amount || !existingSettlement.type)) {
+      console.log('Found settlement but data is incomplete:', existingSettlement);
+    }
+
+    // If no settlement found, return error
+    if (!existingSettlement) {
+      console.error(`No settlement found with temporaryId: ${temporaryId}. Cannot update.`);
+      return;
+    }
     
-    // Update the settlement record with subscription and payment information
+    // Update ONLY the payment fields, preserving all existing data
     const { data, error } = await supabase
       .from('settlements')
       .update({
@@ -73,43 +81,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
       throw error;
     }
     
-    if (!data) {
-      // If no settlement was found with the temporaryId, let's create a basic record
-      console.log(`No settlement found for temporaryId: ${temporaryId}. Creating placeholder record.`);
-      
-      try {
-        const { data: newSettlement, error: createError } = await supabase
-          .from('settlements')
-          .insert({
-            temporary_id: temporaryId,
-            payment_completed: true,
-            stripe_session_id: sessionId,
-            stripe_subscription_id: subscriptionId,
-            stripe_customer_id: customerId,
-            base_url: baseUrl || 'https://www.settlementwins.com', // Store the base URL with fallback
-            amount: 0, // Placeholder
-            type: 'Unknown', // Placeholder
-            firm: 'Unknown', // Placeholder
-            attorney: 'Unknown', // Placeholder
-            location: 'Unknown', // Placeholder
-            paid_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-          
-        if (createError) {
-          console.error('Error creating placeholder settlement:', createError);
-        } else {
-          console.log(`Created placeholder settlement: ${newSettlement.id}`);
-        }
-      } catch (createError) {
-        console.error('Exception creating placeholder settlement:', createError);
-      }
-      
-      return;
-    }
-    
-    console.log(`Successfully updated settlement: ${data.id} with payment information`);
+    console.log(`Successfully updated settlement: ${data.id} with payment information:`, data);
     
     // Create a record in the subscriptions table
     try {

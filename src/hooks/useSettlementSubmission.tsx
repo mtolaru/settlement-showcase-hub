@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -34,11 +33,10 @@ export const useSettlementSubmission = ({
   const checkoutInProgressRef = useRef(false);
   const MAX_RETRIES = 3;
 
-  // Create settlement record first
-  const createSettlementRecord = async () => {
+  // Save form data to database before payment
+  const saveFormData = async () => {
     try {
-      console.log("Creating settlement record with temporaryId:", temporaryId);
-      console.log("Form data being submitted:", formData);
+      console.log("Saving form data with temporaryId:", temporaryId, formData);
       
       // First check if a record already exists
       const { data: existingRecord } = await supabase
@@ -47,61 +45,9 @@ export const useSettlementSubmission = ({
         .eq('temporary_id', temporaryId)
         .maybeSingle();
         
-      if (existingRecord) {
-        console.log("Found existing settlement record:", existingRecord);
-        
-        if (existingRecord.payment_completed) {
-          console.log("Settlement already marked as paid");
-          toast({
-            title: "Already Submitted",
-            description: "This settlement has already been processed."
-          });
-          navigate('/confirmation?temporaryId=' + temporaryId);
-          return { success: true, existing: true };
-        }
-        
-        // Update existing record with current form data
-        const { data: updatedRecord, error: updateError } = await supabase
-          .from('settlements')
-          .update({
-            amount: Number(unformatNumber(formData.amount)) || 0,
-            attorney: formData.attorneyName || '',
-            firm: formData.firmName || '',
-            firm_website: formData.firmWebsite || '',
-            location: formData.location || '',
-            type: formData.caseType === "Other" ? formData.otherCaseType || 'Other' : formData.caseType || 'Other',
-            description: formData.caseDescription || '',
-            case_description: formData.caseDescription || '',
-            initial_offer: formData.initialOffer ? Number(unformatNumber(formData.initialOffer)) : null,
-            policy_limit: formData.policyLimit ? Number(unformatNumber(formData.policyLimit)) : null,
-            medical_expenses: formData.medicalExpenses ? Number(unformatNumber(formData.medicalExpenses)) : null,
-            settlement_phase: formData.settlementPhase || '',
-            settlement_date: formData.settlementDate || null,
-            photo_url: formData.photoUrl || '',
-            attorney_email: formData.attorneyEmail || '',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingRecord.id)
-          .select()
-          .single();
-          
-        if (updateError) {
-          console.error("Error updating existing settlement:", updateError);
-          throw updateError;
-        }
-        
-        console.log("Updated existing settlement record:", updatedRecord);
-        
-        // Save form data to localStorage for recovery
-        localStorage.setItem('settlement_form_data', JSON.stringify(formData));
-        localStorage.setItem('temporary_id', temporaryId);
-        console.log("Form data saved to localStorage for recovery");
-        
-        return { success: true, existing: false, data: updatedRecord };
-      }
-      
-      // Create new settlement record with all form data
+      // Prepare the submission data with full form details
       const submissionData = {
+        temporary_id: temporaryId,
         amount: Number(unformatNumber(formData.amount)) || 0,
         attorney: formData.attorneyName || '',
         firm: formData.firmName || '',
@@ -116,33 +62,73 @@ export const useSettlementSubmission = ({
         settlement_phase: formData.settlementPhase || '',
         settlement_date: formData.settlementDate || null,
         photo_url: formData.photoUrl || '',
-        temporary_id: temporaryId,
         attorney_email: formData.attorneyEmail || '',
         payment_completed: false,
-        created_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
       
-      console.log("Inserting new settlement record:", submissionData);
-      
-      const { data, error } = await supabase
-        .from('settlements')
-        .insert(submissionData)
-        .select()
-        .single();
+      if (existingRecord) {
+        console.log("Found existing settlement record, updating:", existingRecord);
         
-      if (error) {
-        console.error("Error creating settlement record:", error);
-        throw error;
+        if (existingRecord.payment_completed) {
+          console.log("Settlement already marked as paid");
+          return { success: true, existing: true };
+        }
+        
+        // Update existing record with current form data
+        const { data: updatedRecord, error: updateError } = await supabase
+          .from('settlements')
+          .update(submissionData)
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
+          
+        if (updateError) {
+          console.error("Error updating existing settlement:", updateError);
+          throw updateError;
+        }
+        
+        console.log("Updated existing settlement record:", updatedRecord);
+        return { success: true, existing: false, data: updatedRecord };
+      } else {
+        // Add created_at for new records
+        submissionData.created_at = new Date().toISOString();
+        
+        console.log("Inserting new settlement record:", submissionData);
+        
+        const { data, error } = await supabase
+          .from('settlements')
+          .insert(submissionData)
+          .select()
+          .single();
+          
+        if (error) {
+          console.error("Error creating settlement record:", error);
+          throw error;
+        }
+        
+        console.log("Successfully created settlement record:", data);
+        return { success: true, existing: false, data };
       }
-      
-      console.log("Successfully created settlement record:", data);
+    } catch (error) {
+      console.error("Error in saveFormData:", error);
+      throw error;
+    }
+  };
+
+  // Create settlement record first
+  const createSettlementRecord = async () => {
+    try {
+      console.log("Creating settlement record with temporaryId:", temporaryId);
+      console.log("Form data being submitted:", formData);
       
       // Save form data to localStorage for recovery
       localStorage.setItem('settlement_form_data', JSON.stringify(formData));
       localStorage.setItem('temporary_id', temporaryId);
       console.log("Form data saved to localStorage for recovery");
       
-      return { success: true, existing: false, data };
+      // Save to database
+      return await saveFormData();
     } catch (error) {
       console.error("Error in createSettlementRecord:", error);
       throw error;
@@ -187,7 +173,7 @@ export const useSettlementSubmission = ({
               temporaryId,
               userId: userId || undefined,
               returnUrl: window.location.origin + '/confirmation',
-              formData: null
+              formData: formData // Send full form data as backup
             }
           });
         } catch (stripeError) {
@@ -267,7 +253,7 @@ export const useSettlementSubmission = ({
         checkoutInProgressRef.current = false;
       }
     }, 5000, { leading: true, trailing: false }),
-    [temporaryId, navigate, toast, setSubmissionLock, setIsLoading]
+    [temporaryId, navigate, toast, setSubmissionLock, setIsLoading, formData]
   );
 
   const handleCreateCheckout = async () => {
