@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, getSiteUrl } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from '@supabase/supabase-js';
 
@@ -53,12 +53,6 @@ export const useAuth = (): AuthReturn => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", _event);
       console.log("New session:", session ? `User ID: ${session.user.id}` : "No session");
-      
-      // Log auth event details for debugging
-      if (_event === 'PASSWORD_RECOVERY') {
-        console.log("Password recovery event detected");
-        console.log("Current URL:", window.location.href);
-      }
       
       if (session?.user) {
         setUser(session.user);

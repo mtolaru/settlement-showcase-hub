@@ -87,52 +87,6 @@ try {
   console.log('Using fallback Supabase configuration');
 }
 
-// Helper function to get the correct site URL based on the environment
-export const getSiteUrl = () => {
-  // Check if running in a browser environment
-  if (typeof window !== 'undefined') {
-    const environment = import.meta.env.VITE_APP_ENV || 'development';
-    
-    // Check for Vercel URL environment variables first (available in Vercel deployments)
-    if (typeof process !== 'undefined' && process.env && process.env.VERCEL_URL) {
-      console.log(`Using Vercel URL: ${process.env.VERCEL_URL}`);
-      return `https://${process.env.VERCEL_URL}`;
-    }
-    
-    // Check for explicit VITE_SITE_URL environment variable
-    if (import.meta.env.VITE_SITE_URL) {
-      console.log(`Using explicit site URL from env: ${import.meta.env.VITE_SITE_URL}`);
-      return import.meta.env.VITE_SITE_URL;
-    }
-    
-    // In development, use the current window location
-    if (environment === 'development') {
-      return window.location.origin;
-    }
-    
-    // For production/staging, use hardcoded values
-    if (environment === 'production') {
-      return 'https://settleshare.app';
-    }
-    
-    if (environment === 'staging') {
-      return 'https://staging.settleshare.app';
-    }
-    
-    // Fallback to current origin if no specific URL is set
-    return window.location.origin;
-  }
-  
-  // Fallback for server-side rendering or if window is not available
-  return 'https://settleshare.app';
-};
-
-// Type helper functions for safely casting column values
-export const safeStringParam = (value: string) => value as any;
-export const safeNumberParam = (value: number) => value as any;
-export const safeBooleanParam = (value: boolean) => value as any;
-export const safeUpdateObj = (obj: Record<string, any>) => obj as any;
-
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -140,50 +94,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    flowType: 'pkce',
-    detectSessionInUrl: true,
-    // Specify exact redirect URLs for Supabase auth flows through options
-    storage: {
-      getItem: (key) => {
-        try {
-          return Promise.resolve(localStorage.getItem(key));
-        } catch (error) {
-          return Promise.resolve(null);
-        }
-      },
-      setItem: (key, value) => {
-        try {
-          localStorage.setItem(key, value);
-          return Promise.resolve();
-        } catch (error) {
-          return Promise.resolve();
-        }
-      },
-      removeItem: (key) => {
-        try {
-          localStorage.removeItem(key);
-          return Promise.resolve();
-        } catch (error) {
-          return Promise.resolve();
-        }
-      },
-    },
   },
 });
-
-// Add a helper to handle error checking for DB query responses
-export const isQueryError = (data: any): boolean => {
-  return data && (data.error === true || data.code || data.message || data.details);
-};
-
-// Add a helper to safely extract data from a query response
-export const extractQueryData = <T>(response: any, defaultValue: T): T => {
-  if (isQueryError(response) || !response) {
-    console.error("Query error or null response:", response);
-    return defaultValue;
-  }
-  return response as T;
-};
 
 // Add a health check function to verify connection
 export const checkSupabaseConnection = async () => {
