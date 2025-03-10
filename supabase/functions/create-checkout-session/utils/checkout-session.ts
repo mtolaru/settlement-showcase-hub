@@ -1,4 +1,3 @@
-
 import Stripe from 'https://esm.sh/stripe@12.1.1?target=deno';
 
 // Save session details for easier retrieval later
@@ -179,13 +178,12 @@ export const createCheckoutSession = async (
       }
     });
     
-    // IMPORTANT: Using a price ID for subscription mode instead of creating price data dynamically
-    // For subscription mode, you must use an existing price from your Stripe dashboard
+    // Using the correct price ID for subscription mode
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1PHIVVLiTXRxjg7JlCjvYm3C', // Replace with your actual price ID from Stripe dashboard
+          price: 'price_1QwWEDDEE7vEKM2Kx3FJlc6e', // Updated to the correct price ID
           quantity: 1,
         },
       ],
