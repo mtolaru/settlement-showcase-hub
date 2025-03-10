@@ -40,23 +40,31 @@ serve(async (req) => {
     }
     
     // Create clients
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    
     const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
     });
 
     // Parse request body
-    const { temporaryId, userId } = await req.json();
+    const requestData = await req.json();
+    const { temporaryId, userId, returnUrl: userReturnUrl, formData } = requestData;
     
     // Get the origin for this request
-    const requestOrigin = req.headers.get('origin');
-    const requestUrl = req.url;
+    const requestOrigin = req.headers.get('origin') || '';
+    const requestUrl = req.url || '';
     
     console.log("Request details:", {
       origin: requestOrigin,
       url: requestUrl,
       temporaryId,
-      userId
+      userId,
+      hasFormData: !!formData
     });
     
     // Define allowed production domains
@@ -76,6 +84,29 @@ serve(async (req) => {
       isProduction 
     });
     
+    // Check if this temporaryId already has a completed payment
+    const { data: existingSettlement, error: checkError } = await supabase
+      .from('settlements')
+      .select('id, payment_completed')
+      .eq('temporary_id', temporaryId)
+      .eq('payment_completed', true)
+      .maybeSingle();
+
+    if (!checkError && existingSettlement?.id) {
+      console.log("Found existing settlement with this temporaryId:", existingSettlement.id);
+      
+      return new Response(
+        JSON.stringify({ 
+          isExisting: true,
+          message: "This settlement has already been processed"
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
+    
     // Always use the Supabase function URL for webhook endpoints
     const webhookUrl = `${supabaseUrl}/functions/v1/stripe-webhook`;
     console.log("Webhook URL:", webhookUrl);
@@ -94,6 +125,12 @@ serve(async (req) => {
     
     // Make sure temporaryId is properly encoded
     const encodedTempId = encodeURIComponent(temporaryId);
+    
+    // Construct a userReturnUrl or default
+    let returnUrl = userReturnUrl;
+    if (!returnUrl) {
+      returnUrl = `${baseUrl}/confirmation?temporaryId=${encodedTempId}`;
+    }
     
     // Set appropriate success and cancel URLs
     const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
@@ -143,6 +180,32 @@ serve(async (req) => {
       successUrl: successUrl,
       temporaryId: temporaryId
     });
+
+    // Save session details for easier retrieval later
+    try {
+      const { error: sessionLogError } = await supabase
+        .from('stripe_sessions')
+        .insert({
+          session_id: session.id,
+          temporary_id: temporaryId,
+          user_id: userId || null,
+          created_at: new Date().toISOString(),
+          session_data: {
+            payment_status: session.payment_status,
+            url: session.url,
+            success_url: successUrl,
+            cancel_url: cancelUrl
+          }
+        });
+        
+      if (sessionLogError) {
+        console.error("Error logging session details:", sessionLogError);
+      } else {
+        console.log("Successfully logged session details");
+      }
+    } catch (logError) {
+      console.error("Exception logging session:", logError);
+    }
 
     return new Response(
       JSON.stringify({ url: session.url }),

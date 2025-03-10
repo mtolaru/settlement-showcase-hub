@@ -16,7 +16,8 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
       isLiveMode,
       mode: session.mode,
       paymentStatus: session.payment_status,
-      subscriptionStatus: session.subscription_status || 'N/A'
+      subscriptionStatus: session.subscription_status || 'N/A',
+      checkoutUrl: session.url || 'N/A'
     });
     
     if (!temporaryId) {
@@ -34,7 +35,8 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
     console.log('Existing settlement check:', { 
       found: !!existingSettlement, 
       paymentCompleted: existingSettlement?.payment_completed,
-      error: checkError
+      error: checkError,
+      temporaryId
     });
     
     if (checkError) {
@@ -70,7 +72,37 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
     }
     
     if (!data) {
-      console.error(`No settlement found for temporaryId: ${temporaryId}`);
+      // If no settlement was found with the temporaryId, let's create a basic record
+      console.log(`No settlement found for temporaryId: ${temporaryId}. Creating placeholder record.`);
+      
+      try {
+        const { data: newSettlement, error: createError } = await supabase
+          .from('settlements')
+          .insert({
+            temporary_id: temporaryId,
+            payment_completed: true,
+            stripe_session_id: sessionId,
+            stripe_subscription_id: subscriptionId,
+            stripe_customer_id: customerId,
+            amount: 0, // Placeholder
+            type: 'Unknown', // Placeholder
+            firm: 'Unknown', // Placeholder
+            attorney: 'Unknown', // Placeholder
+            location: 'Unknown', // Placeholder
+            paid_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+          
+        if (createError) {
+          console.error('Error creating placeholder settlement:', createError);
+        } else {
+          console.log(`Created placeholder settlement: ${newSettlement.id}`);
+        }
+      } catch (createError) {
+        console.error('Exception creating placeholder settlement:', createError);
+      }
+      
       return;
     }
     

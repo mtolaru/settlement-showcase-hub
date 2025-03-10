@@ -52,7 +52,7 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
     };
 
     const { session, tempId } = extractParams();
-    let storedTempId: string | null = null;
+    const storedTempId = localStorage.getItem('temporary_id');
     
     if (session) {
       setSessionId(session);
@@ -63,13 +63,10 @@ export const PaymentRedirect: React.FC<PaymentRedirectProps> = ({ onRedirectAtte
         setTemporaryId(tempId);
         localStorage.setItem('temporary_id', tempId);
         console.log("Temporary ID found and saved:", tempId);
-      } else {
+      } else if (storedTempId) {
         // If no tempId in URL but we have a session ID, try to recover from localStorage
-        storedTempId = localStorage.getItem('temporary_id');
-        if (storedTempId) {
-          console.log("Recovered temporaryId from localStorage:", storedTempId);
-          setTemporaryId(storedTempId);
-        }
+        console.log("Recovered temporaryId from localStorage:", storedTempId);
+        setTemporaryId(storedTempId);
       }
       
       setRedirecting(true);
