@@ -1,7 +1,6 @@
 
 import SubmitSettlementPage from "./settlement/SubmitSettlementPage";
 import { useEffect } from "react";
-import { Toaster } from "@/components/ui/toaster";
 
 const SubmitSettlement = () => {
   useEffect(() => {
@@ -23,12 +22,12 @@ const SubmitSettlement = () => {
     return () => {
       console.error = originalConsoleError;
     };
-  }, []);
+  }, []); // Empty dependency array to run only once
   
   return (
     <div className="bg-white">
       <SubmitSettlementPage />
-      <Toaster />
+      {/* Remove duplicate Toaster since it's already included in SubmitSettlementPage */}
     </div>
   );
 };

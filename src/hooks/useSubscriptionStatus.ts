@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,7 @@ export const useSubscriptionStatus = (
 ) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const checkRunRef = useRef(false);
 
   // Memoize the subscription check function
   const checkSubscriptionStatus = useCallback(async () => {
@@ -72,12 +73,14 @@ export const useSubscriptionStatus = (
     }
   }, [user?.id, setHasActiveSubscription, setIsCheckingSubscription, toast]);
 
-  // Run subscription check only when user ID changes
+  // Run subscription check only when user ID changes, using a ref to prevent duplicate calls
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !checkRunRef.current) {
+      checkRunRef.current = true;
       setIsCheckingSubscription(true);
       checkSubscriptionStatus();
-    } else {
+    } else if (!user?.id) {
+      checkRunRef.current = false;
       setIsCheckingSubscription(false);
     }
   }, [user?.id, checkSubscriptionStatus, setIsCheckingSubscription]);
