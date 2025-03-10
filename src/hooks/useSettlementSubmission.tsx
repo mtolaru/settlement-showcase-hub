@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -91,14 +92,17 @@ export const useSettlementSubmission = ({
         console.log("Updated existing settlement record:", updatedRecord);
         return { success: true, existing: false, data: updatedRecord };
       } else {
-        // Add created_at for new records
-        submissionData.created_at = new Date().toISOString();
+        // Create a new record that includes created_at
+        const newSubmissionData = {
+          ...submissionData,
+          created_at: new Date().toISOString()
+        };
         
-        console.log("Inserting new settlement record:", submissionData);
+        console.log("Inserting new settlement record:", newSubmissionData);
         
         const { data, error } = await supabase
           .from('settlements')
-          .insert(submissionData)
+          .insert(newSubmissionData)
           .select()
           .single();
           

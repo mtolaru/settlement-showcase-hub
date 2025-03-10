@@ -185,7 +185,7 @@ async function handleCheckoutSession(session: any, supabase: any, stripe: any) {
     // First, check if this settlement has already been processed to avoid duplicates
     const { data: existingSettlement, error: checkError } = await supabase
       .from('settlements')
-      .select('id, payment_completed')
+      .select('id, payment_completed, amount, attorney, firm, type, location')
       .eq('temporary_id', temporaryId)
       .maybeSingle();
       
@@ -194,78 +194,41 @@ async function handleCheckoutSession(session: any, supabase: any, stripe: any) {
       throw checkError;
     }
     
-    if (existingSettlement) {
-      console.log(`Found existing settlement with temporaryId ${temporaryId}:`, existingSettlement);
-      
-      // If the settlement is already marked as paid, no need to update
-      if (existingSettlement.payment_completed) {
-        console.log('Settlement already marked as paid, skipping update');
-        return;
-      }
-      
-      // Otherwise, update the existing settlement to mark it as paid
-      const { data: updatedSettlement, error: updateError } = await supabase
-        .from('settlements')
-        .update({
-          payment_completed: true,
-          user_id: userId || existingSettlement.user_id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('temporary_id', temporaryId)
-        .select()
-        .single();
-        
-      if (updateError) {
-        console.error('Error updating settlement payment status:', updateError);
-        throw updateError;
-      }
-      
-      console.log('Successfully updated settlement payment status:', updatedSettlement?.id);
-    } else {
-      // This is unusual - we should have a settlement record already, but let's try to retrieve
-      // customer information from Stripe as a fallback
-      console.warn(`No settlement found with temporaryId ${temporaryId}, attempting to create one from Stripe data`);
-      
-      try {
-        let customerEmail = null;
-        let customerName = null;
-        
-        // Try to get customer information from Stripe
-        if (session.customer) {
-          const customer = await stripe.customers.retrieve(session.customer);
-          customerEmail = customer.email;
-          customerName = customer.name;
-          console.log('Retrieved customer data from Stripe:', { email: customerEmail, name: customerName });
-        }
-        
-        // Create a minimal settlement record based on the Stripe data
-        const { data: newSettlement, error: insertError } = await supabase
-          .from('settlements')
-          .insert({
-            temporary_id: temporaryId,
-            payment_completed: true,
-            user_id: userId,
-            attorney_email: customerEmail,
-            attorney: customerName || 'Unknown',
-            amount: session.amount_total ? session.amount_total / 100 : 0, // Convert from cents to dollars
-            type: 'Other',
-            firm: customerName ? `${customerName}'s Firm` : 'Unknown Firm',
-            location: 'Unknown',
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-          
-        if (insertError) {
-          console.error('Error creating settlement from Stripe data:', insertError);
-          throw insertError;
-        }
-        
-        console.log('Created new settlement from Stripe data:', newSettlement?.id);
-      } catch (fallbackError) {
-        console.error('Error in fallback settlement creation:', fallbackError);
-      }
+    if (!existingSettlement) {
+      console.error(`No settlement found with temporaryId ${temporaryId}`);
+      return;
     }
+    
+    console.log(`Found existing settlement with temporaryId ${temporaryId}:`, existingSettlement);
+    
+    // If the settlement is already marked as paid, no need to update
+    if (existingSettlement.payment_completed) {
+      console.log('Settlement already marked as paid, skipping update');
+      return;
+    }
+    
+    // Otherwise, update ONLY the payment fields of the existing settlement
+    const { data: updatedSettlement, error: updateError } = await supabase
+      .from('settlements')
+      .update({
+        payment_completed: true,
+        user_id: userId || existingSettlement.user_id,
+        stripe_session_id: session.id,
+        stripe_customer_id: session.customer,
+        stripe_subscription_id: session.subscription,
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('temporary_id', temporaryId)
+      .select()
+      .single();
+        
+    if (updateError) {
+      console.error('Error updating settlement payment status:', updateError);
+      throw updateError;
+    }
+    
+    console.log('Successfully updated settlement payment status:', updatedSettlement?.id);
     
     // Create or update subscription record
     try {

@@ -2,10 +2,12 @@
 import SubmitSettlementPage from "./settlement/SubmitSettlementPage";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 const SubmitSettlement = () => {
   const [searchParams] = useSearchParams();
   const [temporaryIdRestored, setTemporaryIdRestored] = useState(false);
+  const { toast } = useToast();
   
   useEffect(() => {
     console.log("SubmitSettlement page mounted");
@@ -16,6 +18,11 @@ const SubmitSettlement = () => {
       console.log(`Found temporaryId in URL: ${temporaryId}, storing to localStorage`);
       localStorage.setItem('temporary_id', temporaryId);
       setTemporaryIdRestored(true);
+      
+      toast({
+        title: "Session Restored",
+        description: "We've restored your previous session.",
+      });
     }
     
     // Add console error handler to catch any rendering issues
