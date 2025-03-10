@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useSubmitSettlementForm } from "@/hooks/useSubmitSettlementForm";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,40 +35,42 @@ export const useSubmitSettlementContainer = () => {
     clearedFields
   } = useSubmitSettlementForm();
 
-  // Memoize handlers to prevent recreating on every render
-  const { handleSubmitWithSubscription, handleCreateCheckout } = useMemo(() => 
-    useSettlementSubmission({
-      temporaryId,
-      formData,
-      setSubmissionLock,
-      setIsSubmitting,
-      setIsLoading,
-      verifyEmail,
-      unformatNumber
-    }),
-  [temporaryId, formData, setSubmissionLock, setIsSubmitting, setIsLoading, verifyEmail, unformatNumber]);
+  // Create hooks directly at the top level, not within useMemo
+  const { 
+    handleSubmitWithSubscription, 
+    handleCreateCheckout 
+  } = useSettlementSubmission({
+    temporaryId,
+    formData,
+    setSubmissionLock,
+    setIsSubmitting,
+    setIsLoading,
+    verifyEmail,
+    unformatNumber
+  });
 
-  // Memoize navigation handlers
-  const { handleNextStep, handleBackStep, updateCurrentStep } = useMemo(() => 
-    useSettlementNavigation({
-      formData,
-      setStep,
-      setErrors,
-      validateStep1,
-      validateStep2,
-      verifyEmail,
-      emailStatus
-    }),
-  [formData, setStep, setErrors, validateStep1, validateStep2, verifyEmail, emailStatus]);
+  // Create hooks directly at the top level, not within useMemo
+  const { 
+    handleNextStep, 
+    handleBackStep, 
+    updateCurrentStep 
+  } = useSettlementNavigation({
+    formData,
+    setStep,
+    setErrors,
+    validateStep1,
+    validateStep2,
+    verifyEmail,
+    emailStatus
+  });
 
-  // Update the navigation step whenever the form step changes - with proper dependency array
+  // Update the navigation step whenever the form step changes
   useEffect(() => {
     updateCurrentStep(step);
   }, [step, updateCurrentStep]);
 
-  // Memoize subscription status logging to prevent cyclic dependencies - only log when values change
+  // Log subscription status changes
   useEffect(() => {
-    // Only log when these values change to reduce noise
     console.log("SubmitSettlement component - Current subscription status:", {
       isAuthenticated,
       userId: user?.id,

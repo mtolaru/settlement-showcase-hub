@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FormData, FormErrors } from "@/types/settlementForm";
 
@@ -27,10 +27,14 @@ export const useSettlementNavigation = ({
 }: UseSettlementNavigationProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  // Define state at the top level
+  const [formState, setFormState] = useState<string | null>(null);
 
   // Save form state to session storage
   const saveFormState = useCallback(() => {
-    sessionStorage.setItem('settlementFormData', JSON.stringify(formData));
+    const formDataString = JSON.stringify(formData);
+    sessionStorage.setItem('settlementFormData', formDataString);
+    setFormState(formDataString); // Update state to trigger re-renders when needed
   }, [formData]);
 
   // Update current step based on navigation
