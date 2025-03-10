@@ -45,6 +45,7 @@ serve(async (req) => {
     const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
     const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(), // Use Fetch HTTP client explicitly
     });
 
     // Parse request body
