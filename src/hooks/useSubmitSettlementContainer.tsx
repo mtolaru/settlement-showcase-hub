@@ -36,33 +36,39 @@ export const useSubmitSettlementContainer = () => {
   } = useSubmitSettlementForm();
 
   // Memoize handlers to prevent recreating on every render
-  const { handleSubmitWithSubscription, handleCreateCheckout } = useSettlementSubmission({
-    temporaryId,
-    formData,
-    setSubmissionLock,
-    setIsSubmitting,
-    setIsLoading,
-    verifyEmail,
-    unformatNumber
-  });
+  const { handleSubmitWithSubscription, handleCreateCheckout } = useMemo(() => 
+    useSettlementSubmission({
+      temporaryId,
+      formData,
+      setSubmissionLock,
+      setIsSubmitting,
+      setIsLoading,
+      verifyEmail,
+      unformatNumber
+    }),
+  [temporaryId, formData, setSubmissionLock, setIsSubmitting, setIsLoading, verifyEmail, unformatNumber]);
 
-  const { handleNextStep, handleBackStep, updateCurrentStep } = useSettlementNavigation({
-    formData,
-    setStep,
-    setErrors,
-    validateStep1,
-    validateStep2,
-    verifyEmail,
-    emailStatus
-  });
+  // Memoize navigation handlers
+  const { handleNextStep, handleBackStep, updateCurrentStep } = useMemo(() => 
+    useSettlementNavigation({
+      formData,
+      setStep,
+      setErrors,
+      validateStep1,
+      validateStep2,
+      verifyEmail,
+      emailStatus
+    }),
+  [formData, setStep, setErrors, validateStep1, validateStep2, verifyEmail, emailStatus]);
 
-  // Update the navigation step whenever the form step changes
+  // Update the navigation step whenever the form step changes - with proper dependency array
   useEffect(() => {
     updateCurrentStep(step);
   }, [step, updateCurrentStep]);
 
-  // Memoize subscription status logging to prevent cyclic dependencies
+  // Memoize subscription status logging to prevent cyclic dependencies - only log when values change
   useEffect(() => {
+    // Only log when these values change to reduce noise
     console.log("SubmitSettlement component - Current subscription status:", {
       isAuthenticated,
       userId: user?.id,
@@ -70,7 +76,7 @@ export const useSubmitSettlementContainer = () => {
       isCheckingSubscription,
       hasActiveSubscriptionType: typeof hasActiveSubscription
     });
-  }, [isAuthenticated, user, hasActiveSubscription, isCheckingSubscription]);
+  }, [isAuthenticated, user?.id, hasActiveSubscription, isCheckingSubscription]);
 
   return {
     step,
