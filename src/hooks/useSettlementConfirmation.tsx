@@ -65,8 +65,8 @@ export const useSettlementConfirmation = () => {
       
       const { error: updateError } = await supabase
         .from('settlements')
-        .update({ user_id: user.id } as any)
-        .eq('temporary_id', temporaryId as string)
+        .update({ user_id: user.id })
+        .eq('temporary_id', temporaryId)
         .is('user_id', null); // Only update if user_id is null
         
       if (updateError) {
@@ -89,14 +89,14 @@ export const useSettlementConfirmation = () => {
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('temporary_id, user_id')
-        .eq('payment_id', sessionId as string)
+        .eq('payment_id', sessionId)
         .maybeSingle();
       
       if (subscriptionError) {
         console.error("Error fetching subscription:", subscriptionError);
       }
       
-      if (subscriptionData && subscriptionData.temporary_id) {
+      if (subscriptionData?.temporary_id) {
         console.log("Found temporary_id from subscription:", subscriptionData.temporary_id);
         fetchSettlementData(subscriptionData.temporary_id);
         return;
@@ -114,7 +114,7 @@ export const useSettlementConfirmation = () => {
           console.error("Error fetching recent subscriptions:", recentError);
         }
         
-        if (recentSubscriptions && recentSubscriptions.length > 0 && recentSubscriptions[0].temporary_id) {
+        if (recentSubscriptions && recentSubscriptions.length > 0) {
           console.log("Found recent subscription:", recentSubscriptions[0]);
           fetchSettlementData(recentSubscriptions[0].temporary_id);
           return;
@@ -139,7 +139,7 @@ export const useSettlementConfirmation = () => {
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
-        .eq('temporary_id', tempId as string)
+        .eq('temporary_id', tempId)
         .maybeSingle();
       
       if (error) {
@@ -155,14 +155,14 @@ export const useSettlementConfirmation = () => {
       console.log("Found settlement data:", data);
       setSettlementData(data);
       
-      if (data && !data.payment_completed && !isUpdating) {
+      if (!data.payment_completed && !isUpdating) {
         setIsUpdating(true);
         
         const { error: updateError } = await supabase
           .from('settlements')
-          .update({ payment_completed: true } as any)
-          .eq('temporary_id', tempId as string)
-          .eq('payment_completed', false as any);
+          .update({ payment_completed: true })
+          .eq('temporary_id', tempId)
+          .eq('payment_completed', false);
           
         if (updateError) {
           console.error("Error updating payment status:", updateError);
@@ -171,7 +171,7 @@ export const useSettlementConfirmation = () => {
           const { data: refreshedData } = await supabase
             .from('settlements')
             .select('*')
-            .eq('temporary_id', tempId as string)
+            .eq('temporary_id', tempId)
             .maybeSingle();
             
           if (refreshedData) {

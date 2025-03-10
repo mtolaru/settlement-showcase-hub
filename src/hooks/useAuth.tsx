@@ -47,31 +47,6 @@ export const useAuth = (): AuthReturn => {
 
     initSession();
 
-    // Check for URL parameters that indicate an auth action (like password reset)
-    const handleAuthRedirects = () => {
-      const url = new URL(window.location.href);
-      const errorParam = url.searchParams.get('error');
-      const errorDescriptionParam = url.searchParams.get('error_description');
-      
-      if (errorParam && errorDescriptionParam) {
-        console.error(`Auth redirect error: ${errorParam} - ${errorDescriptionParam}`);
-        toast({
-          variant: "destructive",
-          title: "Authentication Error",
-          description: errorDescriptionParam,
-        });
-      }
-      
-      // Handle password reset success
-      const typeParam = url.searchParams.get('type');
-      if (typeParam === 'recovery') {
-        console.log('Password reset flow detected');
-        // Could handle this flow specifically
-      }
-    };
-    
-    handleAuthRedirects();
-
     // Listen for auth changes
     const {
       data: { subscription },
@@ -91,7 +66,7 @@ export const useAuth = (): AuthReturn => {
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, []);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
