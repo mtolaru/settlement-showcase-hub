@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -67,6 +66,12 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
     fetchSettlementEmail();
   }, [temporaryId]);
 
+  const getRedirectUrl = (path: string) => {
+    // Get the current origin (protocol + hostname + port)
+    const origin = window.location.origin;
+    return `${origin}${path}`;
+  };
+
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -114,6 +119,11 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
         }
       } else {
         console.log("Email does not exist, creating new account");
+        
+        // Use dynamic redirect URL
+        const signUpRedirectUrl = getRedirectUrl('/auth/callback');
+        console.log(`Using signup redirect URL: ${signUpRedirectUrl}`);
+        
         // Email doesn't exist, create a new account
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -122,7 +132,8 @@ const CreateAccountPrompt = ({ temporaryId, onClose }: CreateAccountPromptProps)
             data: {
               // Store the temporary ID in the user metadata
               temporaryId: temporaryId
-            }
+            },
+            emailRedirectTo: signUpRedirectUrl
           }
         });
 
