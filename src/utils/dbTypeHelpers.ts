@@ -1,4 +1,3 @@
-
 /**
  * This file contains type helper functions to work with Supabase
  * and handle TypeScript type safety issues.
@@ -34,7 +33,7 @@ export const updateObj = <T extends Record<string, any>>(obj: T) => safeUpdateOb
 /**
  * Safe accessor for query results to handle potential errors
  */
-export const safeGet = <T, K extends keyof T>(obj: T | null | undefined, key: K, defaultValue: T[K]): T[K] => {
+export const safeGet = <T extends object, K extends keyof T>(obj: T | null | undefined, key: K, defaultValue: T[K]): T[K] => {
   if (!obj) return defaultValue;
   
   try {

@@ -138,4 +138,5 @@ const SettlementsSection = ({
   );
 };
 
-export default SettlementSection;
+export default SettlementsSection;
+
