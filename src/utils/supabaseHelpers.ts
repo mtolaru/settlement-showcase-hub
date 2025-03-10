@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { safeGet } from "@/utils/dbTypeHelpers";
 
@@ -11,14 +10,9 @@ export class SupabaseHelper {
    */
   async userExistsByEmail(email: string): Promise<boolean> {
     try {
-      // Instead of directly querying the profiles table, we use the auth API
-      // to check if a user with this email exists
-      const { data, error } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1,
-        filter: {
-          email: email
-        }
+      // Using the custom edge function to check if a user exists
+      const { data, error } = await supabase.functions.invoke('check-email', {
+        body: { email }
       });
 
       if (error) {
@@ -26,7 +20,7 @@ export class SupabaseHelper {
         return false;
       }
 
-      return data.users.length > 0;
+      return data?.exists || false;
     } catch (error) {
       console.error('Exception checking if user exists by email:', error);
       return false;
@@ -35,34 +29,57 @@ export class SupabaseHelper {
 
   /**
    * Update a user's profile data
-   * Note: This assumes a profiles table exists in the public schema
    */
   async updateUserProfile(userId: string, profileData: Record<string, any>): Promise<boolean> {
     try {
-      // First check if the profile exists
-      const { data: existingProfile } = await supabase
-        .rpc('get_profile_by_id', { user_id: userId });
-
+      // Use the get-profile edge function to check if profile exists
+      const { data: existingProfileData, error: getProfileError } = await supabase.functions.invoke('get-profile', {
+        body: { userId }
+      });
+      
+      if (getProfileError) {
+        console.error('Error retrieving profile:', getProfileError);
+        return false;
+      }
+      
+      const existingProfile = existingProfileData?.profile;
+      
+      // If profile exists, update it through a direct authenticated call
+      // Otherwise, this would be handled through registration process
       if (existingProfile) {
-        // Update existing profile
-        const { error } = await supabase
-          .rpc('update_profile', { 
-            user_id: userId,
-            profile_data: profileData
-          });
+        const { error } = await supabase.auth.updateUser({
+          data: profileData
+        });
+        
         return !error;
       } else {
-        // Create new profile using RPC function
-        const { error } = await supabase
-          .rpc('create_profile', { 
-            user_id: userId,
-            profile_data: profileData
-          });
-        return !error;
+        console.warn('Profile not found for user ID:', userId);
+        return false;
       }
     } catch (error) {
       console.error('Error updating user profile:', error);
       return false;
+    }
+  }
+
+  /**
+   * Get a user's profile by ID
+   */
+  async getUserProfile(userId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-profile', {
+        body: { userId }
+      });
+      
+      if (error) {
+        console.error('Error getting user profile:', error);
+        return null;
+      }
+      
+      return data?.profile || null;
+    } catch (error) {
+      console.error('Exception getting user profile:', error);
+      return null;
     }
   }
 
