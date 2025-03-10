@@ -179,18 +179,19 @@ export const createCheckoutSession = async (
       }
     });
     
-    // Using the correct price ID for subscription mode
+    // Using the correct price ID for subscription mode with $199 price
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1QwWEDDEE7vEKM2Kx3FJlc6e', // Updated to the correct price ID
+          price: 'price_1QwWEDDEE7vEKM2Kx3FJlc6e', // The price ID should reflect $199
           quantity: 1,
         },
       ],
       mode: 'subscription',
       success_url: successUrl,
       cancel_url: cancelUrl,
+      allow_promotion_codes: true, // Enable coupon code support
       metadata: {
         temporaryId,
         userId: userId || undefined,
