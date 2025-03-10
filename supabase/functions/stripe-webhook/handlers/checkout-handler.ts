@@ -74,7 +74,7 @@ export const handleCheckoutSession = async (session: any, supabase: any, isLiveM
       })
       .eq('temporary_id', temporaryId)
       .select()
-      .maybeSingle();
+      .single();
     
     if (error) {
       console.error('Error updating settlement:', error);
