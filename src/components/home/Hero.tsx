@@ -8,7 +8,7 @@ const Hero = () => {
           <br />
           WHERE CREDIT IS DUE
         </h1>
-        <p className="text-xl text-neutral-600 max-w-3xl mx-auto mb-12">Share your success and generate more leads — fast, simple, impactful. Turn your settlement victories into shareable marketing content.</p>
+        <p className="text-xl text-neutral-600 max-w-3xl mx-auto mb-12">Turn your legal settlement victories into credibility and clients — fast, simple, impactful.</p>
         
         <div className="flex items-center justify-center gap-4">
           <Link to="/submit">
