@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import type { Settlement } from "@/types/settlement";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
-import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 
 interface SettlementsListProps {
   settlements: Settlement[];
   isLoading: boolean;
-  onDeleteSettlement: (id: number) => Promise<void>;
+  onDeleteSettlement: (settlement: Settlement) => void;
   deletingId?: number | null;
 }
 
@@ -22,8 +20,6 @@ const SettlementsList = ({
   deletingId 
 }: SettlementsListProps) => {
   const navigate = useNavigate();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [settlementToDelete, setSettlementToDelete] = useState<{id: number, type: string} | null>(null);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Unknown date";
@@ -45,18 +41,9 @@ const SettlementsList = ({
     navigate(`/settlements/${settlementId}`);
   };
 
-  const openDeleteDialog = (e: React.MouseEvent, settlement: Settlement) => {
+  const handleDeleteClick = (e: React.MouseEvent, settlement: Settlement) => {
     e.stopPropagation();
-    setSettlementToDelete({
-      id: settlement.id,
-      type: settlement.type
-    });
-    setDeleteDialogOpen(true);
-  };
-
-  const closeDeleteDialog = () => {
-    setDeleteDialogOpen(false);
-    setSettlementToDelete(null);
+    onDeleteSettlement(settlement);
   };
 
   if (isLoading) {
@@ -108,7 +95,7 @@ const SettlementsList = ({
                   variant="ghost" 
                   size="icon" 
                   className="text-neutral-600 hover:text-red-500 h-8 w-8"
-                  onClick={(e) => openDeleteDialog(e, settlement)}
+                  onClick={(e) => handleDeleteClick(e, settlement)}
                   disabled={deletingId === settlement.id}
                 >
                   {deletingId === settlement.id ? (
@@ -126,14 +113,6 @@ const SettlementsList = ({
           </CardContent>
         </Card>
       ))}
-
-      <DeleteConfirmationDialog
-        isOpen={deleteDialogOpen}
-        settlementId={settlementToDelete?.id || null}
-        settlementType={settlementToDelete?.type || ""}
-        onClose={closeDeleteDialog}
-        onConfirm={onDeleteSettlement}
-      />
     </div>
   );
 };

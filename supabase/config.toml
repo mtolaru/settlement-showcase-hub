@@ -80,3 +80,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.fix-settlement]
 verify_jwt = false
+[functions.delete-settlement]
+verify_jwt = false

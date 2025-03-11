@@ -241,154 +241,26 @@ export const settlementService = {
       
       console.log("Found settlement:", settlementData);
       
-      // First try to claim the settlement if needed
-      if (!settlementData.user_id || settlementData.user_id !== userId) {
-        // Try to claim by email match
-        if (settlementData.attorney_email && userEmail && settlementData.attorney_email === userEmail) {
-          console.log("Attempting to claim settlement by email match");
-          
-          const { error: updateError } = await supabase
-            .from('settlements')
-            .update({ user_id: userId })
-            .eq('id', settlementId);
-            
-          if (updateError) {
-            console.error("Error claiming settlement by email:", updateError);
-          } else {
-            console.log("Successfully claimed settlement by email match");
-          }
-        }
+      // Try the direct delete approach first if settlement belongs to user
+      if (settlementData.user_id === userId) {
+        console.log("Settlement belongs to current user, proceeding with direct deletion");
         
-        // Try to claim by temporary_id
-        if (settlementData.temporary_id) {
-          console.log(`Attempting to claim settlement with temporary_id ${settlementData.temporary_id}`);
-          
-          // Check if this user has a subscription with the same temporary_id
-          const { data: subscriptionData } = await supabase
-            .from('subscriptions')
-            .select('id')
-            .eq('temporary_id', settlementData.temporary_id)
-            .eq('user_id', userId)
-            .maybeSingle();
-            
-          if (subscriptionData) {
-            console.log("Found matching subscription with same temporary_id, claiming settlement");
-            
-            const { error: updateError } = await supabase
-              .from('settlements')
-              .update({ user_id: userId })
-              .eq('id', settlementId);
-              
-            if (updateError) {
-              console.error("Error claiming settlement by temporary_id:", updateError);
-            } else {
-              console.log("Successfully claimed settlement by temporary_id match");
-            }
-          } else {
-            console.log("No matching subscription found, creating a temporary subscription link");
-            
-            // As a fallback, try to create a subscription entry with this temporary_id
-            try {
-              const { error: insertError } = await supabase
-                .from('subscriptions')
-                .insert({
-                  user_id: userId,
-                  temporary_id: settlementData.temporary_id,
-                  is_active: true
-                });
-                
-              if (insertError) {
-                console.error("Error creating temporary subscription link:", insertError);
-              } else {
-                console.log("Created temporary subscription link to help with ownership");
-                
-                // Now try to claim the settlement with the user_id
-                const { error: updateAfterSubError } = await supabase
-                  .from('settlements')
-                  .update({ user_id: userId })
-                  .eq('id', settlementId);
-                  
-                if (updateAfterSubError) {
-                  console.error("Error claiming settlement after creating subscription:", updateAfterSubError);
-                } else {
-                  console.log("Successfully claimed settlement after creating subscription link");
-                }
-              }
-            } catch (subCreateError) {
-              console.error("Exception creating subscription link:", subCreateError);
-            }
-          }
-        }
-      }
-      
-      // After claiming attempts, fetch the settlement again to get updated user_id
-      const { data: updatedSettlement } = await supabase
-        .from('settlements')
-        .select('user_id')
-        .eq('id', settlementId)
-        .maybeSingle();
-        
-      if (updatedSettlement && updatedSettlement.user_id === userId) {
-        console.log("Settlement now belongs to current user, proceeding with deletion");
-        
-        const { data: deleteData, error: deleteError } = await supabase
+        const { error: deleteError } = await supabase
           .from('settlements')
           .delete()
           .eq('id', settlementId);
           
-        if (deleteError) {
-          console.error('Error deleting settlement:', deleteError);
-          throw new Error("Error deleting settlement: " + deleteError.message);
+        if (!deleteError) {
+          console.log('Settlement deleted successfully with direct approach');
+          return { success: true };
         }
         
-        console.log('Settlement deleted successfully');
-        return { success: true, data: deleteData };
+        console.error('Direct deletion failed, will try alternative methods:', deleteError);
       }
       
-      // If still not owned by user, try deletion with various methods
-      
-      // 1. Try to delete by user_id (most secure)
-      const { data: deleteByUserIdData, error: deleteByUserIdError } = await supabase
-        .from('settlements')
-        .delete()
-        .eq('id', settlementId)
-        .eq('user_id', userId);
-        
-      if (!deleteByUserIdError && deleteByUserIdData !== null) {
-        console.log('Settlement deleted successfully by user ID');
-        return { success: true, data: deleteByUserIdData };
-      }
-      
-      if (deleteByUserIdError) {
-        console.error('Error deleting settlement by user ID:', deleteByUserIdError);
-      } else {
-        console.log("No settlement found to delete by user ID, trying alternative methods");
-      }
-      
-      // 2. Try by email match
-      if (userEmail) {
-        const { data: deleteByEmailData, error: deleteByEmailError } = await supabase
-          .from('settlements')
-          .delete()
-          .eq('id', settlementId)
-          .eq('attorney_email', userEmail);
-          
-        if (!deleteByEmailError && deleteByEmailData !== null) {
-          console.log('Settlement deleted successfully by attorney email');
-          return { success: true, data: deleteByEmailData };
-        }
-        
-        if (deleteByEmailError) {
-          console.error('Error deleting settlement by email:', deleteByEmailError);
-        } else {
-          console.log("No settlement found to delete by email, trying final method");
-        }
-      }
-      
-      // 3. Last resort - try a direct delete with the admin key through the functions API
+      // Use edge function as a more powerful fallback
+      console.log("Calling delete-settlement edge function");
       try {
-        console.log("Attempting to delete using functions API as a last resort");
-        
         const { data: functionResponse, error: functionError } = await supabase.functions.invoke('delete-settlement', {
           body: { 
             settlementId,
@@ -403,6 +275,8 @@ export const settlementService = {
           throw new Error("Error calling delete function: " + functionError.message);
         }
         
+        console.log('Function response:', functionResponse);
+        
         if (functionResponse?.success) {
           console.log('Settlement deleted successfully via function API');
           return { success: true };
@@ -412,17 +286,14 @@ export const settlementService = {
         }
       } catch (functionCallError) {
         console.error('Exception calling delete-settlement function:', functionCallError);
+        throw functionCallError;
       }
-      
-      // If we got here, the settlement couldn't be deleted
-      throw new Error("Could not delete settlement. You may not have permission or the settlement may have been deleted already.");
     } catch (error: any) {
       console.error('Delete settlement error:', error);
       throw error;
     }
   },
   
-  // Helper method to check if a user owns a temporary ID via subscription
   async userOwnsTemporaryId(userId: string, temporaryId: string): Promise<boolean> {
     try {
       const { data } = await supabase
