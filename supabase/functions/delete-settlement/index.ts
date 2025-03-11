@@ -9,7 +9,22 @@ interface DeleteRequest {
   temporaryId?: string
 }
 
+// Add CORS headers for browser compatibility
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
+  }
+
   try {
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -22,7 +37,7 @@ serve(async (req) => {
     if (!settlementId || !userId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Settlement ID and User ID are required' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 400 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
 
@@ -35,16 +50,27 @@ serve(async (req) => {
       .eq('id', settlementId)
       .maybeSingle()
 
-    if (fetchError || !settlement) {
+    if (fetchError) {
       console.error('Error fetching settlement:', fetchError)
       return new Response(
-        JSON.stringify({ success: false, error: 'Settlement not found' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 404 }
+        JSON.stringify({ success: false, error: 'Error fetching settlement: ' + fetchError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
 
+    if (!settlement) {
+      console.log('Settlement not found or already deleted')
+      return new Response(
+        JSON.stringify({ success: true, message: 'Settlement not found or already deleted' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
+    console.log('Found settlement:', settlement)
+
     // If the settlement is already associated with this user, just delete it
     if (settlement.user_id === userId) {
+      console.log('Settlement belongs to current user, proceeding with deletion')
       const { error: deleteError } = await supabase
         .from('settlements')
         .delete()
@@ -53,14 +79,15 @@ serve(async (req) => {
       if (deleteError) {
         console.error('Error deleting settlement:', deleteError)
         return new Response(
-          JSON.stringify({ success: false, error: 'Failed to delete settlement' }),
-          { headers: { 'Content-Type': 'application/json' }, status: 500 }
+          JSON.stringify({ success: false, error: 'Failed to delete settlement: ' + deleteError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         )
       }
 
+      console.log('Settlement deleted successfully')
       return new Response(
         JSON.stringify({ success: true }),
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -84,14 +111,15 @@ serve(async (req) => {
           if (deleteError) {
             console.error('Error deleting settlement after update:', deleteError)
             return new Response(
-              JSON.stringify({ success: false, error: 'Failed to delete settlement after linking' }),
-              { headers: { 'Content-Type': 'application/json' }, status: 500 }
+              JSON.stringify({ success: false, error: 'Failed to delete settlement after linking: ' + deleteError.message }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
             )
           }
 
+          console.log('Settlement claimed by email and deleted successfully')
           return new Response(
             JSON.stringify({ success: true }),
-            { headers: { 'Content-Type': 'application/json' } }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         } else {
           console.error('Error updating settlement:', updateError)
@@ -116,14 +144,15 @@ serve(async (req) => {
           if (deleteError) {
             console.error('Error deleting settlement after temporary ID update:', deleteError)
             return new Response(
-              JSON.stringify({ success: false, error: 'Failed to delete settlement after linking by temporary ID' }),
-              { headers: { 'Content-Type': 'application/json' }, status: 500 }
+              JSON.stringify({ success: false, error: 'Failed to delete settlement after linking by temporary ID: ' + deleteError.message }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
             )
           }
 
+          console.log('Settlement claimed by temporary ID and deleted successfully')
           return new Response(
             JSON.stringify({ success: true }),
-            { headers: { 'Content-Type': 'application/json' } }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         } else {
           console.error('Error updating settlement by temporary ID:', updateError)
@@ -141,20 +170,21 @@ serve(async (req) => {
     if (forceDeleteError) {
       console.error('Force delete failed:', forceDeleteError)
       return new Response(
-        JSON.stringify({ success: false, error: 'Force delete failed' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ success: false, error: 'Force delete failed: ' + forceDeleteError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
 
+    console.log('Settlement force deleted successfully')
     return new Response(
       JSON.stringify({ success: true, message: 'Settlement force deleted successfully' }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: 'Internal server error' }),
-      { headers: { 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ success: false, error: 'Internal server error: ' + (error instanceof Error ? error.message : String(error)) }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
 })

@@ -5,6 +5,7 @@ import SettlementsList from "@/components/manage/SettlementsList";
 import { settlementService } from "@/services/settlementService";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import DeleteConfirmationDialog from "@/components/manage/DeleteConfirmationDialog";
 
 interface SettlementsSectionProps {
   settlements: Settlement[];
@@ -21,6 +22,21 @@ const SettlementsSection = ({
 }: SettlementsSectionProps) => {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [settlementToDelete, setSettlementToDelete] = useState<{id: number, type: string} | null>(null);
+
+  const openDeleteDialog = (settlement: Settlement) => {
+    setSettlementToDelete({
+      id: settlement.id,
+      type: settlement.type
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setSettlementToDelete(null);
+  };
 
   const handleDeleteSettlement = async (settlementId: number) => {
     try {
@@ -36,6 +52,11 @@ const SettlementsSection = ({
       setDeletingId(settlementId);
       console.log(`Attempting to delete settlement ${settlementId} for user ${userId}`);
       
+      // Get user email for matching attorney_email
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email;
+      
+      // Get settlement temporary_id for matching
       const { data: settlementData, error: fetchError } = await supabase
         .from('settlements')
         .select('id, user_id, attorney_email, temporary_id')
@@ -63,32 +84,29 @@ const SettlementsSection = ({
       
       console.log("Settlement data before deletion:", settlementData);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      const userEmail = user?.email;
-      
-      if (!settlementData.user_id || settlementData.user_id !== userId) {
-        console.log(`Settlement doesn't belong to current user. 
-          Settlement user_id: ${settlementData.user_id || 'null'}, 
-          Current user_id: ${userId},
-          Settlement attorney_email: ${settlementData.attorney_email || 'null'},
-          User email: ${userEmail || 'null'}`);
-        
-        if (userEmail && settlementData.attorney_email === userEmail) {
-          console.log("User's email matches settlement attorney_email, attempting to claim");
+      // First try direct API call for simpler cases
+      if (settlementData.user_id === userId) {
+        console.log("Settlement belongs to current user, trying direct deletion");
+        const { error: deleteError } = await supabase
+          .from('settlements')
+          .delete()
+          .eq('id', settlementId);
           
-          const { error: claimError } = await supabase
-            .from('settlements')
-            .update({ user_id: userId })
-            .eq('id', settlementId);
-            
-          if (claimError) {
-            console.error("Error claiming settlement by email:", claimError);
-          } else {
-            console.log("Successfully claimed settlement by email match");
-          }
+        if (!deleteError) {
+          console.log("Direct deletion succeeded");
+          refreshSettlements();
+          toast({
+            title: "Settlement deleted",
+            description: "Your settlement has been successfully deleted.",
+          });
+          return;
         }
+        
+        console.error("Direct deletion failed:", deleteError);
       }
       
+      // If direct deletion fails or doesn't apply, use the edge function
+      console.log("Trying deletion via edge function");
       const result = await settlementService.deleteSettlement(settlementId, userId);
       
       if (result.success) {
@@ -125,8 +143,16 @@ const SettlementsSection = ({
       <SettlementsList 
         settlements={settlements} 
         isLoading={isLoading} 
-        onDeleteSettlement={handleDeleteSettlement}
+        onDeleteSettlement={openDeleteDialog}
         deletingId={deletingId}
+      />
+      
+      <DeleteConfirmationDialog
+        isOpen={deleteDialogOpen}
+        settlementId={settlementToDelete?.id || null}
+        settlementType={settlementToDelete?.type || ""}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteSettlement}
       />
     </div>
   );
