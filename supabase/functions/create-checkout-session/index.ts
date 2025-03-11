@@ -7,7 +7,7 @@ import { corsHeaders } from "./utils/cors-headers.ts";
 import { validateEnvVars } from "./utils/env-validator.ts";
 import { resolveBaseUrl } from "./utils/url-resolver.ts";
 import { createSupabaseClient } from "./utils/supabase-client.ts";
-import { createCheckoutSession, saveSessionDetails } from "./utils/checkout-session.ts";
+import { createCheckoutSession } from "./utils/checkout-session.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -68,7 +68,7 @@ serve(async (req) => {
       );
     }
     
-    const { temporaryId, userId, returnUrl: userReturnUrl, formData } = requestData;
+    const { temporaryId } = requestData;
     
     if (!temporaryId) {
       console.error('Missing temporaryId in request');
@@ -118,29 +118,6 @@ serve(async (req) => {
     }
     
     const { session } = result;
-    
-    // Define URLs for session log
-    const encodedTempId = encodeURIComponent(temporaryId);
-    const successUrl = `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}&temporaryId=${encodedTempId}`;
-    const cancelUrl = `${baseUrl}/submit?step=3&canceled=true`;
-    
-    // Save session details for easier retrieval later
-    try {
-      console.log('Saving session details...');
-      await saveSessionDetails(
-        supabase,
-        session,
-        temporaryId,
-        userId,
-        successUrl,
-        cancelUrl,
-        baseUrl
-      );
-      console.log('Session details saved successfully');
-    } catch (saveError) {
-      console.error('Error saving session details:', saveError);
-      // Continue even if saving details fails - we already have the session URL
-    }
 
     console.log('Returning session URL:', session.url ? session.url.substring(0, 30) + '...' : 'undefined');
     return new Response(
