@@ -171,7 +171,7 @@ export const ReviewStep = ({
         <div className="bg-primary-50 border border-primary-100 p-6 rounded-lg">
           <h4 className="font-medium text-primary-900 mb-2">Professional Plan Subscription</h4>
           <p className="text-sm text-primary-700 mb-4">
-            Subscribe to our Professional Plan for $99/month to submit and showcase your settlements.
+            Subscribe to our Professional Plan for $199/month to submit and showcase your settlements.
           </p>
           <Button 
             onClick={handleCheckout}
