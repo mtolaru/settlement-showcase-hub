@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -103,7 +104,7 @@ export const useSubmitSettlementContainer = () => {
     setErrors,
     validateStep1,
     validateStep2,
-    verifyEmail,
+    verifyEmail: handleVerifyEmail,  // Pass the function instead of boolean
     emailStatus
   });
 
@@ -113,7 +114,7 @@ export const useSubmitSettlementContainer = () => {
     setSubmissionLock,
     setIsSubmitting,
     setIsLoading,
-    verifyEmail,
+    verifyEmail: handleVerifyEmail,  // Pass the function instead of boolean
     unformatNumber
   });
 
