@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Share2, Linkedin, Mail, Copy, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trackButtonClick } from "@/utils/analytics";
 
 interface ShareButtonProps {
   url: string;
@@ -24,15 +25,12 @@ export const ShareButton = ({
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   
-  // Format amount for sharing - ensure it has proper commas for dollar format
   const formattedAmount = typeof amount === 'string' 
     ? parseFloat(amount.replace(/[^0-9.]/g, '')).toLocaleString('en-US')
     : amount.toLocaleString('en-US');
     
-  // Create sharing message with properly formatted amount
   const shareMessage = `I secured a $${formattedAmount} settlement for my client in a ${caseType} case. View more on SettlementWins.`;
   
-  // Add UTM parameters to URL
   const getShareUrl = (source: string) => {
     const shareUrl = new URL(url);
     shareUrl.searchParams.append('utm_source', source);
@@ -42,6 +40,13 @@ export const ShareButton = ({
   };
 
   const handleShare = async () => {
+    trackButtonClick({
+      button_name: "share_native",
+      page_location: window.location.pathname,
+      component: "ShareButton",
+      action: "native_share"
+    });
+    
     if (navigator.share) {
       try {
         await navigator.share({
@@ -56,17 +61,21 @@ export const ShareButton = ({
           variant: "success"
         });
       } catch (error) {
-        // User probably canceled the share operation
         console.log('Sharing canceled:', error);
       }
     } else {
-      // Fallback to copy to clipboard
       handleCopyLink();
     }
   };
 
   const handleLinkedInShare = () => {
-    // LinkedIn's sharing API - Using separate URL & text params for better compatibility
+    trackButtonClick({
+      button_name: "share_linkedin",
+      page_location: window.location.pathname,
+      component: "ShareButton",
+      action: "social_share"
+    });
+    
     const linkedinUrl = new URL('https://www.linkedin.com/sharing/share-offsite/');
     linkedinUrl.searchParams.append('url', getShareUrl('linkedin'));
     
@@ -80,6 +89,13 @@ export const ShareButton = ({
   };
 
   const handleTwitterShare = () => {
+    trackButtonClick({
+      button_name: "share_twitter",
+      page_location: window.location.pathname,
+      component: "ShareButton",
+      action: "social_share"
+    });
+    
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}&url=${encodeURIComponent(getShareUrl('twitter'))}`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer');
     
@@ -91,13 +107,17 @@ export const ShareButton = ({
   };
 
   const handleEmailShare = () => {
-    // For email, we can create a more nicely formatted message with a hyperlink
+    trackButtonClick({
+      button_name: "share_email",
+      page_location: window.location.pathname,
+      component: "ShareButton",
+      action: "email_share"
+    });
+    
     const subject = `${title} - Settlement Success Story`;
     
-    // Create email body with hyperlinked text instead of raw URL
     const emailBody = `${shareMessage.replace('SettlementWins.', `<a href="${getShareUrl('email')}">SettlementWins</a>.`)}\n\n`;
     
-    // Since mailto doesn't support HTML, we fall back to plain text with the URL
     const plainEmailBody = `${shareMessage}\n\nView the full details here: ${getShareUrl('email')}`;
     
     const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainEmailBody)}`;
@@ -111,6 +131,13 @@ export const ShareButton = ({
   };
 
   const handleCopyLink = () => {
+    trackButtonClick({
+      button_name: "share_copy_link",
+      page_location: window.location.pathname,
+      component: "ShareButton",
+      action: "copy_link"
+    });
+    
     const shareUrl = getShareUrl('copy_link');
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
@@ -126,7 +153,6 @@ export const ShareButton = ({
     }, 2000);
   };
 
-  // Custom X logo component 
   const XLogo = () => (
     <svg 
       width="16" 
@@ -140,7 +166,6 @@ export const ShareButton = ({
     </svg>
   );
 
-  // For icon-only variant
   if (variant === "icon") {
     return (
       <Popover>
@@ -203,7 +228,6 @@ export const ShareButton = ({
     );
   }
 
-  // For standard button variant
   if (variant === "button") {
     return (
       <Popover>
@@ -264,8 +288,7 @@ export const ShareButton = ({
       </Popover>
     );
   }
-  
-  // For social variant (simplified buttons for share section)
+
   if (variant === "social") {
     return (
       <div className={`space-y-3 ${className}`}>
@@ -310,7 +333,6 @@ export const ShareButton = ({
     );
   }
 
-  // For full-width CTA variant
   return (
     <div className={`space-y-4 ${className}`}>
       <h3 className="text-lg font-semibold text-center">Share Your Success</h3>
@@ -364,4 +386,3 @@ export const ShareButton = ({
     </div>
   );
 };
-

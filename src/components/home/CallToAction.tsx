@@ -2,8 +2,18 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { trackButtonClick } from "@/utils/analytics";
 
 const CallToAction = () => {
+  const handleSubmitClick = () => {
+    trackButtonClick({
+      button_name: "cta_submit_settlement",
+      page_location: window.location.pathname,
+      component: "CallToAction",
+      action: "navigation"
+    });
+  };
+
   return (
     <section className="py-16 bg-primary-900 text-white">
       <div className="container">
@@ -12,7 +22,7 @@ const CallToAction = () => {
           <p className="text-xl text-primary-100 mb-8">
             Join the leading platform for showcasing legal settlements
           </p>
-          <Link to="/submit">
+          <Link to="/submit" onClick={handleSubmitClick}>
             <Button size="lg" className="bg-white text-primary-900 hover:bg-primary-50">
               Submit Your Settlement <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

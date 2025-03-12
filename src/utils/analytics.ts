@@ -31,12 +31,50 @@ interface PageViewData {
   page_path: string;
 }
 
+interface ButtonClickData {
+  button_name: string;
+  page_location: string;
+  component?: string;
+  action?: string;
+}
+
+interface LinkClickData {
+  link_name: string;
+  link_url: string;
+  page_location: string;
+}
+
 export const trackPageView = (data: PageViewData) => {
   try {
     // @ts-ignore - gtag is defined in index.html
     window.gtag('event', 'page_view', data);
   } catch (error) {
     console.error('Failed to track page view:', error);
+  }
+};
+
+export const trackButtonClick = (data: ButtonClickData) => {
+  try {
+    // @ts-ignore - gtag is defined in index.html
+    window.gtag('event', 'button_click', {
+      ...data,
+      page_location: data.page_location || window.location.pathname
+    });
+    console.log('🔍 Analytics: Tracked button click', data.button_name);
+  } catch (error) {
+    console.error('Failed to track button click:', error);
+  }
+};
+
+export const trackLinkClick = (data: LinkClickData) => {
+  try {
+    // @ts-ignore - gtag is defined in index.html
+    window.gtag('event', 'link_click', {
+      ...data,
+      page_location: data.page_location || window.location.pathname
+    });
+  } catch (error) {
+    console.error('Failed to track link click:', error);
   }
 };
 

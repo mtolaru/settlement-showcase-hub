@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import debounce from "lodash.debounce";
+import { trackButtonClick } from "@/utils/analytics";
 
 interface FormNavigationProps {
   step: number;
@@ -33,6 +34,14 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
 
   const handleBack = (e: React.MouseEvent) => {
     e.preventDefault();
+    
+    trackButtonClick({
+      button_name: "form_navigation_back",
+      page_location: window.location.pathname,
+      component: "FormNavigation",
+      action: `step_${step}_to_${step-1}`
+    });
+    
     onBack();
   };
 
@@ -45,6 +54,15 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         console.log("Calling onNext function");
         
         const success = await Promise.resolve(onNext());
+        
+        if (success) {
+          trackButtonClick({
+            button_name: "form_navigation_next",
+            page_location: window.location.pathname,
+            component: "FormNavigation",
+            action: `step_${step}_to_${step+1}`
+          });
+        }
         
         if (!success) {
           console.log("Validation failed - showing toast notification");
@@ -69,7 +87,7 @@ export const FormNavigation: React.FC<FormNavigationProps> = ({
         button.disabled = false;
       }
     }, 300),
-    [onNext, toast]
+    [onNext, toast, step]
   );
 
   const handleNext = (e: React.MouseEvent) => {
