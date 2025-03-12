@@ -36,7 +36,7 @@ export interface FormData {
   otherCaseType: string;
   caseDescription: string;
   settlementDate: string;
-  caseDetails: CaseDetails;
+  caseDetails?: CaseDetails; // Make caseDetails optional
   attorneyName: string;
   attorneyEmail: string;
   firmName: string;

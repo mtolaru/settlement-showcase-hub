@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { FormData } from "@/types/settlementForm";
 import { trackSettlementSubmission } from '@/utils/analytics';
@@ -26,4 +27,22 @@ export const settlementService = {
       throw error;
     }
   },
+
+  deleteSettlement: async (settlementId: number, userId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-settlement', {
+        body: { settlementId, userId }
+      });
+
+      if (error) {
+        console.error('Error deleting settlement:', error);
+        return { success: false, error };
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error in deleteSettlement:', error);
+      return { success: false, error };
+    }
+  }
 };

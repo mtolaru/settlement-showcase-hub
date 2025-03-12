@@ -317,7 +317,7 @@ export const useSettlementSubmission = ({
         unformatNumber
       );
       
-      if (result.isExisting) {
+      if (result.payment_completed) {
         toast({
           title: "Already Submitted",
           description: "This settlement has already been processed. Redirecting to settlements page.",

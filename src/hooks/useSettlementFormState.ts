@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef } from 'react';
 import { trackFormFieldCompletion } from '@/utils/analytics';
 
@@ -18,7 +19,29 @@ export const useSettlementFormState = () => {
     firmName: '',
     firmWebsite: '',
     location: '',
-    photoUrl: ''
+    photoUrl: '',
+    caseDetails: {
+      carAccident: {
+        vehicleType: '',
+        injuryType: '',
+        atFault: '',
+      },
+      workplaceInjury: {
+        injuryType: '',
+        workSector: '',
+        employerSize: '',
+      },
+      medicalMalpractice: {
+        procedureType: '',
+        facilityType: '',
+        injuryType: '',
+      },
+      slipAndFall: {
+        locationType: '',
+        injuryType: '',
+        propertyType: '',
+      }
+    }
   });
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
