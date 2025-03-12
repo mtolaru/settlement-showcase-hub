@@ -25,6 +25,21 @@ interface PurchaseEventData {
   transaction_id: string;
 }
 
+interface PageViewData {
+  page_title: string;
+  page_location: string;
+  page_path: string;
+}
+
+export const trackPageView = (data: PageViewData) => {
+  try {
+    // @ts-ignore - gtag is defined in index.html
+    window.gtag('event', 'page_view', data);
+  } catch (error) {
+    console.error('Failed to track page view:', error);
+  }
+};
+
 export const trackSettlementSubmission = (data: SettlementEventData) => {
   try {
     // @ts-ignore - gtag is defined in index.html

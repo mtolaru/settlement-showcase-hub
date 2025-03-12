@@ -19,11 +19,13 @@ import Pricing from "./pages/Pricing";
 import ScrollToTop from "./components/ScrollToTop";
 import AuthCallback from "./pages/auth/AuthCallback";
 import ResetPassword from "./pages/auth/ResetPassword";
+import Analytics from "./components/Analytics";
 
 function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <Analytics />
       <div className="min-h-screen bg-white">
         <Navbar />
         <Routes>
