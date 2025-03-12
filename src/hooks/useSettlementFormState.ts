@@ -1,109 +1,78 @@
-
-import { useState } from "react";
-import { FormData, FormErrors } from "@/types/settlementForm";
+import { useState, useCallback, useRef } from 'react';
+import { trackFormFieldCompletion } from '@/utils/analytics';
 
 export const useSettlementFormState = () => {
   const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    amount: '',
+    initialOffer: '',
+    policyLimit: '',
+    medicalExpenses: '',
+    caseType: '',
+    otherCaseType: '',
+    caseDescription: '',
+    settlementPhase: '',
+    settlementDate: '',
+    attorneyName: '',
+    attorneyEmail: '',
+    firmName: '',
+    firmWebsite: '',
+    location: '',
+    photoUrl: ''
+  });
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionLock, setSubmissionLock] = useState(false);
-  const [temporaryId, setTemporaryId] = useState<string>("");
-  const [errors, setErrors] = useState<FormErrors>({});
-  // Track which fields have been explicitly cleared by the user
-  const [clearedFields, setClearedFields] = useState<Set<string>>(new Set());
+  const [temporaryId, setTemporaryId] = useState<string | null>(null);
+  const [clearedFields, setClearedFields] = useState(new Set<string>());
 
-  const today = new Date();
-  const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const clearFormField = useCallback((fieldName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: ''
+    }));
+    setClearedFields(prev => new Set(prev).add(fieldName));
+  }, []);
 
-  const [formData, setFormData] = useState<FormData>({
-    amount: "",
-    initialOffer: "",
-    policyLimit: "",
-    medicalExpenses: "",
-    settlementPhase: "",
-    caseType: "",
-    otherCaseType: "",
-    caseDescription: "",
-    settlementDate: defaultDate,
-    caseDetails: {
-      carAccident: {
-        vehicleType: "",
-        injuryType: "",
-        atFault: ""
-      },
-      workplaceInjury: {
-        injuryType: "",
-        workSector: "",
-        employerSize: ""
-      },
-      medicalMalpractice: {
-        procedureType: "",
-        facilityType: "",
-        injuryType: ""
-      },
-      slipAndFall: {
-        locationType: "",
-        injuryType: "",
-        propertyType: ""
-      }
-    },
-    attorneyName: "",
-    attorneyEmail: "",
-    firmName: "",
-    firmWebsite: "",
-    location: "",
-    photoUrl: ""
-  });
-
-  const handleInputChange = (field: string, value: string) => {
-    console.log(`Setting field ${field} to: ${value}`);
-    
-    // If this field was previously marked as cleared and we're setting a new value,
-    // remove it from the cleared fields set
-    if (clearedFields.has(field) && value !== "") {
-      const newClearedFields = new Set(clearedFields);
-      newClearedFields.delete(field);
-      setClearedFields(newClearedFields);
-    }
-    
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    
-    setErrors(prev => ({
-      ...prev,
-      [field]: undefined
-    }));
-  };
 
-  const clearFormField = (field: string) => {
-    console.log(`Explicitly clearing field ${field}`);
-    
-    // Mark this field as explicitly cleared by user
-    setClearedFields(prev => {
-      const newSet = new Set(prev);
-      newSet.add(field);
-      return newSet;
-    });
-    
+    // Track form field completion
+    if (value) {
+      const stepMap: { [key: string]: string } = {
+        amount: 'settlement_details',
+        initialOffer: 'settlement_details',
+        policyLimit: 'settlement_details',
+        medicalExpenses: 'settlement_details',
+        caseType: 'settlement_details',
+        caseDescription: 'settlement_details',
+        settlementDate: 'settlement_details',
+        attorneyName: 'attorney_information',
+        attorneyEmail: 'attorney_information',
+        firmName: 'attorney_information',
+        firmWebsite: 'attorney_information',
+        location: 'attorney_information'
+      };
+
+      trackFormFieldCompletion({
+        field_name: field,
+        step: stepMap[field] || 'unknown'
+      });
+    }
+  }, [setFormData]);
+
+  const handleImageUpload = useCallback((url: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: ""
+      photoUrl: url
     }));
-    
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[field];
-      return newErrors;
-    });
-  };
-
-  const handleImageUpload = (url: string) => {
-    handleInputChange("photoUrl", url);
-  };
+  }, [setFormData]);
 
   return {
     step,

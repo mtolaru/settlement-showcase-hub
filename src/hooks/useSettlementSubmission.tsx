@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -6,6 +5,7 @@ import { settlementService } from "@/services/settlementService";
 import { FormData } from "@/types/settlementForm";
 import { supabase } from "@/integrations/supabase/client";
 import debounce from "lodash.debounce";
+import { trackSettlementSubmission } from '@/utils/analytics';
 
 interface UseSettlementSubmissionProps {
   temporaryId: string;
@@ -34,12 +34,10 @@ export const useSettlementSubmission = ({
   const checkoutInProgressRef = useRef(false);
   const MAX_RETRIES = 3;
 
-  // Save form data to database before payment
   const saveFormData = async () => {
     try {
       console.log("Saving form data with temporaryId:", temporaryId, formData);
       
-      // First check if a record already exists
       const { data: existingRecord, error: checkError } = await supabase
         .from('settlements')
         .select('id, payment_completed')
@@ -51,7 +49,6 @@ export const useSettlementSubmission = ({
         throw new Error(`Failed to check if settlement exists: ${checkError.message}`);
       }
         
-      // Prepare the submission data with full form details
       const submissionData = {
         temporary_id: temporaryId,
         amount: Number(unformatNumber(formData.amount)) || 0,
@@ -81,7 +78,6 @@ export const useSettlementSubmission = ({
           return { success: true, existing: true };
         }
         
-        // Update existing record with current form data
         const { data: updatedRecord, error: updateError } = await supabase
           .from('settlements')
           .update(submissionData)
@@ -97,7 +93,6 @@ export const useSettlementSubmission = ({
         console.log("Updated existing settlement record:", updatedRecord);
         return { success: true, existing: false, data: updatedRecord };
       } else {
-        // Create a new record that includes created_at
         const newSubmissionData = {
           ...submissionData,
           created_at: new Date().toISOString()
@@ -125,23 +120,24 @@ export const useSettlementSubmission = ({
     }
   };
 
-  // Create settlement record first
   const createSettlementRecord = async () => {
     try {
       console.log("Creating settlement record with temporaryId:", temporaryId);
       console.log("Form data being submitted:", formData);
       
-      // Validate required fields
       if (!formData.amount || !formData.attorneyName || !formData.firmName || !formData.location) {
         throw new Error("Required fields are missing. Please complete all required fields.");
       }
       
-      // Save form data to localStorage for recovery
       localStorage.setItem('settlement_form_data', JSON.stringify(formData));
       localStorage.setItem('temporary_id', temporaryId);
       console.log("Form data saved to localStorage for recovery");
       
-      // Save to database
+      trackSettlementSubmission({
+        settlement_amount: Number(unformatNumber(formData.amount)),
+        settlement_type: formData.caseType === 'Other' ? formData.otherCaseType : formData.caseType
+      });
+      
       return await saveFormData();
     } catch (error) {
       console.error("Error in createSettlementRecord:", error);
@@ -149,7 +145,6 @@ export const useSettlementSubmission = ({
     }
   };
 
-  // Create a throttled checkout session creator that runs at most once every 5 seconds
   const throttledCreateCheckout = useCallback(
     debounce(async () => {
       if (isProcessingRef.current || checkoutInProgressRef.current) return;
@@ -158,11 +153,9 @@ export const useSettlementSubmission = ({
         checkoutInProgressRef.current = true;
         isProcessingRef.current = true;
         
-        // First save the settlement data
         const settlementResult = await createSettlementRecord();
         console.log("Settlement record creation result:", settlementResult);
         
-        // If already paid, we're done
         if (settlementResult.existing && settlementResult.success) {
           toast({
             title: "Already Submitted",
@@ -184,7 +177,6 @@ export const useSettlementSubmission = ({
           userId: userId || "undefined"
         });
         
-        // Try to create checkout session
         try {
           console.log("Calling create-checkout-session edge function");
           const checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
@@ -192,7 +184,7 @@ export const useSettlementSubmission = ({
               temporaryId,
               userId: userId || undefined,
               returnUrl: window.location.origin + '/confirmation',
-              formData: formData // Send full form data as backup
+              formData: formData
             }
           });
           
@@ -224,12 +216,10 @@ export const useSettlementSubmission = ({
           
           const { url } = data;
           if (url) {
-            // Store session info in localStorage for recovery
             if (data.session && data.session.id) {
               localStorage.setItem('payment_session_id', data.session.id);
             }
             
-            // Navigate to Stripe checkout
             console.log("Redirecting to Stripe checkout URL:", url);
             window.location.href = url;
           } else {
@@ -238,7 +228,6 @@ export const useSettlementSubmission = ({
         } catch (stripeError) {
           console.error("Stripe checkout creation error:", stripeError);
           
-          // If we get a rate limit error, wait and retry
           if (retryCountRef.current < MAX_RETRIES) {
             retryCountRef.current++;
             
@@ -250,10 +239,8 @@ export const useSettlementSubmission = ({
               description: `Setting up payment gateway (attempt ${retryCountRef.current}/${MAX_RETRIES})...`,
             });
             
-            // Reset in-progress flag but keep processing flag
             checkoutInProgressRef.current = false;
             
-            // Wait and retry
             setTimeout(() => {
               throttledCreateCheckout();
             }, waitTime);
@@ -307,9 +294,7 @@ export const useSettlementSubmission = ({
         }
       }
       
-      // Launch the throttled checkout creator
       throttledCreateCheckout();
-      
     } catch (error) {
       console.error("Error in handleCreateCheckout:", error);
       setIsLoading(false);
