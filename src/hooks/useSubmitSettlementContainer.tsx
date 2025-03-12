@@ -118,7 +118,6 @@ export const useSubmitSettlementContainer = () => {
   });
 
   useEffect(() => {
-    // Track form start when component mounts
     trackBeginSubmission('settlement_details');
   }, []);
 
@@ -132,7 +131,6 @@ export const useSubmitSettlementContainer = () => {
   }, [])
 
   useEffect(() => {
-    // Load form state from session storage on component mount
     const storedStep = sessionStorage.getItem('settlementFormStep');
     const storedFormData = sessionStorage.getItem('settlementFormData');
 
@@ -144,13 +142,11 @@ export const useSubmitSettlementContainer = () => {
       setFormData(JSON.parse(storedFormData));
     }
 
-    // Generate a temporary ID if one doesn't exist
     if (!temporaryId) {
       const newTemporaryId = generateTemporaryId();
       setTemporaryId(newTemporaryId);
     }
 
-    // Check for active subscription
     const checkSubscription = async () => {
       setIsCheckingSubscription(true);
       try {
@@ -160,7 +156,7 @@ export const useSubmitSettlementContainer = () => {
         if (userId) {
           const { data, error } = await supabase
             .from('subscriptions')
-            .select('status')
+            .select('is_active')
             .eq('user_id', userId)
             .single();
 
@@ -168,7 +164,7 @@ export const useSubmitSettlementContainer = () => {
             console.error("Error fetching subscription:", error);
             setHasActiveSubscription(false);
           } else {
-            setHasActiveSubscription(data?.status === 'active');
+            setHasActiveSubscription(data?.is_active === true);
           }
         } else {
           setHasActiveSubscription(false);
