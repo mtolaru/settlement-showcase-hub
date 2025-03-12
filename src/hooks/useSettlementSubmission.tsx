@@ -5,7 +5,7 @@ import { settlementService } from "@/services/settlementService";
 import { FormData } from "@/types/settlementForm";
 import { supabase } from "@/integrations/supabase/client";
 import debounce from "lodash.debounce";
-import { trackSettlementSubmission } from '@/utils/analytics';
+import { trackSettlementSubmission, trackBeginCheckout, trackPurchase } from '@/utils/analytics';
 
 interface UseSettlementSubmissionProps {
   temporaryId: string;
@@ -279,6 +279,12 @@ export const useSettlementSubmission = ({
     retryCountRef.current = 0;
     
     try {
+      // Track beginning of checkout
+      trackBeginCheckout({
+        temporary_id: temporaryId,
+        amount: 199
+      });
+
       if (formData.attorneyEmail) {
         const emailExists = await verifyEmail(formData.attorneyEmail);
         if (emailExists) {
@@ -350,6 +356,20 @@ export const useSettlementSubmission = ({
       throttledCreateCheckout.cancel();
     };
   }, [throttledCreateCheckout]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionId = searchParams.get('session_id');
+
+    if (sessionId) {
+      // Track successful purchase
+      trackPurchase({
+        value: 199,
+        currency: 'USD',
+        transaction_id: sessionId
+      });
+    }
+  }, []);
 
   return {
     handleSubmitWithSubscription,
